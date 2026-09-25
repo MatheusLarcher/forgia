@@ -1,6 +1,8 @@
 // Janela desktop do Forgia: carrega o build do Vite (dist/index.html)
-const { app, BrowserWindow, Menu, shell } = require('electron');
+const { app, BrowserWindow, Menu, shell, nativeTheme } = require('electron');
 const path = require('path');
+// ponte local com a IA (HTTP em 127.0.0.1 + IPC com a página); o MCP fica em electron/mcp/
+const { startBridge } = require('./ponte.cjs');
 
 // GPU: usa a placa dedicada quando houver mais de uma; se não houver GPU utilizável,
 // mantém o WebGL por software (SwiftShader) como fallback. Só carregamos arquivos locais.
@@ -40,13 +42,20 @@ function createWindow() {
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: '#ffffff',
+    // aparece só depois da primeira pintura, já no tema certo; até lá, o fundo (--bg) do
+    // tema do Windows evita o clarão branco
+    show: false,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#16181b' : '#e9ecef',
     title: 'Forgia',
     icon: path.join(__dirname, '..', 'dist', 'branding', 'forgia-forge-v1.ico'),
-    webPreferences: { contextIsolation: true, nodeIntegration: false },
+    // preload mínimo (electron/preload.cjs): só a ponte da IA, sem Node na página
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: path.join(__dirname, 'preload.cjs') },
   });
   Menu.setApplicationMenu(null);
-  win.maximize();
+  win.once('ready-to-show', () => {
+    win.maximize();
+    win.show();
+  });
   win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
 
   // Links externos abrem no navegador, não dentro do app
@@ -54,6 +63,7 @@ function createWindow() {
     if (/^https?:/.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
+  startBridge(win);
 }
 
 app.on('second-instance', () => {

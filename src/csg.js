@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, ADDITION, SUBTRACTION } from 'three-bvh-csg';
-import { shapeGeometry } from './shapes.js';
+import { shapeGeometry, paramsKey } from './shapes.js';
 import { solidMaterial, holeMaterial } from './materials.js';
 
 const evaluator = new Evaluator();
@@ -9,14 +9,15 @@ evaluator.useGroups = true;
 
 const cache = new Map();
 
-// Chave estável do conteúdo de um grupo (só o que afeta a geometria)
+// Chave estável do conteúdo de um grupo (só o que afeta a geometria); os params entram pela
+// assinatura de src/shapes.js (o contorno de um desenho não é serializado a cada chamada)
 export function groupKey(children) {
   return JSON.stringify(children.map(keyOf));
 }
 function keyOf(o) {
   const base = { t: o.type, s: o.size, p: o.pos, q: o.quat, f: o.flip, h: !!o.hole, c: o.color || null, x: !!o.hidden };
   if (o.type === 'group') base.ch = o.children.map(keyOf);
-  else base.pa = o.params;
+  else base.pa = paramsKey(o.params);
   return base;
 }
 

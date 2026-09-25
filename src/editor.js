@@ -7,6 +7,14 @@ import { Handles, Protractor } from './handles.js';
 import { ViewCube } from './viewcube.js';
 import { outlineGeometry } from './edges.js';
 import { createRenderer } from './gpu.js';
+import { t } from './textos/index.js';
+import { theme } from './theme.js';
+import { ICONS } from './icons.js';
+import { DrawTool } from './draw.js';
+import { CruiseTool } from './cruise.js';
+import { MeasureTool } from './measure.js';
+import { MarkTool } from './marcar.js';
+import { Surface } from './surface.js';
 
 const STORAGE = 'forgia.design.v1';
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -26,8 +34,9 @@ export class Editor extends EventTarget {
     this.historyIndex = -1;
     this.grid = 1;
     this.workplane = { w: 255, l: 255, h: 255 };
-    this.name = 'Meu projeto 3D';
+    this.name = t.editor.nomePadrao;
     this.mode = null; // 'align' | 'mirror'
+    this.tool = null; // ferramenta ativa (Desenhar…); exclusiva com mode e placing (setTool)
     this.alignKey = null;
     this.clipboard = null;
     this.lastDuplicate = null;
@@ -38,7 +47,10 @@ export class Editor extends EventTarget {
 
     this.initThree();
     this.initWorkplane();
+    theme.watch((colors) => this.applyTheme(colors));
     this.initOverlay();
+    this.surface = new Surface(this);
+    this.tools = { draw: new DrawTool(this), cruise: new CruiseTool(this), measure: new MeasureTool(this), mark: new MarkTool(this) };
     this.initEvents();
     this.load();
     this.loop();
@@ -65,7 +77,8 @@ export class Editor extends EventTarget {
     this.camera.position.copy(HOME_DIR.clone().multiplyScalar(330));
     this.scene.add(this.perspCam, this.orthoCam);
 
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa3ad, 1.9));
+    this.hemiLight = new THREE.HemisphereLight(0xffffff, theme.colors.groundLight, 1.9);
+    this.scene.add(this.hemiLight);
     this.keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
     this.keyLight.position.set(-0.6, 1.0, 0.4);
     this.keyTarget = new THREE.Object3D();
@@ -106,13 +119,20 @@ export class Editor extends EventTarget {
     if (this.wp) {
       this.scene.remove(this.wp);
       this.wp.traverse((o) => o.geometry && o.geometry.dispose());
+      for (const m of Object.values(this.wpMats)) m.dispose();
     }
     const { w, l } = this.workplane;
+    // materiais da mesa; cor e opacidade vêm do tema (applyTheme)
+    const mats = (this.wpMats = {
+      plate: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false }),
+      minor: new THREE.LineBasicMaterial({ transparent: true, depthWrite: false }),
+      major: new THREE.LineBasicMaterial({ transparent: true, depthWrite: false }),
+      border: new THREE.LineBasicMaterial(),
+      volume: new THREE.LineBasicMaterial({ transparent: true, depthWrite: false }),
+      shadow: new THREE.ShadowMaterial({ depthWrite: false }),
+    });
     const g = (this.wp = new THREE.Group());
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(w, l),
-      new THREE.MeshBasicMaterial({ color: '#d4e7f7', transparent: true, opacity: 0.82, side: THREE.DoubleSide, depthWrite: false }),
-    );
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, l), mats.plate);
     plane.rotation.x = -Math.PI / 2;
     plane.renderOrder = -2;
     g.add(plane);
@@ -127,38 +147,36 @@ export class Editor extends EventTarget {
       const k = Math.round(z + l / 2);
       (k % 10 === 0 ? major : minor).push(-w / 2, 0, z, w / 2, 0, z);
     }
-    const mk = (arr, color, opacity) => {
+    const mk = (arr, mat) => {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
-      const ls = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthWrite: false }));
+      const ls = new THREE.LineSegments(geo, mat);
       ls.renderOrder = -1;
       return ls;
     };
-    g.add(mk(minor, '#a9cbea', 0.35), mk(major, '#6aa6dc', 0.9));
+    g.add(mk(minor, mats.minor), mk(major, mats.major));
     const border = new THREE.LineLoop(
       new THREE.BufferGeometry().setFromPoints([V3(-w / 2, 0, -l / 2), V3(w / 2, 0, -l / 2), V3(w / 2, 0, l / 2), V3(-w / 2, 0, l / 2)]),
-      new THREE.LineBasicMaterial({ color: '#3a86c8' }),
+      mats.border,
     );
     g.add(border);
     // volume de impressão (altura)
     const hgt = this.workplane.h || 0;
     if (hgt > 0) {
-      const vol = new THREE.LineSegments(
-        new THREE.EdgesGeometry(new THREE.BoxGeometry(w, hgt, l)),
-        new THREE.LineBasicMaterial({ color: '#3a86c8', transparent: true, opacity: 0.35, depthWrite: false }),
-      );
+      const vol = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, hgt, l)), mats.volume);
       vol.position.y = hgt / 2;
       vol.raycast = () => {};
       g.add(vol);
     }
 
-    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(w * 3, l * 3), new THREE.ShadowMaterial({ opacity: 0.22, depthWrite: false }));
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(w * 3, l * 3), mats.shadow);
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.02;
     shadow.receiveShadow = true;
     shadow.renderOrder = -1;
     g.add(shadow);
     this.scene.add(g);
+    this.applyTheme(theme.colors);
 
     const sc = this.shadowLight.shadow.camera;
     const ext = Math.max(w, l) * 1.5;
@@ -167,6 +185,23 @@ export class Editor extends EventTarget {
     sc.top = ext;
     sc.bottom = -ext;
     sc.updateProjectionMatrix();
+  }
+
+  // Cores do tema na vista: só cor e opacidade dos materiais da mesa e a luz de chão.
+  // Nada de geometria nem de furos recalculados (peças, alças e cubo cuidam das suas cores).
+  applyTheme(c) {
+    const m = this.wpMats;
+    m.plate.color.set(c.plate);
+    m.plate.opacity = c.plateOpacity;
+    m.minor.color.set(c.gridMinor);
+    m.minor.opacity = c.gridMinorOpacity;
+    m.major.color.set(c.gridMajor);
+    m.major.opacity = c.gridMajorOpacity;
+    m.border.color.set(c.border);
+    m.volume.color.set(c.volume);
+    m.volume.opacity = c.volumeOpacity;
+    m.shadow.opacity = c.shadowOpacity;
+    this.hemiLight.groundColor.set(c.groundLight);
   }
 
   initOverlay() {
@@ -237,16 +272,44 @@ export class Editor extends EventTarget {
     }
     to.up.copy(from.up);
     to.lookAt(target);
-    to.add(this.keyLight, this.keyTarget);
-    this.camera = to;
-    this.controls.object = to;
+    this.useCamera(to);
     this.updateOrthoFrustum();
     this.controls.update();
     this.emit('camera');
   }
 
+  // troca a câmera ativa levando a luz principal junto
+  useCamera(cam) {
+    cam.add(this.keyLight, this.keyTarget);
+    this.camera = cam;
+    this.controls.object = cam;
+  }
+
   get isOrtho() {
     return this.camera === this.orthoCam;
+  }
+
+  // vista atual (câmera, posição, alvo, zoom), para voltar exatamente a ela (ferramenta Desenhar)
+  saveView() {
+    const c = this.camera;
+    return { ortho: this.isOrtho, pos: c.position.clone(), target: this.controls.target.clone(), up: c.up.clone(), zoom: c.zoom, orthoHeight: this.orthoHeight };
+  }
+
+  restoreView(v) {
+    if (!v) return;
+    cancelAnimationFrame(this.camAnim);
+    const cam = v.ortho ? this.orthoCam : this.perspCam;
+    if (cam !== this.camera) this.useCamera(cam);
+    this.orthoHeight = v.orthoHeight;
+    cam.position.copy(v.pos);
+    cam.up.copy(v.up);
+    cam.zoom = v.zoom;
+    this.controls.target.copy(v.target);
+    cam.lookAt(v.target);
+    cam.updateProjectionMatrix();
+    this.updateOrthoFrustum();
+    this.controls.update();
+    this.emit('camera');
   }
 
   animateCamera(pos, target, zoom) {
@@ -276,9 +339,9 @@ export class Editor extends EventTarget {
     const d = dir.clone();
     if (Math.abs(d.y) > 0.999) d.z += 0.0015; // evita singularidade no topo/fundo
     d.normalize();
-    const t = this.controls.target.clone();
-    const dist = this.camera.position.distanceTo(t);
-    this.animateCamera(t.clone().add(d.multiplyScalar(dist)), t);
+    const target = this.controls.target.clone();
+    const dist = this.camera.position.distanceTo(target);
+    this.animateCamera(target.clone().add(d.multiplyScalar(dist)), target);
   }
 
   homeView() {
@@ -311,9 +374,9 @@ export class Editor extends EventTarget {
       this.camera.updateProjectionMatrix();
       return;
     }
-    const t = this.controls.target;
-    const off = this.camera.position.clone().sub(t).divideScalar(f);
-    this.animateCamera(t.clone().add(off), t.clone());
+    const target = this.controls.target;
+    const off = this.camera.position.clone().sub(target).divideScalar(f);
+    this.animateCamera(target.clone().add(off), target.clone());
   }
 
   // tamanho de um pixel (em mm) na posição p
@@ -327,6 +390,13 @@ export class Editor extends EventTarget {
   project(v) {
     const p = v.clone().project(this.camera);
     return { x: (p.x * 0.5 + 0.5) * this.viewport.clientWidth, y: (-p.y * 0.5 + 0.5) * this.viewport.clientHeight, z: p.z };
+  }
+
+  // tudo de que project() depende (câmera, zoom, tamanho da vista): igual = a projeção não mudou.
+  // As camadas SVG (Desenhar, Medir) só redesenham quando isso ou o que elas mostram muda.
+  viewKey() {
+    const c = this.camera;
+    return `${c.matrixWorldInverse.elements.join()}|${c.projectionMatrix.elements.join()}|${this.viewport.clientWidth}x${this.viewport.clientHeight}`;
   }
 
   // ---------------- objetos ----------------
@@ -424,7 +494,7 @@ export class Editor extends EventTarget {
   refreshOutlines() {
     for (const [id, mesh] of this.meshes) {
       const sel = this.selection.includes(id);
-      const hov = !sel && this.hoverId === id;
+      const hov = !sel && (this.hoverId === id || (this.flashOn && this.flashIds && this.flashIds.has(id)));
       if (sel || hov) {
         if (!mesh.userData.outline) {
           const edges = outlineGeometry(mesh.geometry, 28);
@@ -475,6 +545,7 @@ export class Editor extends EventTarget {
   }
 
   commit() {
+    if (this.batching) return; // dentro de batch(): um commit só, no fim
     const s = this.snapshot();
     if (this.history[this.historyIndex] === s) return;
     this.history = this.history.slice(0, this.historyIndex + 1);
@@ -556,7 +627,7 @@ export class Editor extends EventTarget {
   }
 
   setName(n) {
-    this.name = n || 'Sem título';
+    this.name = n || t.editor.semTitulo;
     this.save();
   }
 
@@ -604,6 +675,63 @@ export class Editor extends EventTarget {
     fn();
     this.sync();
     if (commit) this.commit();
+  }
+
+  // Um pedido = um passo de desfazer (ponte da IA): fn roda com os commit() suspensos, inclusive os
+  // de group(), align(), mirror()… chamados por dentro, e grava um só no fim. Se fn lançar erro ou
+  // validate(objects) recusar o resultado, os objetos e a seleção voltam ao snapshot de antes e nada
+  // entra no histórico. Pode aninhar: só o batch de fora grava ou restaura.
+  batch(fn, { validate } = {}) {
+    const before = this.snapshot();
+    const selection = [...this.selection];
+    this.batching = (this.batching || 0) + 1;
+    let result;
+    try {
+      result = fn();
+      if (validate && this.batching === 1) validate(this.objects);
+    } catch (err) {
+      this.batching--;
+      if (!this.batching) {
+        this.objects = JSON.parse(before);
+        this.selection = selection;
+        this.sync();
+        this.emit('selection');
+      }
+      throw err;
+    }
+    this.batching--;
+    if (!this.batching) {
+      this.sync();
+      this.commit();
+    }
+    return result;
+  }
+
+  // marcações do Marcar parte (editor.marks): fora do projeto e do desfazer
+  clearMarks() {
+    this.tools.mark.clear();
+  }
+
+  // contorno piscando nos objetos (do topo) que a IA mexeu, por ~ms; não muda a seleção
+  flash(ids, ms = 1500) {
+    this.flashIds = new Set(ids);
+    this.flashStart = performance.now();
+    this.flashUntil = this.flashStart + ms;
+    this.flashOn = true;
+    this.refreshOutlines();
+  }
+
+  updateFlash(now) {
+    if (!this.flashUntil) return;
+    const on = now < this.flashUntil && Math.floor((now - this.flashStart) / 250) % 2 === 0;
+    if (now >= this.flashUntil) {
+      this.flashUntil = 0;
+      this.flashIds = null;
+    }
+    if (on !== this.flashOn || !this.flashIds) {
+      this.flashOn = on;
+      this.refreshOutlines();
+    }
   }
 
   deleteSelected() {
@@ -724,8 +852,9 @@ export class Editor extends EventTarget {
     this.change(() => this.objects.forEach((o) => (o.hidden = false)));
   }
 
-  dropToWorkplane() {
-    const sel = this.selected.filter((o) => !o.locked);
+  // objs: padrão = seleção (a ponte da IA passa a lista dela, sem mexer na seleção)
+  dropToWorkplane(objs = this.selected.filter((o) => !o.locked)) {
+    const sel = objs;
     if (!sel.length) return;
     this.change(() =>
       sel.forEach((o) => {
@@ -747,10 +876,12 @@ export class Editor extends EventTarget {
     );
   }
 
-  group() {
-    const sel = this.selected;
-    if (sel.length < 2) return;
-    const ids = new Set(this.selection);
+  // objs: padrão = seleção; select: false não mexe na seleção (ponte da IA). Devolve o grupo novo.
+  // Os filhos mantêm os ids que tinham como objetos soltos.
+  group(objs = this.selected, { select = true } = {}) {
+    const sel = objs;
+    if (sel.length < 2) return null;
+    const ids = new Set(sel.map((o) => o.id));
     const children = clone(sel);
     const temp = { type: 'group', children };
     const res = groupResult(temp);
@@ -763,7 +894,7 @@ export class Editor extends EventTarget {
     const g = {
       id: uid(),
       type: 'group',
-      name: 'Grupo',
+      name: t.editor.grupo,
       color: null,
       hole: res.isHole,
       params: {},
@@ -778,13 +909,17 @@ export class Editor extends EventTarget {
       this.objects = this.objects.filter((o) => !ids.has(o.id));
       this.objects.splice(Math.max(0, firstIndex), 0, g);
     });
-    this.select([g.id]);
-    this.emit('selection');
+    if (select) {
+      this.select([g.id]);
+      this.emit('selection');
+    }
+    return g;
   }
 
-  ungroup() {
-    const groups = this.selected.filter((o) => o.type === 'group');
-    if (!groups.length) return;
+  // Devolve os ids das formas soltas (as mesmas do grupo)
+  ungroup(objs = this.selected, { select = true } = {}) {
+    const groups = objs.filter((o) => o.type === 'group');
+    if (!groups.length) return [];
     const newIds = [];
     this.change(() => {
       for (const g of groups) {
@@ -810,13 +945,16 @@ export class Editor extends EventTarget {
         newIds.push(...out.map((c) => c.id));
       }
     });
-    this.select(newIds);
-    this.emit('selection');
+    if (select) {
+      this.select(newIds);
+      this.emit('selection');
+    }
+    return newIds;
   }
 
-  // espelha em torno do centro da seleção, no eixo do mundo (0=x, 1=y, 2=z)
-  mirror(axis) {
-    const sel = this.selected.filter((o) => !o.locked);
+  // espelha em torno do centro da seleção (ou de objs), no eixo do mundo (0=x, 1=y, 2=z)
+  mirror(axis, objs = this.selected.filter((o) => !o.locked)) {
+    const sel = objs;
     if (!sel.length) return;
     const c = this.selectionBox(sel).getCenter(V3());
     const s = V3(1, 1, 1);
@@ -839,11 +977,11 @@ export class Editor extends EventTarget {
     });
   }
 
-  // alinha no eixo (0,1,2) em min(-1)/centro(0)/max(1)
-  align(axis, where) {
-    const sel = this.selected;
+  // alinha no eixo (0,1,2) em min(-1)/centro(0)/max(1); key = referência que fica parada
+  // (padrão: a forma-chave do modo alinhar; sem ela, a caixa de todos)
+  align(axis, where, objs = this.selected, key = this.alignKey ? this.obj(this.alignKey) : null) {
+    const sel = objs;
     if (sel.length < 2) return;
-    const key = this.alignKey ? this.obj(this.alignKey) : null;
     const ref = key ? this.worldBox(key) : this.selectionBox(sel);
     const target = where < 0 ? ref.min.getComponent(axis) : where > 0 ? ref.max.getComponent(axis) : ref.getCenter(V3()).getComponent(axis);
     this.change(() => {
@@ -860,11 +998,50 @@ export class Editor extends EventTarget {
     if (mode === this.mode) mode = null;
     if (mode === 'align' && this.selection.length < 2) mode = null;
     if (mode === 'mirror' && !this.selection.length) mode = null;
+    if (mode) {
+      // modos exclusivos: alinhar/espelhar fecham ferramenta e colocação
+      this.setTool(null);
+      this.cancelPlacing();
+    }
     this.mode = mode;
     this.alignKey = null;
     this.buildModeHandles();
     this.refreshOutlines();
     this.emit('mode');
+  }
+
+  // Ferramentas (Desenhar…): uma por vez, exclusivas com alinhar/espelhar (mode) e com a
+  // colocação de forma (placing). setTool(nome) liga (ou desliga, se já estiver ligada);
+  // setTool(null) desliga a atual. Cada ferramenta tem enter/exit, onDown/onMove/onUp (true =
+  // evento tratado), onKey opcional, update() por quadro e hint() (texto da dica de modo).
+  setTool(name) {
+    const cur = this.tool;
+    if (cur) {
+      this.tool = null;
+      cur.exit();
+    }
+    let next = name && (!cur || cur.name !== name) ? this.tools[name] : null;
+    if (next && next.canEnter && !next.canEnter()) next = null;
+    if (next) {
+      if (this.mode) this.setMode(null);
+      this.cancelPlacing();
+      // arraste de peça ou alça no meio (tecla da ferramenta com o botão apertado) termina como ao
+      // soltar: transferidor e ângulo somem e o que mudou vira um passo de desfazer
+      const d = this.drag;
+      this.drag = null;
+      this.marqueeEl.style.display = 'none';
+      if (d && d.kind !== 'marquee') this.finishDrag(d);
+      this.hoverId = null;
+      this.handles.setHover(null);
+      this.refreshOutlines();
+      this.tool = next;
+      next.enter();
+    }
+    if (cur || next) {
+      // o cursor que o hover deixou no canvas sai: vale o da ferramenta (CSS) ou o do próximo hover
+      this.renderer.domElement.style.cursor = '';
+      this.emit('mode');
+    }
   }
 
   // Dimensões editáveis: tamanho (mantém a base apoiada) e elevação
@@ -890,6 +1067,8 @@ export class Editor extends EventTarget {
   // ---------------- colocação de formas da biblioteca ----------------
 
   startPlacing(spec, sticky = false) {
+    this.setTool(null);
+    if (this.mode) this.setMode(null);
     this.cancelPlacing();
     this.placing = { spec, obj: null, sticky };
     this.viewport.classList.add('placing');
@@ -897,6 +1076,7 @@ export class Editor extends EventTarget {
 
   cancelPlacing() {
     if (!this.placing) return;
+    this.surface.hide();
     if (this.placing.obj) {
       this.objects = this.objects.filter((o) => o !== this.placing.obj);
       this.sync();
@@ -913,6 +1093,7 @@ export class Editor extends EventTarget {
       if (p.obj) {
         this.objects = this.objects.filter((o) => o !== p.obj);
         p.obj = null;
+        this.surface.hide();
         this.sync();
       }
       return;
@@ -922,8 +1103,19 @@ export class Editor extends EventTarget {
       p.obj = this.createObject(type, opts);
       this.objects.push(p.obj);
     }
-    const s = this.surfacePoint(e, p.obj.id);
-    p.obj.pos = [r3(this.snap(s.x)), r3(s.y + p.obj.size[1] / 2), r3(this.snap(s.z))];
+    // segue qualquer face sob o cursor (topo, lateral, inclinada), alinhada a ela, com a face em
+    // verde; na mesa e em face virada para cima, x/z grudam na grade como antes
+    const s = this.surface.hit(e, new Set([p.obj.id]));
+    if (s) {
+      const P = s.point.clone();
+      if (s.table || s.normal.y > 0.999) {
+        P.x = this.snap(P.x);
+        P.z = this.snap(P.z);
+      }
+      p.obj.quat = new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), s.normal).toArray();
+      p.obj.pos = P.addScaledVector(s.normal, p.obj.size[1] / 2).toArray().map(r3);
+      this.surface.show(s, Math.max(p.obj.size[0], p.obj.size[2]));
+    }
     this.sync();
   }
 
@@ -937,6 +1129,7 @@ export class Editor extends EventTarget {
     }
     const id = p.obj.id;
     this.placing = null;
+    this.surface.hide();
     this.viewport.classList.remove('placing');
     this.commit();
     this.select([id]);
@@ -949,20 +1142,6 @@ export class Editor extends EventTarget {
     if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return false;
     const el = document.elementFromPoint(e.clientX, e.clientY);
     return !!el && (el === this.renderer.domElement || this.overlay.contains(el) || el === this.viewport);
-  }
-
-  // ponto de apoio sob o cursor: topo de outro objeto ou o plano de trabalho
-  surfacePoint(e, excludeId) {
-    this.setRay(e);
-    const meshes = [...this.meshes.values()].filter((m) => m.visible && m.userData.id !== excludeId);
-    const hit = this.raycaster.intersectObjects(meshes, false)[0];
-    if (hit && hit.face) {
-      const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
-      if (n.y > 0.7) return hit.point;
-    }
-    const pt = V3();
-    if (this.raycaster.ray.intersectPlane(new THREE.Plane(V3(0, 1, 0), 0), pt)) return pt;
-    return V3();
   }
 
   // ---------------- interação ----------------
@@ -988,6 +1167,7 @@ export class Editor extends EventTarget {
     window.addEventListener('pointerup', (e) => this.onUp(e));
     c.addEventListener('contextmenu', (e) => e.preventDefault());
     c.addEventListener('dblclick', (e) => {
+      if (this.tool) return;
       const hit = this.pickObject(e);
       if (hit) this.fitView();
     });
@@ -1000,6 +1180,7 @@ export class Editor extends EventTarget {
       this.finishPlacing(e);
       return;
     }
+    if (this.tool && this.tool.onDown(e)) return;
     this.setRay(e);
     const handle = this.mode ? null : this.handles.pick(this.raycaster);
     if (handle) {
@@ -1047,6 +1228,7 @@ export class Editor extends EventTarget {
       this.updatePlacing(e);
       return;
     }
+    if (this.tool && this.tool.onMove(e)) return;
     const d = this.drag;
     if (!d) {
       if (e.target === this.renderer.domElement && e.buttons === 0) this.hover(e);
@@ -1101,6 +1283,7 @@ export class Editor extends EventTarget {
       }
       return;
     }
+    if (this.tool && this.tool.onUp(e)) return;
     const d = this.drag;
     if (!d) return;
     this.drag = null;
@@ -1124,6 +1307,12 @@ export class Editor extends EventTarget {
       this.select(ids, { add: d.additive });
       return;
     }
+    this.finishDrag(d);
+  }
+
+  // fim de arraste de peça ou alça (soltar o botão, ou setTool no meio dele): some o que o arraste
+  // mostra e o que mudou vira um passo de desfazer
+  finishDrag(d) {
     if (d.kind === 'handle') {
       this.protractor.hide();
       this.angleEl.style.display = 'none';
@@ -1156,9 +1345,9 @@ export class Editor extends EventTarget {
     this.renderer.domElement.style.cursor = h ? (h.type === 'rot' ? 'grab' : 'pointer') : id ? 'move' : 'default';
   }
 
-  // quadro de referência das alças: o próprio objeto ou a caixa da seleção
-  getFrame() {
-    const sel = this.selected;
+  // quadro de referência das alças: o próprio objeto ou a caixa da seleção (ou de outras peças,
+  // ex.: só as desbloqueadas no Cruzeiro)
+  getFrame(sel = this.selected) {
     if (!sel.length) return null;
     if (sel.length === 1) {
       const o = sel[0];
@@ -1328,7 +1517,7 @@ export class Editor extends EventTarget {
         for (const where of [-1, 0, 1]) {
           const el = document.createElement('button');
           el.className = 'align-dot';
-          el.title = ['Esquerda', 'Centro', 'Direita'][where + 1];
+          el.title = t.editor.alinhar[where + 1];
           el.addEventListener('pointerdown', (e) => e.stopPropagation());
           el.addEventListener('click', () => this.align(axis, where));
           el.addEventListener('pointerenter', () => this.previewAlign(axis, where, true));
@@ -1343,8 +1532,8 @@ export class Editor extends EventTarget {
       for (const axis of [0, 1, 2]) {
         const el = document.createElement('button');
         el.className = 'mirror-btn';
-        el.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 12l5-5v3h8V7l5 5-5 5v-3H8v3z" fill="currentColor"/></svg>';
-        el.title = 'Espelhar';
+        el.innerHTML = ICONS.mirrorArrow;
+        el.title = t.editor.espelhar;
         el.dataset.axis = axis;
         el.addEventListener('pointerdown', (e) => e.stopPropagation());
         el.addEventListener('click', () => this.mirror(axis));
@@ -1406,6 +1595,7 @@ export class Editor extends EventTarget {
     const showing =
       sel.length === 1 &&
       !this.mode &&
+      !this.tool &&
       !sel[0].locked &&
       (this.editingDim ||
         this.dimsHover ||
@@ -1535,14 +1725,17 @@ export class Editor extends EventTarget {
       const d = this.drag;
       const frame = d && d.kind === 'handle' ? d.frame : this.getFrame();
       const locked = this.selected.some((o) => o.locked);
-      if (frame && !this.mode && !(d && d.kind === 'move' && d.moved)) {
+      if (frame && !this.mode && !this.tool && !(d && d.kind === 'move' && d.moved)) {
         const only = d && d.kind === 'handle' ? d.handle : null;
         this.handles.update(frame, this.pixelSize(frame.pos), { only, locked });
       } else {
         this.handles.update(null);
       }
+      this.updateFlash(now);
       this.updateDims();
       this.updateModeHandles();
+      if (this.tool && this.tool.update) this.tool.update();
+      this.tools.mark.updatePins(); // alfinetes ficam na vista mesmo com a ferramenta desligada
       this.renderer.render(this.scene, this.camera);
       this.viewCube.update(this.camera, this.controls.target);
     };

@@ -25,3 +25,7 @@ docs/spec/*/_sandbox/
 # perfis do Chromium e evidências de validação (ficam só no disco)
 build/*-profile/
 docs/*-evidence/
+
+# sobras de testes manuais (STL exportado, config de MCP com caminho local)
+build/*.stl
+build/mcp-*.json

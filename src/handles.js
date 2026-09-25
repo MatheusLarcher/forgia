@@ -1,34 +1,40 @@
 import * as THREE from 'three';
+import { theme } from './theme.js';
 
 // Alças de manipulação no estilo Tinkercad:
 // quadrados brancos nos cantos (redimensiona 2 eixos), pretos nas arestas (1 eixo),
 // quadrado branco no topo (altura), cone preto (elevar) e 3 setas curvas (girar).
+// As cores vêm do tema; na troca, só texturas e cores de material mudam.
 
 // transparent: true põe as alças na mesma passada do plano de trabalho (translúcido),
 // e o renderOrder alto garante que sejam desenhadas por cima dele
-const black = () => new THREE.MeshBasicMaterial({ color: 0x2b2b2b, depthTest: false, depthWrite: false, transparent: true });
+const solidMat = () => new THREE.MeshBasicMaterial({ depthTest: false, depthWrite: false, transparent: true });
 const hitMat = new THREE.MeshBasicMaterial({ visible: false });
 
-const HOVER = 0xf23d3d;
-
 // quadrado 2D (sprite) com borda; o miolo ocupa 60% da textura, o resto é área de clique
-function squareTexture(fill, stroke) {
+function squareTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = 64;
-  const g = c.getContext('2d');
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+// redesenha o mesmo canvas com as cores do tema
+function paintSquare(tex, { fill, stroke }) {
+  const g = tex.image.getContext('2d');
+  g.clearRect(0, 0, 64, 64);
   g.fillStyle = stroke;
   g.fillRect(13, 13, 38, 38);
   g.fillStyle = fill;
   g.fillRect(18, 18, 28, 28);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+  tex.needsUpdate = true;
 }
-const TEX = {
-  white: squareTexture('#ffffff', '#2b2b2b'),
-  black: squareTexture('#2b2b2b', '#ffffff'),
-  hover: squareTexture('#f23d3d', '#ffffff'),
-};
+const TEX = { corner: squareTexture(), edge: squareTexture(), hover: squareTexture() };
+theme.watch((c) => {
+  paintSquare(TEX.corner, c.handleCorner);
+  paintSquare(TEX.edge, c.handleEdge);
+  paintSquare(TEX.hover, c.handleHover);
+});
 
 function squareHandle(kind) {
   const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX[kind], depthTest: false, depthWrite: false, transparent: true }));
@@ -80,16 +86,16 @@ export class Handles {
     this.hovered = null;
 
     for (const sx of [-1, 1]) {
-      for (const sz of [-1, 1]) this.add({ type: 'corner', sx, sz }, squareHandle('white'));
+      for (const sz of [-1, 1]) this.add({ type: 'corner', sx, sz }, squareHandle('corner'));
     }
     for (const s of [-1, 1]) {
-      this.add({ type: 'edge', axis: 'x', s }, squareHandle('black'));
-      this.add({ type: 'edge', axis: 'z', s }, squareHandle('black'));
+      this.add({ type: 'edge', axis: 'x', s }, squareHandle('edge'));
+      this.add({ type: 'edge', axis: 'z', s }, squareHandle('edge'));
     }
-    this.add({ type: 'top' }, squareHandle('white'));
+    this.add({ type: 'top' }, squareHandle('corner'));
 
     const cone = new THREE.Group();
-    const coneMesh = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.3, 20), black());
+    const coneMesh = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.3, 20), solidMat());
     coneMesh.renderOrder = 1001;
     const coneHit = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.8, 8), hitMat);
     cone.add(coneMesh, coneHit);
@@ -100,7 +106,7 @@ export class Handles {
     for (const axis of ['x', 'y', 'z']) {
       const g = new THREE.Group();
       const inner = new THREE.Group();
-      const m = new THREE.Mesh(arrowGeo, black());
+      const m = new THREE.Mesh(arrowGeo, solidMat());
       m.renderOrder = 1001;
       const hit = new THREE.Mesh(new THREE.TorusGeometry(1, 0.35, 6, 16, Math.PI * 0.75), hitMat);
       hit.geometry.rotateZ(Math.PI * 0.125);
@@ -112,6 +118,12 @@ export class Handles {
       g.userData.fill = m;
       this.add({ type: 'rot', axis }, g);
     }
+
+    // cone e setas pintados com a paleta atual (os quadrados usam as texturas do tema)
+    theme.watch((colors) => {
+      this.colors = colors;
+      for (const it of this.items) this.paint(it, it === this.hovered);
+    });
   }
 
   add(info, obj) {
@@ -189,12 +201,8 @@ export class Handles {
 
   paint(item, on) {
     const fill = item.object.userData.fill;
-    if (fill.isSprite) {
-      fill.material.map = on ? TEX.hover : fill.userData.baseMap;
-      return;
-    }
-    if (fill.userData.base === undefined) fill.userData.base = fill.material.color.getHex();
-    fill.material.color.setHex(on ? HOVER : fill.userData.base);
+    if (fill.isSprite) fill.material.map = on ? TEX.hover : fill.userData.baseMap;
+    else fill.material.color.set(on ? this.colors.handleSolidHover : this.colors.handleSolid);
   }
 }
 
@@ -206,7 +214,7 @@ export class Protractor {
     scene.add(this.root);
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(0.72, 1, 96),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthTest: false }),
+      new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthTest: false }),
     );
     ring.renderOrder = 990;
     const ticks = [];
@@ -222,14 +230,21 @@ export class Protractor {
     }
     const tg = new THREE.BufferGeometry();
     tg.setAttribute('position', new THREE.Float32BufferAttribute(ticks, 3));
-    const tickLines = new THREE.LineSegments(tg, new THREE.LineBasicMaterial({ color: 0x333333, depthTest: false }));
+    const tickLines = new THREE.LineSegments(tg, new THREE.LineBasicMaterial({ depthTest: false }));
     tickLines.renderOrder = 991;
     this.sector = new THREE.Mesh(
       new THREE.CircleGeometry(0.72, 48, 0, 0.001),
-      new THREE.MeshBasicMaterial({ color: 0x2f9bea, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthTest: false }),
+      new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthTest: false }),
     );
     this.sector.renderOrder = 992;
     this.root.add(ring, tickLines, this.sector);
+    theme.watch(({ protractor: p }) => {
+      ring.material.color.set(p.ring);
+      ring.material.opacity = p.ringOpacity;
+      tickLines.material.color.set(p.ticks);
+      this.sector.material.color.set(p.sector);
+      this.sector.material.opacity = p.sectorOpacity;
+    });
   }
 
   show(center, axis, refDir, radius) {

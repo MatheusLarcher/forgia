@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { unzipSync, strFromU8 } from 'three/addons/libs/fflate.module.js';
+import { t } from './textos/index.js';
+
+const erro = t.erros.arquivo3mf;
 
 // Leitor de 3MF que também entende a extensão de produção (p:path), usada pelo
 // Bambu Studio / OrcaSlicer, onde as malhas ficam em 3D/Objects/*.model.
@@ -7,9 +10,9 @@ import { unzipSync, strFromU8 } from 'three/addons/libs/fflate.module.js';
 
 function transform(el) {
   const m = new THREE.Matrix4();
-  const t = el.getAttribute('transform');
-  if (!t) return m;
-  const v = t.trim().split(/\s+/).map(Number);
+  const raw = el.getAttribute('transform');
+  if (!raw) return m;
+  const v = raw.trim().split(/\s+/).map(Number);
   if (v.length !== 12 || v.some(isNaN)) return m;
   return m.set(v[0], v[3], v[6], v[9], v[1], v[4], v[7], v[10], v[2], v[5], v[8], v[11], 0, 0, 0, 1);
 }
@@ -23,9 +26,9 @@ export function parse3MF(buffer) {
   const doc = (path) => {
     path = norm(path);
     if (!(path in docs)) {
-      if (!files[path]) throw new Error('parte ausente no 3MF: ' + path);
+      if (!files[path]) throw new Error(erro.parteAusente(path));
       docs[path] = new DOMParser().parseFromString(strFromU8(files[path]), 'application/xml');
-      if (docs[path].getElementsByTagName('parsererror')[0]) throw new Error('XML inválido em ' + path);
+      if (docs[path].getElementsByTagName('parsererror')[0]) throw new Error(erro.xmlInvalido(path));
     }
     return docs[path];
   };
@@ -42,16 +45,16 @@ export function parse3MF(buffer) {
   const out = [];
   const v = new THREE.Vector3();
   const emit = (path, id, matrix, depth) => {
-    if (depth > 32) throw new Error('componentes aninhados demais');
+    if (depth > 32) throw new Error(erro.aninhados);
     const obj = objects(path)[id];
-    if (!obj) throw new Error(`objeto ${id} não encontrado em ${path}`);
+    if (!obj) throw new Error(erro.objetoAusente(id, path));
     const mesh = tags(obj, 'mesh')[0];
     if (mesh) {
       const verts = tags(mesh, 'vertex').map((e) => [+e.getAttribute('x'), +e.getAttribute('y'), +e.getAttribute('z')]);
-      for (const t of tags(mesh, 'triangle')) {
+      for (const tri of tags(mesh, 'triangle')) {
         for (const k of ['v1', 'v2', 'v3']) {
-          const p = verts[+t.getAttribute(k)];
-          if (!p) throw new Error('triângulo com vértice inválido');
+          const p = verts[+tri.getAttribute(k)];
+          if (!p) throw new Error(erro.verticeInvalido);
           v.set(p[0], p[1], p[2]).applyMatrix4(matrix);
           out.push(v.x, v.y, v.z);
         }

@@ -1,27 +1,34 @@
 import * as THREE from 'three';
 import { createRenderer } from './gpu.js';
+import { t } from './textos/index.js';
+import { theme } from './theme.js';
 
 // Cubo de navegação (canto superior esquerdo). Clique em face, aresta ou vértice.
-const LABELS = ['DIREITA', 'ESQUERDA', 'SUPERIOR', 'INFERIOR', 'FRENTE', 'TRÁS'];
+const LABELS = t.vista.cubo;
 
-function faceTexture(text, hover = false) {
+function faceTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = 256;
-  const g = c.getContext('2d');
-  g.fillStyle = hover ? '#cfe6fb' : '#f4f5f6';
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+// desenha a face (fundo, borda e rótulo) no canvas da própria textura, com as cores do tema
+function paintFace(tex, text, fill, c) {
+  const g = tex.image.getContext('2d');
+  g.fillStyle = fill;
   g.fillRect(0, 0, 256, 256);
-  g.strokeStyle = '#b9bec4';
+  g.strokeStyle = c.border;
   g.lineWidth = 6;
   g.strokeRect(3, 3, 250, 250);
-  g.fillStyle = '#5b6168';
+  g.fillStyle = c.text;
   g.font = `600 ${text.length > 7 ? 36 : 42}px "Segoe UI", Arial, sans-serif`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillText(text, 128, 132);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
-  return t;
+  tex.needsUpdate = true;
 }
 
 export class ViewCube {
@@ -36,23 +43,34 @@ export class ViewCube {
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(28, 1, 0.1, 20);
-    this.textures = LABELS.map((l) => faceTexture(l));
-    this.hoverTextures = LABELS.map((l) => faceTexture(l, true));
-    this.materials = this.textures.map((t) => new THREE.MeshBasicMaterial({ map: t }));
+    this.textures = LABELS.map(() => faceTexture());
+    this.hoverTextures = LABELS.map(() => faceTexture());
+    this.materials = this.textures.map((tex) => new THREE.MeshBasicMaterial({ map: tex }));
     const geo = new THREE.BoxGeometry(1, 1, 1);
     this.cube = new THREE.Mesh(geo, this.materials);
     this.scene.add(this.cube);
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x9aa1a8 }));
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial());
     this.cube.add(edges);
 
     // sombra/base sob o cubo
     const base = new THREE.Mesh(
       new THREE.RingGeometry(0.74, 0.82, 48),
-      new THREE.MeshBasicMaterial({ color: 0xc9ced3, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }),
+      new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true }),
     );
     base.rotation.x = -Math.PI / 2;
     base.position.y = -0.56;
     this.scene.add(base);
+
+    // cores do tema: redesenha as faces (normal e hover) e troca a cor das arestas e do anel
+    theme.watch(({ cube: c }) => {
+      LABELS.forEach((label, i) => {
+        paintFace(this.textures[i], label, c.face, c);
+        paintFace(this.hoverTextures[i], label, c.faceHover, c);
+      });
+      edges.material.color.set(c.edges);
+      base.material.color.set(c.ring);
+      base.material.opacity = c.ringOpacity;
+    });
 
     this.raycaster = new THREE.Raycaster();
     this.hoverFace = -1;

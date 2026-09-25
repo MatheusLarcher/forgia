@@ -1,24 +1,30 @@
-import * as THREE from 'three';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
-import { STLLoader } from 'three/addons/loaders/STLLoader.js';
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
-import { parse3MF } from './threemf.js';
-
-const AREA_PRESETS = [
-  ['255³ (padrão)', 255, 255, 255],
-  ['256³ Bambu A1/P1', 256, 256, 256],
-  ['180³ A1 mini', 180, 180, 180],
-  ['250×210×220 Prusa', 250, 210, 220],
-  ['220×220×250 Ender 3', 220, 220, 250],
-  ['300³ grande', 300, 300, 300],
-];
+import { parseModel, ImportError, MODEL_EXTS } from './importar.js';
 import { SHAPES, PALETTE, registerMesh } from './shapes.js';
 import { ICONS } from './icons.js';
 import { renderThumbnails } from './thumbs.js';
 import { gpuInfo } from './gpu.js';
 import { fmt } from './editor.js';
+import { t } from './textos/index.js';
+import { THEMES, theme } from './theme.js';
+import { Dica } from './dica.js';
+import { connectContent } from './conectar.js';
+
+// áreas de impressão prontas: chave do rótulo em t.barra.areas e medidas em mm
+const AREA_PRESETS = [
+  ['padrao', 255, 255, 255],
+  ['bambu', 256, 256, 256],
+  ['a1mini', 180, 180, 180],
+  ['prusa', 250, 210, 220],
+  ['ender3', 220, 220, 250],
+  ['grande', 300, 300, 300],
+];
+// passos do "Ajustar grade", em mm (0 = desligado)
+const GRID_STEPS = [0, 0.1, 0.25, 0.5, 1, 2, 5, 10];
+// teclas das ferramentas, sem modificador (P fica reservada para a Fase D)
+const TOOL_KEYS = { b: 'draw', c: 'cruise', r: 'measure', n: 'mark' };
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -34,9 +40,8 @@ const h = (tag, attrs = {}, ...children) => {
   return el;
 };
 
+// sem versões "(furo)": qualquer forma vira furo com H ou o botão Furo do inspetor
 const BASIC = [
-  { type: 'box', hole: true, label: 'Caixa (furo)' },
-  { type: 'cylinder', hole: true, label: 'Cilindro (furo)' },
   { type: 'box' },
   { type: 'cylinder' },
   { type: 'sphere' },
@@ -67,8 +72,9 @@ const CATEGORIES = { basic: BASIC, letters: LETTERS };
 const labelOf = (spec) => spec.label || SHAPES[spec.type].label;
 
 export class UI {
-  constructor(editor) {
+  constructor(editor, ponte = null) {
     this.ed = editor;
+    this.ponte = ponte;
     this.thumbs = new Map();
     this.paletteOpen = false;
     this.collapsed = false;
@@ -79,6 +85,8 @@ export class UI {
     this.initLibrary();
     this.initKeys();
     this.initMisc();
+    // cartão de dica: não abre durante arraste, colocação de forma nem com modal aberto
+    this.dica = new Dica({ busy: () => !!(editor.drag || editor.placing || $('.modal-back')) });
 
     const ed = editor;
     ed.addEventListener('selection', () => this.refresh());
@@ -86,6 +94,7 @@ export class UI {
     ed.addEventListener('mode', () => this.refresh());
     ed.addEventListener('clipboard', () => this.refreshToolbar());
     ed.addEventListener('camera', () => this.refreshView());
+    ed.addEventListener('aviso', (e) => this.toast(e.detail));
     this.refresh();
   }
 
@@ -93,7 +102,7 @@ export class UI {
     for (const b of $$('[data-cmd]')) b.innerHTML = ICONS[b.dataset.cmd] || '';
     const viewIcons = { home: 'home', fit: 'fit', in: 'plus', out: 'minus', ortho: 'cube' };
     for (const b of $$('[data-view]')) b.innerHTML = ICONS[viewIcons[b.dataset.view]];
-    $('#btn-new').innerHTML = ICONS.grid;
+    $('#btn-new').innerHTML = ICONS.newFile;
     $('.search-ico').innerHTML = ICONS.search;
   }
 
@@ -105,15 +114,25 @@ export class UI {
     name.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') name.blur();
     });
+    const novo = t.dialogos.novo;
     $('#btn-new').addEventListener('click', () =>
-      this.confirm('Novo projeto', 'Começar um projeto vazio? O projeto atual será apagado deste navegador.', 'Novo projeto', () => {
+      this.confirm(novo.titulo, novo.texto, novo.ok, () => {
         this.ed.newDesign();
-        this.ed.setName('Meu projeto 3D');
+        this.ed.setName(t.editor.nomePadrao);
         name.value = this.ed.name;
       }),
     );
     $('#btn-export').addEventListener('click', () => this.exportDialog());
     $('#btn-help').addEventListener('click', () => this.helpDialog());
+    // sol/lua: o ícone mostra o tema para onde o botão leva
+    const themeBtn = $('#btn-theme');
+    themeBtn.addEventListener('click', () => theme.toggle());
+    theme.watch((_, name) => {
+      const toDark = name === 'claro';
+      themeBtn.innerHTML = toDark ? ICONS.moon : ICONS.sun;
+      themeBtn.setAttribute('aria-label', toDark ? t.barra.temaEscuro : t.barra.temaClaro);
+      themeBtn.dataset.dica = toDark ? 'temaEscuro' : 'temaClaro';
+    });
     $('#btn-import').addEventListener('click', () => $('#file-input').click());
     $('#file-input').addEventListener('change', (e) => {
       const f = e.target.files[0];
@@ -137,10 +156,10 @@ export class UI {
     const fillArea = () => {
       const { w, l, h: hh } = this.ed.workplane;
       const cur = `${w}x${l}x${hh}`;
-      const opts = AREA_PRESETS.map(([t, a, b, c]) => [`${a}x${b}x${c}`, t]);
-      if (!opts.some(([v]) => v === cur)) opts.unshift([cur, `${w}×${l}×${hh}`]);
-      opts.push(['custom', 'Personalizado…']);
-      area.replaceChildren(...opts.map(([v, t]) => h('option', { value: v }, t)));
+      const opts = AREA_PRESETS.map(([key, a, b, c]) => [`${a}x${b}x${c}`, t.barra.areas[key]]);
+      if (!opts.some(([v]) => v === cur)) opts.unshift([cur, t.barra.areaMedidas(w, l, hh)]);
+      opts.push(['custom', t.barra.areaPersonalizada]);
+      area.replaceChildren(...opts.map(([v, label]) => h('option', { value: v }, label)));
       area.value = cur;
     };
     fillArea();
@@ -156,6 +175,7 @@ export class UI {
       area.blur();
     });
     const snap = $('#snap-select');
+    snap.replaceChildren(...GRID_STEPS.map((mm) => h('option', { value: mm }, mm ? t.barra.grade(mm) : t.barra.gradeDesligada)));
     snap.value = String(this.ed.grid);
     snap.addEventListener('change', () => {
       this.ed.setGrid(parseFloat(snap.value));
@@ -177,6 +197,10 @@ export class UI {
       ungroup: () => ed.ungroup(),
       align: () => ed.setMode('align'),
       mirror: () => ed.setMode('mirror'),
+      draw: () => ed.setTool('draw'),
+      cruise: () => ed.setTool('cruise'),
+      measure: () => ed.setTool('measure'),
+      mark: () => ed.setTool('mark'),
     };
     for (const b of $$('[data-cmd]')) b.addEventListener('click', () => cmds[b.dataset.cmd]());
   }
@@ -196,10 +220,15 @@ export class UI {
       ungroup: ed.selected.some((o) => o.type === 'group'),
       align: n > 1,
       mirror: n > 0,
+      draw: true,
+      cruise: ed.selected.some((o) => !o.locked),
+      measure: true,
+      mark: ed.objects.length > 0,
     };
+    const tool = ed.tool ? ed.tool.name : null;
     for (const b of $$('[data-cmd]')) {
       b.disabled = !en[b.dataset.cmd];
-      b.classList.toggle('active', ed.mode === b.dataset.cmd);
+      b.classList.toggle('active', ed.mode === b.dataset.cmd || tool === b.dataset.cmd);
     }
   }
 
@@ -264,7 +293,7 @@ export class UI {
       });
       grid.append(tile);
     });
-    if (!grid.children.length) grid.append(h('div', { class: 'lib-empty' }, 'Nenhuma forma encontrada'));
+    if (!grid.children.length) grid.append(h('div', { class: 'lib-empty' }, t.biblioteca.nenhuma));
   }
 
   // ---------- inspetor ----------
@@ -278,12 +307,13 @@ export class UI {
   refreshHint() {
     const ed = this.ed;
     const hint = $('#hint');
-    let t = '';
-    if (ed.placing) t = 'Clique no plano de trabalho para posicionar a forma — Esc cancela';
-    else if (ed.mode === 'align') t = 'Clique num ponto preto para alinhar. Clique numa forma selecionada para usá-la como referência.';
-    else if (ed.mode === 'mirror') t = 'Clique numa seta para espelhar a seleção naquele eixo.';
-    hint.textContent = t;
-    hint.style.display = t ? 'block' : 'none';
+    let msg = '';
+    if (ed.placing) msg = t.modos.posicionar;
+    else if (ed.tool) msg = ed.tool.hint();
+    else if (ed.mode === 'align') msg = t.modos.alinhar;
+    else if (ed.mode === 'mirror') msg = t.modos.espelhar;
+    hint.textContent = msg;
+    hint.style.display = msg ? 'block' : 'none';
   }
 
   renderInspector() {
@@ -303,21 +333,23 @@ export class UI {
     const color = single ? single.color : sel.every((o) => o.color === sel[0].color) ? sel[0].color : null;
     const multicolor = single && single.type === 'group' && !single.color;
 
-    const title = single ? single.name : `Formas (${sel.length})`;
+    const title = single ? single.name : t.inspetor.varias(sel.length);
     const head = h(
       'div',
       { class: 'insp-head' },
       h('span', { class: 'insp-title' }, title),
       h('button', {
         class: 'icon-btn tiny' + (locked ? ' active' : ''),
-        title: locked ? 'Desbloquear (Ctrl+L)' : 'Bloquear (Ctrl+L)',
+        'aria-label': locked ? t.inspetor.desbloquear : t.inspetor.bloquear,
+        'data-dica': locked ? 'desbloquear' : 'bloquear',
         html: locked ? ICONS.lock : ICONS.unlock,
         onclick: () => ed.setLocked(!locked),
       }),
-      h('button', { class: 'icon-btn tiny', title: 'Ocultar (Ctrl+H)', html: ICONS.bulb, onclick: () => ed.hideSelected() }),
+      h('button', { class: 'icon-btn tiny', 'aria-label': t.inspetor.ocultar, 'data-dica': 'ocultar', html: ICONS.hide, onclick: () => ed.hideSelected() }),
       h('button', {
         class: 'icon-btn tiny collapse' + (this.collapsed ? ' up' : ''),
-        title: this.collapsed ? 'Expandir' : 'Recolher',
+        'aria-label': this.collapsed ? t.inspetor.expandir : t.inspetor.recolher,
+        'data-dica': this.collapsed ? 'expandir' : 'recolher',
         html: ICONS.chevron,
         onclick: () => {
           this.collapsed = !this.collapsed;
@@ -329,7 +361,7 @@ export class UI {
     if (this.collapsed) return;
 
     const swatch = h('span', { class: 'swatch' + (multicolor ? ' multi' : '') });
-    if (!multicolor) swatch.style.background = color || '#ccc';
+    if (!multicolor) swatch.style.background = color || 'var(--line-strong)';
     const solidBtn = h(
       'button',
       {
@@ -341,7 +373,7 @@ export class UI {
         },
       },
       swatch,
-      h('span', {}, 'Sólido'),
+      h('span', {}, t.inspetor.solido),
     );
     const holeBtn = h(
       'button',
@@ -353,18 +385,20 @@ export class UI {
         },
       },
       h('span', { class: 'swatch hole-swatch' }),
-      h('span', {}, 'Furo'),
+      h('span', {}, t.inspetor.furo),
     );
-    box.append(h('div', { class: 'insp-body' }, h('div', { class: 'solid-hole' }, solidBtn, holeBtn)));
-    const body = $('.insp-body', box);
+    const section = (title) => h('div', { class: 'insp-section' }, title);
+    const body = h('div', { class: 'insp-body' }, section(t.inspetor.material), h('div', { class: 'solid-hole' }, solidBtn, holeBtn));
+    box.append(body);
 
     if (this.paletteOpen && !allHole) body.append(this.palette(single, color, multicolor));
 
     if (single && single.type !== 'group' && SHAPES[single.type].params.length) {
+      body.append(section(t.inspetor.parametros));
       for (const p of SHAPES[single.type].params) body.append(this.paramRow(single, p));
     }
     if (single && single.type === 'group') {
-      body.append(h('div', { class: 'insp-note' }, `${single.children.length} formas agrupadas`));
+      body.append(section(t.inspetor.grupo), h('div', { class: 'insp-note' }, t.inspetor.agrupadas(single.children.length)));
     }
   }
 
@@ -384,7 +418,7 @@ export class UI {
     wrap.append(grid);
     const custom = h('input', { type: 'color', value: color && /^#[0-9a-f]{6}$/i.test(color) ? color : '#e3302d' });
     custom.addEventListener('change', () => ed.setColor(custom.value));
-    const row = h('div', { class: 'palette-row' }, h('label', { class: 'custom' }, custom, h('span', {}, 'Personalizado')));
+    const row = h('div', { class: 'palette-row' }, h('label', { class: 'custom' }, custom, h('span', {}, t.inspetor.personalizado)));
     if (single && single.type === 'group') {
       const cb = h('input', { type: 'checkbox' });
       cb.checked = multicolor;
@@ -392,7 +426,7 @@ export class UI {
         if (cb.checked) ed.setColor(null);
         else ed.setColor(PALETTE[0]);
       });
-      row.append(h('label', { class: 'multi-cb' }, cb, h('span', {}, 'Multicolorido')));
+      row.append(h('label', { class: 'multi-cb' }, cb, h('span', {}, t.inspetor.multicolorido)));
     }
     wrap.append(row);
     return wrap;
@@ -410,9 +444,13 @@ export class UI {
     }
     const range = h('input', { type: 'range', min: p.min, max: p.max, step: p.step, value });
     const num = h('input', { type: 'number', min: p.min, max: p.max, step: p.step, value });
+    // parte preenchida da trilha (style.css usa --pct): o Chromium não pinta sozinha com appearance none
+    const fill = () => range.style.setProperty('--pct', `${((range.value - p.min) / (p.max - p.min || 1)) * 100}%`);
+    fill();
     num.addEventListener('keydown', (e) => e.stopPropagation());
     range.addEventListener('input', () => {
       num.value = range.value;
+      fill();
       ed.setParam(p.key, parseFloat(range.value), false);
     });
     range.addEventListener('change', () => ed.commit());
@@ -422,6 +460,7 @@ export class UI {
       v = Math.min(p.max, Math.max(p.min, v));
       num.value = v;
       range.value = v;
+      fill();
       ed.setParam(p.key, v, true);
     });
     return h('div', { class: 'param' }, h('label', {}, p.label), h('div', { class: 'param-ctl' }, range, num));
@@ -431,15 +470,21 @@ export class UI {
   initKeys() {
     const ed = this.ed;
     window.addEventListener('keydown', (e) => {
-      const t = e.target;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      const el = e.target;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
       if ($('.modal-back')) {
         if (e.key === 'Escape') this.closeModal();
+        return;
+      }
+      // a ferramenta ativa trata as teclas dela primeiro (ex.: Enter fecha o desenho)
+      if (ed.tool && ed.tool.onKey && ed.tool.onKey(e)) {
+        e.preventDefault();
         return;
       }
       const ctrl = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
       const step = (ed.grid || 1) * (e.shiftKey ? 10 : 1);
+      const plain = !ctrl && !e.altKey && !e.shiftKey;
       let handled = true;
       if (!ctrl && !e.altKey && !e.shiftKey && 'wasd'.includes(k) && k.length === 1) {
         ed.moveKeys.add(k);
@@ -461,6 +506,7 @@ export class UI {
       else if (k === 'delete' || k === 'backspace') ed.deleteSelected();
       else if (k === 'escape') {
         if (ed.placing) ed.cancelPlacing();
+        else if (ed.tool) ed.setTool(null);
         else if (ed.mode) ed.setMode(null);
         else ed.select([]);
         this.refresh();
@@ -471,7 +517,9 @@ export class UI {
       else if (k === 'arrowleft') ed.nudge(-step, 0, 0);
       else if (k === 'arrowright') ed.nudge(step, 0, 0);
       else if (ctrl) handled = false;
-      else if (k === 'h') ed.setHole(true);
+      else if (plain && TOOL_KEYS[k]) {
+        if (!e.repeat) ed.setTool(TOOL_KEYS[k]);
+      } else if (k === 'h') ed.setHole(true);
       else if (k === 's') ed.setHole(false);
       else if (k === 'd') ed.dropToWorkplane();
       else if (k === 'l') ed.setMode('align');
@@ -497,8 +545,10 @@ export class UI {
   }
 
   // ---------- diálogos ----------
-  modal(title, content, actions = []) {
+  // onClose: chamado uma vez quando o diálogo fecha (por qualquer caminho)
+  modal(title, content, actions = [], onClose = null) {
     this.closeModal();
+    this.onModalClose = onClose;
     const back = h('div', { class: 'modal-back' });
     const dlg = h(
       'div',
@@ -517,11 +567,14 @@ export class UI {
 
   closeModal() {
     $('#modal-root').innerHTML = '';
+    const fn = this.onModalClose;
+    this.onModalClose = null;
+    if (fn) fn();
   }
 
   confirm(title, text, ok, fn) {
     this.modal(title, h('p', {}, text), [
-      h('button', { class: 'btn', onclick: () => this.closeModal() }, 'Cancelar'),
+      h('button', { class: 'btn', onclick: () => this.closeModal() }, t.dialogos.cancelar),
       h('button', {
         class: 'btn primary',
         onclick: () => {
@@ -534,6 +587,7 @@ export class UI {
 
   exportDialog() {
     const ed = this.ed;
+    const tx = t.dialogos.exportar;
     const hasSel = ed.selection.length > 0;
     const all = h('input', { type: 'radio', name: 'exp-scope', value: 'all' });
     const sel = h('input', { type: 'radio', name: 'exp-scope', value: 'sel', disabled: !hasSel });
@@ -542,16 +596,16 @@ export class UI {
     const body = h(
       'div',
       { class: 'export' },
-      h('div', { class: 'radio-row' }, h('label', {}, all, ' Tudo no design'), h('label', {}, sel, ' Formas selecionadas')),
-      h('h4', {}, 'Para impressão 3D'),
-      h('div', { class: 'export-btns' }, btn('.STL', (s) => this.exportSTL(s)), btn('.OBJ', (s) => this.exportOBJ(s)), btn('.GLB', (s) => this.exportGLB(s))),
-      h('p', { class: 'muted' }, 'Furos não são exportados sozinhos: agrupe-os com um sólido para recortar.'),
+      h('div', { class: 'radio-row' }, h('label', {}, all, tx.tudo), h('label', {}, sel, tx.selecionadas)),
+      h('h4', {}, tx.impressao),
+      h('div', { class: 'export-btns' }, btn(tx.stl, (s) => this.exportSTL(s)), btn(tx.obj, (s) => this.exportOBJ(s)), btn(tx.glb, (s) => this.exportGLB(s))),
+      h('p', { class: 'muted' }, tx.nota),
     );
-    this.modal('Exportar', body);
+    this.modal(tx.titulo, body);
   }
 
   fileName(ext) {
-    return (this.ed.name || 'projeto').replace(/[\\/:*?"<>|]+/g, '_') + ext;
+    return (this.ed.name || t.dialogos.exportar.arquivo).replace(/[\\/:*?"<>|]+/g, '_') + ext;
   }
 
   download(data, name, type) {
@@ -566,7 +620,7 @@ export class UI {
 
   exportSTL(onlySel) {
     const scene = this.ed.exportScene(onlySel);
-    if (!scene.children.length) return this.toast('Nada para exportar');
+    if (!scene.children.length) return this.toast(t.avisos.nadaExportar);
     const data = new STLExporter().parse(scene, { binary: true });
     this.download(data, this.fileName('.stl'), 'model/stl');
     this.closeModal();
@@ -574,14 +628,14 @@ export class UI {
 
   exportOBJ(onlySel) {
     const scene = this.ed.exportScene(onlySel);
-    if (!scene.children.length) return this.toast('Nada para exportar');
+    if (!scene.children.length) return this.toast(t.avisos.nadaExportar);
     this.download(new OBJExporter().parse(scene), this.fileName('.obj'), 'text/plain');
     this.closeModal();
   }
 
   exportGLB(onlySel) {
     const scene = this.ed.exportScene(onlySel);
-    if (!scene.children.length) return this.toast('Nada para exportar');
+    if (!scene.children.length) return this.toast(t.avisos.nadaExportar);
     // GLB é Y para cima: desfaz a rotação usada para STL/OBJ
     scene.rotation.x = 0;
     scene.scale.setScalar(0.001); // mm -> m
@@ -592,72 +646,76 @@ export class UI {
         this.download(new Blob([glb], { type: 'model/gltf-binary' }), this.fileName('.glb'));
         this.closeModal();
       },
-      (err) => this.toast('Falha ao exportar: ' + err.message),
+      (err) => this.toast(t.avisos.falhaExportar(err.message)),
       { binary: true },
     );
   }
 
   async importFile(file) {
     const ed = this.ed;
-    const ext = file.name.split('.').pop().toLowerCase();
-    let geo;
+    if (!MODEL_EXTS.includes(file.name.split('.').pop().toLowerCase())) return this.toast(t.avisos.formatoNaoSuportado);
+    let model;
     try {
-      if (ext === 'stl') {
-        geo = new STLLoader().parse(await file.arrayBuffer());
-      } else if (ext === '3mf') {
-        geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(parse3MF(await file.arrayBuffer()), 3));
-      } else if (ext === 'obj') {
-        const root = new OBJLoader().parse(await file.text());
-        const pos = [];
-        root.updateMatrixWorld(true);
-        root.traverse((o) => {
-          if (!o.isMesh) return;
-          let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
-          g.applyMatrix4(o.matrixWorld);
-          pos.push(...g.attributes.position.array);
-        });
-        geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      } else {
-        return this.toast('Formato não suportado (use .STL, .OBJ ou .3MF)');
-      }
+      model = parseModel(file.name, await file.arrayBuffer());
     } catch (err) {
-      return this.toast('Não foi possível ler o arquivo: ' + err.message);
+      if (err instanceof ImportError && err.kind === 'vazio') return this.toast(t.avisos.semTriangulos);
+      return this.toast(t.avisos.naoLeu(err.message));
     }
-    if (geo.index) geo = geo.toNonIndexed();
-    if (ext === 'stl' || ext === '3mf') geo.rotateX(-Math.PI / 2); // Z para cima -> Y para cima
-    const count = geo.attributes.position.count;
-    if (!count) return this.toast('O arquivo não tem triângulos');
-    geo.computeBoundingBox();
-    const s = geo.boundingBox.getSize(new THREE.Vector3());
-    const positions = new Float32Array(geo.attributes.position.array);
-    const { ref, saved } = registerMesh(positions);
+    const { ref, saved } = registerMesh(model.positions);
     const o = ed.createObject('mesh', {
       params: { ref },
-      size: [s.x || 1, s.y || 1, s.z || 1].map((v) => Math.round(v * 100) / 100),
+      size: model.size,
       name: file.name.replace(/\.[^.]+$/, ''),
     });
     ed.change(() => ed.objects.push(o));
     ed.select([o.id]);
     ed.fitView();
-    if (!saved) this.toast('Modelo grande: ele não ficará salvo após recarregar a página.');
+    if (!saved) this.toast(t.avisos.modeloGrande);
   }
 
   settingsDialog() {
     const ed = this.ed;
+    const tx = t.dialogos.configuracoes;
     const w = h('input', { type: 'number', min: 10, max: 2000, value: ed.workplane.w });
     const l = h('input', { type: 'number', min: 10, max: 2000, value: ed.workplane.l });
     const z = h('input', { type: 'number', min: 10, max: 2000, value: ed.workplane.h });
+    // Aparência: aplica e salva na hora, sem depender de "Atualizar grade". O aria-pressed
+    // acompanha o tema também quando ele muda sem clique (botão sol/lua, Windows)
+    const themeOptions = THEMES.map((name) =>
+      h('button', { 'data-tema-opcao': name, onclick: () => theme.set(name) }, tx.temas[name]),
+    );
+    const stopWatch = theme.watch((_, current) => {
+      for (const b of themeOptions) b.setAttribute('aria-pressed', String(b.dataset.temaOpcao === current));
+    });
+    // IA: ligam e desligam na hora (a ponte recusa os pedidos do agente quando desligada)
+    const iaSection = [];
+    if (this.ponte) {
+      const cfg = this.ponte.config;
+      const check = (key, label) => {
+        const cb = h('input', { type: 'checkbox', 'data-ia-opcao': key });
+        cb.checked = cfg[key];
+        cb.addEventListener('change', () => this.ponte.setConfig({ [key]: cb.checked }));
+        return h('label', { class: 'check-row' }, cb, h('span', {}, label));
+      };
+      iaSection.push(
+        h('h4', {}, tx.ia),
+        check('permitir', tx.permitirIA),
+        check('codigo', tx.permitirCodigo),
+        h('div', { class: 'presets' }, h('button', { class: 'chip', onclick: () => this.connectDialog() }, tx.conectar)),
+      );
+    }
     const body = h(
       'div',
       { class: 'settings' },
-      h('h4', {}, 'Plano de trabalho'),
-      h('div', { class: 'field-row' }, h('label', {}, 'Largura (mm)', w), h('label', {}, 'Comprimento (mm)', l), h('label', {}, 'Altura (mm)', z)),
+      h('h4', {}, tx.aparencia),
+      h('div', { class: 'segmented', role: 'group', 'aria-label': tx.aparencia }, themeOptions),
+      ...iaSection,
+      h('h4', {}, tx.plano),
+      h('div', { class: 'field-row' }, h('label', {}, tx.largura, w), h('label', {}, tx.comprimento, l), h('label', {}, tx.altura, z)),
       h(
         'div',
         { class: 'presets' },
-        ...AREA_PRESETS.map(([t, a, b, c]) =>
+        ...AREA_PRESETS.map(([key, a, b, c]) =>
           h('button', {
             class: 'chip',
             onclick: () => {
@@ -665,12 +723,12 @@ export class UI {
               l.value = b;
               z.value = c;
             },
-          }, t),
+          }, t.barra.areas[key]),
         ),
       ),
     );
-    this.modal('Configurações', body, [
-      h('button', { class: 'btn', onclick: () => this.closeModal() }, 'Cancelar'),
+    this.modal(tx.titulo, body, [
+      h('button', { class: 'btn', onclick: () => this.closeModal() }, t.dialogos.cancelar),
       h('button', {
         class: 'btn primary',
         onclick: () => {
@@ -680,48 +738,67 @@ export class UI {
           if (a > 0 && b > 0 && c > 0) ed.setWorkplane(a, b, c);
           this.closeModal();
         },
-      }, 'Atualizar grade'),
+      }, tx.atualizar),
+    ], stopWatch);
+  }
+
+  // Conectar IA: texto para colar no agente (src/conectar.js), com os caminhos desta instalação
+  async connectDialog() {
+    const info = this.ponte && this.ponte.api ? await this.ponte.api.info() : null;
+    const tx = t.dialogos.conectar;
+    this.modal(tx.titulo, connectContent(info, (text) => this.copyText(text)), [
+      h('button', { class: 'btn', onclick: () => this.closeModal() }, tx.fechar),
     ]);
+    const dlg = $('.modal');
+    if (dlg) dlg.classList.add('largo');
+  }
+
+  // área de transferência do Electron (pelo preload, a mesma do Marcar parte); sem ela (npm run
+  // dev), a do navegador
+  async copyText(text) {
+    try {
+      if (this.ponte && this.ponte.api) await this.ponte.api.copiar(text, null);
+      else await navigator.clipboard.writeText(text);
+    } catch {
+      return this.toast(t.marcar.naoCopiou);
+    }
+    this.toast(t.dialogos.conectar.copiado);
   }
 
   helpDialog() {
-    const rows = [
-      ['Arrastar forma da biblioteca', 'Criar forma no plano'],
-      ['Clique / Shift+clique', 'Selecionar / somar à seleção'],
-      ['Arrastar no vazio', 'Seleção por área'],
-      ['Botão direito + arrastar', 'Girar a vista'],
-      ['Botão do meio / Shift+direito', 'Mover a vista'],
-      ['Roda do mouse', 'Zoom'],
-      ['Alt + arrastar forma', 'Duplicar arrastando'],
-      ['Shift nas alças', 'Manter proporção / girar de 45°'],
-      ['Alt nas alças', 'Redimensionar a partir do centro'],
-      ['Setas / Shift+setas', 'Mover na grade (×10)'],
-      ['Ctrl + ↑ / ↓', 'Subir / descer'],
-      ['Ctrl+C / Ctrl+V / Ctrl+D', 'Copiar / colar / duplicar e repetir'],
-      ['Ctrl+Z / Ctrl+Y', 'Desfazer / refazer'],
-      ['Ctrl+G / Ctrl+Shift+G', 'Agrupar / desagrupar'],
-      ['W / A / S / D', 'Andar com a vista'],
-      ['H / Shift+S', 'Furo / sólido'],
-      ['Shift+D', 'Soltar no plano de trabalho'],
-      ['Arrastar arquivo para a tela', 'Importar STL / OBJ / 3MF'],
-      ['L / M', 'Alinhar / espelhar'],
-      ['F', 'Ajustar à tela'],
-      ['Ctrl+L / Ctrl+H', 'Bloquear / ocultar'],
-      ['Delete', 'Excluir'],
-    ];
-    const table = h('table', { class: 'keys' }, rows.map(([a, b]) => h('tr', {}, h('td', {}, h('kbd', {}, a)), h('td', {}, b))));
-    const modo = gpuInfo.mode === 'gpu' ? 'GPU' : 'modo software';
-    const gpu = h('p', { class: 'muted gpu-line' }, `Placa de vídeo: ${gpuInfo.renderer || 'desconhecida'} (${modo})`);
-    this.modal('Atalhos e controles', [table, gpu]);
+    const tx = t.dialogos.atalhos;
+    const table = h('table', { class: 'keys' }, tx.linhas.map(([a, b]) => h('tr', {}, h('td', {}, h('kbd', {}, a)), h('td', {}, b))));
+    const gpu = h('p', { class: 'muted gpu-line' }, tx.placa(gpuInfo.renderer, gpuInfo.mode === 'gpu'));
+    this.modal(tx.titulo, [table, gpu, this.aboutBlock()]);
+  }
+
+  // "Sobre o Forgia", no fim do diálogo Atalhos. O símbolo entra por aqui (não pelo index.html)
+  aboutBlock() {
+    const tx = t.sobre;
+    return h(
+      'div',
+      { class: 'sobre' },
+      h('h4', {}, tx.titulo),
+      h(
+        'div',
+        { class: 'sobre-app' },
+        h('img', { src: './branding/forgia-forge-v1.svg', width: '32', height: '32', alt: '' }),
+        h('span', { class: 'sobre-nome' }, t.app.nome),
+        h('span', { class: 'sobre-versao' }, tx.versao(__APP_VERSION__)),
+      ),
+      h('p', {}, tx.feito, h('a', { href: 'https://larchertech.com/', target: '_blank', rel: 'noopener noreferrer' }, tx.empresa)),
+      h('p', {}, tx.licenca),
+      h('p', {}, tx.icones),
+    );
   }
 
   toast(msg) {
-    const t = h('div', { class: 'toast' }, msg);
-    document.body.append(t);
-    setTimeout(() => t.classList.add('show'), 10);
+    const el = h('div', { class: 'toast' + ($('#hint').style.display === 'block' ? ' acima' : '') }, msg);
+    document.body.append(el);
+    setTimeout(() => el.classList.add('show'), 10);
     setTimeout(() => {
-      t.classList.remove('show');
-      setTimeout(() => t.remove(), 300);
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 300);
     }, 3200);
   }
 }

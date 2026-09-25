@@ -4,8 +4,11 @@ import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import fontData from 'three/examples/fonts/helvetiker_bold.typeface.json';
+import { t } from './textos/index.js';
+import { outlineSize } from './outline.js';
 
 const DEG = Math.PI / 180;
+const { nomes, params: paramLabels, textoPadrao } = t.formas;
 export const font = new FontLoader().parse(fontData);
 
 // Paleta de cores do seletor "Sólido" (parecida com a do Tinkercad)
@@ -72,8 +75,8 @@ function cylinderProfile(bx, by) {
 }
 
 function textGeometry(text) {
-  const t = (text ?? '').trim() ? text : 'TEXTO';
-  const g = new TextGeometry(t, { font, size: 10, depth: 2, curveSegments: 6, bevelEnabled: false });
+  const s = (text ?? '').trim() ? text : textoPadrao;
+  const g = new TextGeometry(s, { font, size: 10, depth: 2, curveSegments: 6, bevelEnabled: false });
   g.rotateX(-Math.PI / 2); // deitado sobre o plano de trabalho, legível de cima
   return g;
 }
@@ -106,6 +109,16 @@ function flatExtrude(points) {
   return g;
 }
 
+// contorno da forma 'desenho' ([[x, z], ...] na mesa, veja src/outline.js) extrudado para cima (Y).
+// A forma 2D usa (x, −z): depois do rotateX(−π/2), o y da forma vira −z, e o ponto volta para (x, z)
+function outlineExtrude(points) {
+  const g = extrude(points.map(([x, z]) => [x, -z]), 1);
+  g.rotateX(-Math.PI / 2);
+  return g;
+}
+
+const validOutline = (points) => Array.isArray(points) && points.length >= 3 && points.every((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+
 function naturalSize(geo) {
   geo.computeBoundingBox();
   const s = geo.boundingBox.getSize(new THREE.Vector3());
@@ -114,12 +127,13 @@ function naturalSize(geo) {
 
 // ---------- definições das formas ----------
 
-const P = (key, label, value, min, max, step = 1, kind = 'number') => ({ key, label, value, min, max, step, kind });
+// parâmetro editável no inspetor; o rótulo vem do arquivo de textos pela chave
+const P = (key, value, min, max, step = 1, kind = 'number') => ({ key, label: paramLabels[key], value, min, max, step, kind });
 
 export const SHAPES = {
   box: {
-    label: 'Caixa', color: '#e3302d', size: [20, 20, 20],
-    params: [P('radius', 'Raio', 0, 0, 10, 0.1), P('steps', 'Passos', 10, 1, 20)],
+    label: nomes.box, color: '#e3302d', size: [20, 20, 20],
+    params: [P('radius', 0, 0, 10, 0.1), P('steps', 10, 1, 20)],
     build([w, h, d], p) {
       const r = Math.min(p.radius, Math.min(w, h, d) / 2 - 0.01);
       if (r > 0.05) return finalize(new RoundedBoxGeometry(w, h, d, Math.max(1, Math.round(p.steps / 2)), r), 40);
@@ -127,8 +141,8 @@ export const SHAPES = {
     },
   },
   cylinder: {
-    label: 'Cilindro', color: '#f38a00', size: [20, 20, 20],
-    params: [P('sides', 'Lados', 20, 3, 64), P('bevel', 'Chanfro', 0, 0, 10, 0.1)],
+    label: nomes.cylinder, color: '#f38a00', size: [20, 20, 20],
+    params: [P('sides', 20, 3, 64), P('bevel', 0, 0, 10, 0.1)],
     build([w, h, d], p) {
       const b = Math.min(p.bevel, Math.min(w, d) / 2 - 0.01, h / 2 - 0.01);
       const g = lathe(cylinderProfile(Math.max(0, b) / w, Math.max(0, b) / h), p.sides);
@@ -136,8 +150,8 @@ export const SHAPES = {
     },
   },
   sphere: {
-    label: 'Esfera', color: '#1b8bd2', size: [20, 20, 20],
-    params: [P('steps', 'Passos', 24, 4, 64)],
+    label: nomes.sphere, color: '#1b8bd2', size: [20, 20, 20],
+    params: [P('steps', 24, 4, 64)],
     build(size, p) {
       const n = Math.max(2, Math.round(p.steps / 2));
       const g = lathe(arc(0, 0, 0.5, 0.5, -90, 90, n), p.steps);
@@ -145,14 +159,14 @@ export const SHAPES = {
     },
   },
   roof: {
-    label: 'Telhado', color: '#3fb34f', size: [20, 20, 20], params: [],
+    label: nomes.roof, color: '#3fb34f', size: [20, 20, 20], params: [],
     build(size) {
       return finalize(normalizeTo(extrude([[-0.5, -0.5], [0.5, -0.5], [0, 0.5]]), size));
     },
   },
   cone: {
-    label: 'Cone', color: '#8e44ad', size: [20, 20, 20],
-    params: [P('top', 'Raio superior', 0, 0, 10, 0.1), P('sides', 'Lados', 20, 3, 64)],
+    label: nomes.cone, color: '#8e44ad', size: [20, 20, 20],
+    params: [P('top', 0, 0, 10, 0.1), P('sides', 20, 3, 64)],
     build([w, h, d], p) {
       const rt = Math.min(0.5, Math.max(0, p.top / w));
       const pts = [[0, -0.5], [0.5, -0.5]];
@@ -163,16 +177,16 @@ export const SHAPES = {
     },
   },
   roundRoof: {
-    label: 'Telhado redondo', color: '#17a3a6', size: [20, 20, 20],
-    params: [P('sides', 'Lados', 20, 3, 64)],
+    label: nomes.roundRoof, color: '#17a3a6', size: [20, 20, 20],
+    params: [P('sides', 20, 3, 64)],
     build(size, p) {
       const pts = arc(0, -0.5, 0.5, 1, 0, 180, Math.max(2, Math.round(p.sides)));
       return finalize(normalizeTo(extrude(pts), size), 30);
     },
   },
   text: {
-    label: 'Texto', color: '#e3302d', size: [60, 10, 20],
-    params: [P('text', 'Texto', 'TEXTO', 0, 0, 0, 'text')],
+    label: nomes.text, color: '#e3302d', size: [60, 10, 20],
+    params: [P('text', textoPadrao, 0, 0, 0, 'text')],
     build(size, p) {
       return finalize(normalizeTo(textGeometry(p.text), size), 30);
     },
@@ -180,7 +194,7 @@ export const SHAPES = {
     height: 10,
   },
   wedge: {
-    label: 'Cunha', color: '#233e91', size: [20, 20, 20], params: [],
+    label: nomes.wedge, color: '#233e91', size: [20, 20, 20], params: [],
     build(size) {
       const g = extrude([[0.5, -0.5], [-0.5, -0.5], [0.5, 0.5]]);
       g.rotateY(Math.PI / 2);
@@ -188,14 +202,14 @@ export const SHAPES = {
     },
   },
   pyramid: {
-    label: 'Pirâmide', color: '#f7c511', size: [20, 20, 20], params: [],
+    label: nomes.pyramid, color: '#f7c511', size: [20, 20, 20], params: [],
     build(size) {
       return finalize(normalizeTo(lathe([[0, -0.5], [0.5, -0.5], [0, 0.5]], 4), size));
     },
   },
   halfSphere: {
-    label: 'Meia esfera', color: '#d6297f', size: [20, 10, 20],
-    params: [P('steps', 'Passos', 24, 4, 64)],
+    label: nomes.halfSphere, color: '#d6297f', size: [20, 10, 20],
+    params: [P('steps', 24, 4, 64)],
     build(size, p) {
       const n = Math.max(2, Math.round(p.steps / 4));
       const g = lathe([[0, -0.5], ...arc(0, -0.5, 0.5, 1, 0, 90, n)], p.steps);
@@ -203,15 +217,15 @@ export const SHAPES = {
     },
   },
   polygon: {
-    label: 'Polígono', color: '#233e91', size: [20, 20, 20],
-    params: [P('sides', 'Lados', 6, 3, 20)],
+    label: nomes.polygon, color: '#233e91', size: [20, 20, 20],
+    params: [P('sides', 6, 3, 20)],
     build(size, p) {
       return finalize(normalizeTo(lathe(cylinderProfile(0, 0), p.sides), size), 30);
     },
   },
   paraboloid: {
-    label: 'Paraboloide', color: '#9aa4ad', size: [20, 20, 20],
-    params: [P('sides', 'Lados', 24, 3, 64)],
+    label: nomes.paraboloid, color: '#9aa4ad', size: [20, 20, 20],
+    params: [P('sides', 24, 3, 64)],
     build(size, p) {
       const pts = [[0, -0.5]];
       const n = 16;
@@ -223,8 +237,8 @@ export const SHAPES = {
     },
   },
   torus: {
-    label: 'Toroide', color: '#1b8bd2', size: [20, 4, 20],
-    params: [P('tube', 'Espessura', 4, 0.5, 10, 0.1), P('sides', 'Lados', 24, 3, 64), P('steps', 'Passos', 16, 3, 32)],
+    label: nomes.torus, color: '#1b8bd2', size: [20, 4, 20],
+    params: [P('tube', 4, 0.5, 10, 0.1), P('sides', 24, 3, 64), P('steps', 16, 3, 32)],
     build([w, h, d], p) {
       const rt = Math.min(0.25, Math.max(0.01, p.tube / 2 / w));
       const pts = arc(0.5 - rt, 0, rt, 0.5, -90, 270, Math.round(p.steps));
@@ -232,8 +246,8 @@ export const SHAPES = {
     },
   },
   tube: {
-    label: 'Tubo', color: '#f38a00', size: [20, 20, 20],
-    params: [P('wall', 'Espessura da parede', 2, 0.1, 10, 0.1), P('sides', 'Lados', 24, 3, 64)],
+    label: nomes.tube, color: '#f38a00', size: [20, 20, 20],
+    params: [P('wall', 2, 0.1, 10, 0.1), P('sides', 24, 3, 64)],
     build([w, h, d], p) {
       const ri = Math.min(0.49, Math.max(0.005, 0.5 - p.wall / w));
       const pts = [[ri, -0.5], [0.5, -0.5], [0.5, 0.5], [ri, 0.5], [ri, -0.5]];
@@ -241,8 +255,8 @@ export const SHAPES = {
     },
   },
   star: {
-    label: 'Estrela', color: '#f7c511', size: [20, 10, 19],
-    params: [P('points', 'Pontas', 5, 3, 20), P('ratio', 'Raio interno', 0.5, 0.1, 0.95, 0.01)],
+    label: nomes.star, color: '#f7c511', size: [20, 10, 19],
+    params: [P('points', 5, 3, 20), P('ratio', 0.5, 0.1, 0.95, 0.01)],
     build(size, p) {
       return finalize(normalizeTo(flatExtrude(starPoints(Math.round(p.points), p.ratio)), size));
     },
@@ -250,16 +264,32 @@ export const SHAPES = {
     height: 10,
   },
   heart: {
-    label: 'Coração', color: '#e3302d', size: [20, 8, 18], params: [],
+    label: nomes.heart, color: '#e3302d', size: [20, 8, 18], params: [],
     build(size) {
       return finalize(normalizeTo(flatExtrude(heartPoints()), size), 40);
     },
   },
   icosahedron: {
-    label: 'Icosaedro', color: '#3fb34f', size: [20, 20, 20],
-    params: [P('detail', 'Detalhe', 0, 0, 3)],
+    label: nomes.icosahedron, color: '#3fb34f', size: [20, 20, 20],
+    params: [P('detail', 0, 0, 3)],
     build(size, p) {
       return finalize(normalizeTo(new THREE.IcosahedronGeometry(0.5, Math.round(p.detail)), size), 20);
+    },
+  },
+  // Contorno feito na ferramenta Desenhar (ou passado pela IA), extrudado na altura size[1].
+  // params.points: [[x, z], ...] em mm, centrado e anti-horário visto de cima; formato completo
+  // documentado em src/outline.js. Não aparece na biblioteca e não tem parâmetro no inspetor.
+  desenho: {
+    label: nomes.desenho, color: '#1b8bd2', size: [20, 2, 20], params: [],
+    build(size, p) {
+      if (!validOutline(p.points)) return finalize(new THREE.BoxGeometry(...size));
+      return finalize(normalizeTo(outlineExtrude(p.points), size), 40);
+    },
+    // tamanho inicial = caixa envolvente dos pontos (outlineSize, em mm, sem reescalar) × 2 mm de altura
+    sizeFor(p) {
+      if (!validOutline(p.points)) return [20, 2, 20];
+      const [w, d] = outlineSize(p.points);
+      return [Math.max(w, 0.1), 2, Math.max(d, 0.1)];
     },
   },
 };
@@ -304,7 +334,7 @@ export function registerMesh(positions) {
 }
 
 SHAPES.mesh = {
-  label: 'Importado', color: '#8b9197', size: [20, 20, 20], params: [],
+  label: nomes.mesh, color: '#8b9197', size: [20, 20, 20], params: [],
   build(size, p) {
     const data = meshStore.get(p.ref);
     if (!data) return finalize(new THREE.BoxGeometry(...size));
@@ -325,6 +355,7 @@ export function defaultParams(type, overrides = {}) {
 // Tamanho inicial: formas com proporção natural (texto, estrela) mantêm a proporção
 export function defaultSize(type, params) {
   const def = SHAPES[type];
+  if (def.sizeFor) return def.sizeFor(params);
   if (!def.natural) return [...def.size];
   const [nx, , nz] = def.natural(params);
   if (type === 'text') return [round2(20 * (nx / nz)), def.height, 20];
@@ -340,9 +371,45 @@ export function textWidthFor(params, depth) {
 
 const round2 = (v) => Math.round(v * 100) / 100;
 
+// Assinatura dos params para as chaves de cache (geometria aqui, grupos em src/csg.js), pedida a
+// cada sync. O contorno do desenho (params.points, milhares de pontos) não é serializado a cada
+// vez: entra por um hash calculado uma vez por array (WeakMap). Por isso o array de pontos é
+// imutável: ele é congelado na primeira assinatura, e mudar o contorno = trocar o array (como
+// fazem o Desenhar, a ponte, o desfazer e o copiar, que sempre criam arrays novos).
+const pointSigs = new WeakMap();
+const f64 = new Float64Array(1);
+const u32 = new Uint32Array(f64.buffer);
+function pointsSig(pts) {
+  let sig = pointSigs.get(pts);
+  if (sig === undefined) {
+    // dois hashes de 32 bits (FNV-1a e um multiplicativo) sobre os bits de cada coordenada
+    let h1 = 0x811c9dc5;
+    let h2 = 0x9e3779b9 ^ pts.length;
+    for (const p of pts) {
+      for (let k = 0; k < 2; k++) {
+        f64[0] = Array.isArray(p) ? p[k] : NaN;
+        for (const w of u32) {
+          h1 = Math.imul(h1 ^ w, 0x01000193);
+          h2 = Math.imul(h2 ^ w, 0x5bd1e995);
+          h2 ^= h2 >>> 15;
+        }
+      }
+      if (Array.isArray(p)) Object.freeze(p);
+    }
+    Object.freeze(pts);
+    sig = `${pts.length}:${(h1 >>> 0).toString(36)}${(h2 >>> 0).toString(36).padStart(7, '0')}`;
+    pointSigs.set(pts, sig);
+  }
+  return sig;
+}
+export function paramsKey(params) {
+  if (!params || !Array.isArray(params.points)) return JSON.stringify(params);
+  return JSON.stringify({ ...params, points: pointsSig(params.points) });
+}
+
 const geoCache = new Map();
 export function shapeGeometry(o) {
-  const key = o.type + '|' + o.size.map((v) => v.toFixed(3)).join(',') + '|' + JSON.stringify(o.params);
+  const key = o.type + '|' + o.size.map((v) => v.toFixed(3)).join(',') + '|' + paramsKey(o.params);
   let g = geoCache.get(key);
   if (!g) {
     g = SHAPES[o.type].build(o.size, o.params);

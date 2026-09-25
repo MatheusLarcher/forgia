@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { theme } from './theme.js';
 
 const solids = new Map();
 
@@ -41,10 +42,8 @@ function stripes(material, opacityScale = 1) {
 
 export const holeMaterial = stripes(
   new THREE.MeshStandardMaterial({
-    color: '#aab2ba',
     roughness: 0.7,
     transparent: true,
-    opacity: 0.55,
     depthWrite: false,
     polygonOffset: true,
     polygonOffsetFactor: 1,
@@ -53,7 +52,17 @@ export const holeMaterial = stripes(
 );
 holeMaterial.userData.isHole = true;
 
-export const holeThumbMaterial = stripes(new THREE.MeshStandardMaterial({ color: '#b3bac1', roughness: 0.7 }));
+export const holeThumbMaterial = stripes(new THREE.MeshStandardMaterial({ roughness: 0.7 }));
 
-export const outlineSelected = new THREE.LineBasicMaterial({ color: '#2f9bea', transparent: true, opacity: 0.95 });
-export const outlineHover = new THREE.LineBasicMaterial({ color: '#7cc2f5', transparent: true, opacity: 0.8 });
+export const outlineSelected = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.95 });
+export const outlineHover = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.8 });
+
+// Cores do tema: furo e contornos trocam só .color/.opacity (materiais compartilhados por todas
+// as malhas, inclusive grupos já calculados). As cores das peças não mudam com o tema.
+theme.watch((c) => {
+  holeMaterial.color.set(c.hole);
+  holeMaterial.opacity = c.holeOpacity;
+  holeThumbMaterial.color.set(c.holeThumb);
+  outlineSelected.color.set(c.outline);
+  outlineHover.color.set(c.outlineHover);
+});

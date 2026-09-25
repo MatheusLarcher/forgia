@@ -87,11 +87,11 @@ test('BrowserWindow icon resolves inside the packaged dist directory', () => {
   const app = { commandLine: { appendSwitch() {} }, requestSingleInstanceLock: () => true, on() {}, whenReady: () => ({ then: fn => fn() }) };
   class BrowserWindow {
     constructor(value) { options = value; this.webContents = { setWindowOpenHandler() {} }; }
-    maximize() {} loadFile() {}
+    maximize() {} loadFile() {} once() {} show() {}
   }
   vm.runInNewContext(fs.readFileSync(path.join(root, 'electron/main.cjs'), 'utf8'), {
     __dirname: path.join(root, 'electron'),
-    require: name => name === 'path' ? path : { app, BrowserWindow, Menu: { setApplicationMenu() {} }, shell: {} },
+    require: name => name === 'path' ? path : name === './ponte.cjs' ? { startBridge() {} } : { app, BrowserWindow, Menu: { setApplicationMenu() {} }, shell: {}, nativeTheme: { shouldUseDarkColors: false } },
   });
   assert.ok(options.icon, 'BrowserWindow icon not configured');
   assert.equal(path.relative(path.join(root, 'dist'), options.icon).replaceAll('\\', '/'), 'branding/forgia-forge-v1.ico');

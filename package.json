@@ -2,7 +2,7 @@
   "name": "forgia",
   "productName": "Forgia",
   "description": "Editor 3D para criar peças e projetos para impressão 3D",
-  "author": "2D Consultores",
+  "author": "LarcherTech",
   "license": "MIT",
   "private": true,
   "version": "0.1.0",
@@ -29,13 +29,21 @@
     "vite": "^6.0.0"
   },
   "build": {
-    "appId": "br.com.2dconsultores.forgia",
+    "appId": "com.larchertech.forgia",
     "productName": "Forgia",
     "directories": { "output": "release" },
-    "files": ["dist/**/*", "electron/**/*", "package.json"],
+    "files": ["dist/**/*", "electron/**/*", "!electron/mcp/**", "package.json"],
+    "extraResources": [
+      { "from": "electron/mcp", "to": "mcp", "filter": ["*.cjs"] }
+    ],
+    "extraFiles": [
+      { "from": "LICENSE", "to": "LICENSE.txt" },
+      { "from": "THIRD-PARTY-NOTICES", "to": "THIRD-PARTY-NOTICES.txt" }
+    ],
     "asar": true,
     "win": { "target": "nsis", "artifactName": "Forgia-Setup-${version}.exe", "icon": "public/branding/forgia-forge-v1.ico" },
     "nsis": {
+      "guid": "153d514a-c2d8-5c34-bb9e-2434891e3e5f",
       "installerIcon": "public/branding/forgia-forge-v1.ico",
       "uninstallerIcon": "public/branding/forgia-forge-v1.ico",
       "installerHeaderIcon": "public/branding/forgia-forge-v1.ico",
