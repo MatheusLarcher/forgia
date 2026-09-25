@@ -16,6 +16,7 @@
     "dist:win": "vite build && electron-builder --win nsis --x64",
     "dist:win:branding": "vite build && electron-builder --win nsis --x64 -c.directories.output=release/branding",
     "branding:generate": "electron scripts/generate-branding.cjs",
+    "gravar-dicas": "vite build && node scripts/gravar-dicas.mjs",
     "test:branding": "node --test tests/branding.test.mjs"
   },
   "dependencies": {

@@ -1255,8 +1255,20 @@ export class Editor extends EventTarget {
   pickObject(e) {
     this.setRay(e);
     const meshes = [...this.meshes.values()].filter((m) => m.visible);
-    const hit = this.raycaster.intersectObjects(meshes, false)[0];
-    return hit ? { id: hit.object.userData.id, point: hit.point } : null;
+    const hits = this.raycaster.intersectObjects(meshes, false);
+    if (!hits.length) return null;
+    // superfícies coincidentes (a cópia do Ctrl+D no lugar do original): entre as interseções a
+    // até um pixel da primeira, vale a peça já selecionada; fora disso, a da frente
+    let hit = hits[0];
+    const tol = this.pixelSize(hit.point);
+    for (const h of hits) {
+      if (h.distance - hits[0].distance > tol) break;
+      if (this.selection.includes(h.object.userData.id)) {
+        hit = h;
+        break;
+      }
+    }
+    return { id: hit.object.userData.id, point: hit.point };
   }
 
   initEvents() {

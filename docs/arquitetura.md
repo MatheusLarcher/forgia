@@ -64,6 +64,16 @@ forgia/
 │       ├── ferramentas.cjs # ferramentas forgia_* (tools/list)
 │       └── manual.cjs      # instructions (≤ 2 KB) e forgia_manual por seção
 ├── public/iniciantes/  # chaveiro, suporte de celular, caixa com tampa, boneco de neve, foguete (JSON)
+├── public/ajuda/       # vídeos das dicas animadas: <dica>-<tema>.webm (22, gravados do próprio Forgia)
+├── ajuda/
+│   ├── cenas/          # cenas-modelo das dicas (projeto + a "montagem" que as refaz)
+│   └── roteiros/       # um roteiro de demonstração por função (JSON)
+├── scripts/
+│   ├── gravar-dicas.mjs  # npm run gravar-dicas: perfil temporário + modo gravação
+│   ├── gravar/         # modo gravação (Electron só de desenvolvimento): principal, gravador, sobreposição, webm
+│   ├── gifs-readme.mjs # GIFs do README com o ffmpeg da máquina
+│   └── previa-readme.cjs # pré-visualização local do README (captura)
+├── docs/media/         # GIFs, ícones, selos e ilustração do README; roteiros e cena das gravações do README
 ├── gerar_setup.bat     # gera o instalador do Windows com dois cliques
 └── vite.config.js
 ```
@@ -345,9 +355,17 @@ Qualquer elemento com `data-dica="<chave>"` ganha um cartão explicativo, com o 
   poder usá-lo.
 - **Onde**: abaixo do elemento, centrado, com uma setinha apontando para ele; sem espaço embaixo,
   abre acima. Com `data-dica-lado="direita"` (coluna de vista), abre à direita.
-- **O que mostra**: o título; as teclas do atalho, cada uma num `<kbd>` (sem atalho, um selo
-  "i"); e uma a três frases. O componente já aceita vídeo (`t.dicas[k].video`), ainda sem uso:
-  sem `video`, o bloco nem existe no DOM.
+- **O que mostra**: o título; o vídeo, nas funções que têm um; as teclas do atalho, cada uma num
+  `<kbd>` (sem atalho, um selo "i"); e uma a três frases.
+- **Vídeo** (`t.dicas[k].video` = nome base, ex.: `'cruise'`): o cartão toca
+  `./ajuda/<base>-<tema>.webm` do tema ativo (`public/ajuda/`, gravados por `npm run gravar-dicas`,
+  veja *Dicas animadas*), mudo, em loop, com o botão redondo pausar/tocar. Só toca com o cartão
+  aberto; ao fechar, pausa e solta o arquivo (`removeAttribute('src')` + `load()`), então nada
+  decodifica escondido. Se o tema mudar com o cartão aberto (evento `change` do `theme`), troca o
+  arquivo no mesmo ponto e no mesmo estado. Têm vídeo as 11 funções: Cruzeiro, Alinhar, Espelhar,
+  Agrupar, Duplicar e repetir, Desenhar, Marcar parte, Criar encaixe, Plano de trabalho, Soltar na
+  mesa (botão só-ícone no inspetor, o mesmo `dropToWorkplane()` do Shift+D) e Medir; sem `video`,
+  o bloco nem existe no DOM (copiar, colar, excluir, desfazer, refazer, zoom…).
 - **Acessibilidade**: o cartão é `role="tooltip"` e o elemento ganha `aria-describedby` enquanto
   ele está aberto. Elementos com cartão não têm `title` (nada de dica nativa duplicada) e mantêm o
   `aria-label` vindo de `t`.
@@ -734,6 +752,13 @@ quadro de arraste.
   renomear, excluir), porca M3 no parafuso M3 (volume da união = soma; meio passo fora colide),
   engrenagens z20 × z12 engrenadas (e a contraprova sem o meio dente), 3MF de todos os geradores
   com cada objeto fechado e relido. Evidências em `docs/fase-d-evidence/biblioteca/`.
+- `node --test tests/dicas-gravacao.test.mjs`: um roteiro por função com vídeo, cenas válidas só
+  com formas do Forgia, `t.dicas` com `video` nas 11 funções, a `Duration` do `webm.cjs` e os 22
+  vídeos (640×480, VP9, 4–6 s, até 300 KB).
+- `FORGIA_EXE=… node --test tests/dicas-exe.test.mjs`: no exe, o cartão toca o vídeo do tema nas
+  11 funções (e nas outras não há vídeo), troca de vídeo com o tema, loop, pausar/tocar, fechar
+  solta o vídeo e a vista girando mantém os quadros com o cartão aberto. Evidências em
+  `docs/fase-e-evidence/cartao/`.
 
 ## Desktop (Electron)
 
@@ -744,6 +769,46 @@ pede à página para abri-lo). O instalador associa a extensão `.forgia` ao For
 (`build.fileAssociations` do electron-builder, ícone do Forgia). Links `http(s)` que pedem janela nova,
 como o crédito da LarcherTech, abrem no navegador padrão (`setWindowOpenHandler`), não dentro do
 programa.
+
+## Dicas animadas (modo gravação)
+
+Os vídeos do cartão de dica são gravados do próprio Forgia por `npm run gravar-dicas` (comando de
+desenvolvimento; o programa instalado não tem nada disto). `scripts/gravar-dicas.mjs` cria um
+perfil temporário e abre o Electron do projeto em `scripts/gravar/principal.cjs`, que:
+
+- abre `dist/index.html` com o **mesmo** preload, ponte da IA e projeto do `electron/main.cjs`,
+  numa janela sem moldura de 1360×860 px, sempre por cima e com `setIgnoreMouseEvents(true)` (o
+  mouse físico não interfere); mouse e teclado do roteiro entram por CDP
+  (`webContents.debugger`, `Input.dispatchMouseEvent`/`dispatchKeyEvent`/`insertText`), os
+  mesmos eventos que o usuário gera;
+- injeta `scripts/gravar/sobreposicao.js`: o **cursor falso** (segue os eventos de ponteiro da
+  própria página, então fica exatamente onde o clique acontece), o selo das teclas e a legenda;
+  o cursor de verdade some (`cursor: none`); no recorte da vista, o inspetor fica escondido;
+- grava a **janela inteira** na janela oculta `scripts/gravar/gravador.html`: `getDisplayMedia`
+  respondido por `session.setDisplayMediaRequestHandler` com a fonte da janela (o
+  `desktopCapturer.getSources` não lista janelas do próprio processo, então vale
+  `win.getMediaSourceId()`), `MediaStreamTrackProcessor` → recorte 4:3 da vista num
+  `OffscreenCanvas` (640×480, 30 quadros/s) → `MediaStreamTrackGenerator` → `MediaRecorder`
+  (WebM VP9, 300 kbps, sem som). `scripts/gravar/webm.cjs` insere a `Duration` que o
+  MediaRecorder não escreve;
+- **loop sem pulo**: no fim, congela o quadro, refaz a pose inicial por baixo (cena, câmera,
+  seleção, cursor) e dissolve a imagem congelada nela (420 ms). Uma miniatura 64×48 do início e
+  outra do fim são comparadas no resumo (tem que dar ~0; início × resultado tem que dar > 0).
+
+**Cena** (`ajuda/cenas/<nome>.json`): um `forgia.projeto` com `projeto` (o que é carregado) e
+`montagem` (como refazer: Iniciantes de `public/iniciantes` + um `lote` da ponte; `--cenas`
+remonta). **Roteiro** (`ajuda/roteiros/<dica>.json`): `dica` (nome base do vídeo e chave de
+`t.dicas`), `cena`, `camera` `{ alvo, de }` em mm no sistema do usuário, `selecionar` (nomes),
+`cursor` (ponto de partida), `recorte` (`largura`, `dx`, `dy`; ou `janela: true`), `video`,
+`estilo` (CSS só deste roteiro) e `passos`, cada um com uma ação: `tecla` (`"Ctrl+D"`,
+`"Shift+ArrowLeft"`; mostra o selo), `mover`, `clicar`, `apertar`/`soltar`, `arrastar`, `caminho`
+(curva suave por vários pontos), `digitar`, `esperar`, `selo` (rótulo, ex.: botão fora do
+recorte), `ponte` (comando pela ponte HTTP, como um agente) e `legenda`; `ms` é a duração do
+gesto e `foto` guarda um PNG (com `--fotos`). Alvos: `{ seletor }`, `{ peca, ancora: [x, y, z] }`
+(−1 a 1 na caixa da peça), `{ mundo: [X, Y, Z] }`, `{ alca: 'top' }` ou `{ recorte: [fx, fy] }`.
+
+As mídias do README usam o mesmo mecanismo com os roteiros de `docs/media/roteiros/` (janela
+inteira) e `scripts/gifs-readme.mjs` (ffmpeg da máquina); veja [build.md](build.md#mídias-do-readme).
 
 ## Placa de vídeo (GPU) e fallback
 

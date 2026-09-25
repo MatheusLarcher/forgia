@@ -1,0 +1,118 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (cena de dica)",
+ "nome": "Caixa com tampa",
+ "descricao": "A caixa com tampa dos Iniciantes, como está (Marcar parte: a aba da tampa dentro do grupo).",
+ "montagem": {"iniciantes":["caixa-com-tampa"],"comandos":[]},
+ "projeto": {
+  "name": "Caixa com tampa",
+  "grid": 1,
+  "workplane": {"w":255,"l":255,"h":255},
+  "objects": [
+   {
+    "id": "05xwec2a",
+    "type": "group",
+    "name": "Caixa com tampa",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [130,25,40],
+    "pos": [0,12.5,0],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1],
+    "children": [
+     {
+      "id": "826fbuhs",
+      "type": "group",
+      "name": "caixa",
+      "color": null,
+      "hole": false,
+      "params": {},
+      "size": [60,25,40],
+      "pos": [-35,0,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1],
+      "children": [
+       {
+        "id": "kz79xrhu",
+        "type": "box",
+        "name": "corpo",
+        "color": "#3fb34f",
+        "hole": false,
+        "params": {"radius":1,"steps":10},
+        "size": [60,25,40],
+        "pos": [0,0,0],
+        "quat": [0,0,0,1],
+        "flip": [1,1,1]
+       },
+       {
+        "id": "frz702cp",
+        "type": "box",
+        "name": "vão",
+        "color": "#e3302d",
+        "hole": true,
+        "params": {"radius":0,"steps":10},
+        "size": [56,24,36],
+        "pos": [0,1.5,0],
+        "quat": [0,0,0,1],
+        "flip": [1,1,1]
+       }
+      ]
+     },
+     {
+      "id": "o1cxwv53",
+      "type": "group",
+      "name": "tampa",
+      "color": null,
+      "hole": false,
+      "params": {},
+      "size": [60,6,40],
+      "pos": [35,-9.5,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1],
+      "children": [
+       {
+        "id": "mahop5nt",
+        "type": "box",
+        "name": "placa da tampa",
+        "color": "#f7c511",
+        "hole": false,
+        "params": {"radius":1,"steps":10},
+        "size": [60,2,40],
+        "pos": [0,-2,0],
+        "quat": [0,0,0,1],
+        "flip": [1,1,1]
+       },
+       {
+        "id": "34s9xk5e",
+        "type": "box",
+        "name": "aba (0,25 mm de folga)",
+        "color": "#f7c511",
+        "hole": false,
+        "params": {"radius":0,"steps":10},
+        "size": [55.5,4,35.5],
+        "pos": [0,1,0],
+        "quat": [0,0,0,1],
+        "flip": [1,1,1]
+       },
+       {
+        "id": "dkrz75p4",
+        "type": "box",
+        "name": "miolo da aba",
+        "color": "#e3302d",
+        "hole": true,
+        "params": {"radius":0,"steps":10},
+        "size": [51.5,4,31.5],
+        "pos": [0,1,0],
+        "quat": [0,0,0,1],
+        "flip": [1,1,1]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "malhas": {}
+}

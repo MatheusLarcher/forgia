@@ -23,6 +23,12 @@ aparece um cartão com o nome da ação, o atalho de teclado e uma explicação 
 com o botão desabilitado, para você saber o que ele faz antes de poder usá-lo. O cartão fecha
 quando o mouse sai, no **X** ou com `Esc`.
 
+Nas funções mais complexas o cartão traz um **vídeo curto**, gravado do próprio Forgia, mostrando
+a função em uso: Cruzeiro, Alinhar, Espelhar, Agrupar (com furo), Duplicar e repetir, Desenhar,
+Marcar parte, Criar encaixe, Plano de trabalho, Soltar na mesa (botão do inspetor) e Medir. O vídeo
+segue o tema (claro ou escuro), toca em repetição e tem um botão redondo para **pausar/tocar**; só
+toca com o cartão aberto.
+
 ## Tema claro e escuro
 
 O botão **sol/lua**, na ponta direita da barra superior, troca o tema: no tema claro ele mostra a
@@ -316,6 +322,9 @@ pedidos da rede nem de páginas abertas no navegador.
 - Segure **Alt** nas alças para redimensionar a partir do centro.
 - **Alt + arrastar** uma forma cria uma cópia.
 - O **ajuste de grade** (0,1 mm a 10 mm) define o passo de movimento e de medida.
+- No cabeçalho do **inspetor** ficam, além do nome, os botões de **bloquear**, **ocultar**,
+  **soltar na mesa** (o mesmo `Shift+D`: a peça desce até encostar na mesa, ou no plano de
+  trabalho se ele estiver ligado) e **recolher**.
 
 ## Atalhos
 
@@ -335,7 +344,8 @@ pedidos da rede nem de páginas abertas no navegador.
 | Ctrl+Z / Ctrl+Y | Desfazer / refazer |
 | Ctrl+G / Ctrl+Shift+G | Agrupar / desagrupar |
 | H / Shift+S | Transformar em furo / sólido |
-| Shift+D | Soltar na mesa |
+| Shift+D | Soltar na mesa (também no botão do inspetor) |
+| Botão Criar encaixe | Bloco com o negativo da peça selecionada, com folga (sem atalho) |
 | L / M | Alinhar / espelhar |
 | B | Desenhar na mesa (`Enter` fecha, `Esc` cancela) |
 | C | Cruzeiro: deslizar a peça pela superfície das outras (`Shift` afunda) |

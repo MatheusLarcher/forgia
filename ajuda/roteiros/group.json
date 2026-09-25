@@ -1,0 +1,15 @@
+{
+ "dica": "group",
+ "titulo": "Agrupar com furo",
+ "cena": "chaveiro",
+ "camera": {"alvo":[3,0,0],"de":[30,-112,100]},
+ "passos": [
+  {"clicar":{"peca":"placa","ancora":[0.93,0,1]},"ms":650},
+  {"esperar":150},
+  {"clicar":{"peca":"furo da argola","ancora":[0,0,1]},"ms":600,"modifiers":8},
+  {"esperar":200},
+  {"tecla":"Ctrl+G","foto":"agrupado"},
+  {"esperar":900}
+ ],
+ "cursor": {"recorte":[0.86,0.86]}
+}

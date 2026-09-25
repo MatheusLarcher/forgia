@@ -1,0 +1,28 @@
+{
+ "dica": "arrastar",
+ "titulo": "Arrastar formas da biblioteca e digitar a medida em mm",
+ "cena": "docs/media/cenas/vazia",
+ "recorte": {"janela":true},
+ "video": {"w":960,"h":607,"fps":30,"bitrate":1600000},
+ "camera": {"alvo":[-6,0,10],"de":[40,-128,105]},
+ "cursor": {"recorte":[0.55,0.55]},
+ "pausaInicial": 400,
+ "passos": [
+  {"mover":{"seletor":".tile[data-label=\"Caixa\"]"},"ms":900},
+  {"apertar":true,"pausa":120},
+  {"arrastar":{"mundo":[-14,0,0]},"ms":1000},
+  {"esperar":500},
+  {"mover":{"seletor":".tile[data-label=\"Cilindro\"]"},"ms":900},
+  {"apertar":true,"pausa":120},
+  {"arrastar":{"mundo":[-14,0,20]},"ms":1000},
+  {"esperar":450},
+  {"mover":{"alca":"corner"},"ms":600},
+  {"esperar":450},
+  {"clicar":{"seletor":".dim-label[data-key=\"h\"]"},"ms":450},
+  {"esperar":250},
+  {"digitar":"35","ms":300},
+  {"esperar":200},
+  {"tecla":"Enter","selo":false},
+  {"esperar":1600}
+ ]
+}

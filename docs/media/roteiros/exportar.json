@@ -1,0 +1,18 @@
+{
+ "dica": "exportar",
+ "titulo": "Exportar STL ou 3MF com as cores",
+ "cena": "public/iniciantes/foguete",
+ "recorte": {"janela":true},
+ "video": {"w":960,"h":607,"fps":30,"bitrate":1600000},
+ "camera": {"alvo":[0,0,34],"de":[100,-190,125]},
+ "cursor": {"recorte":[0.52,0.6]},
+ "pausaInicial": 500,
+ "passos": [
+  {"clicar":{"seletor":"#btn-export"},"ms":1000},
+  {"esperar":500},
+  {"mover":{"seletor":".modal .export-btns .btn"},"ms":700},
+  {"esperar":700},
+  {"mover":{"seletor":".modal [data-formato=\"3mf\"]"},"ms":600},
+  {"esperar":2200}
+ ]
+}

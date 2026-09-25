@@ -1,0 +1,10 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (cena do README)",
+ "nome": "Mesa vazia",
+ "descricao": "Mesa vazia, para as gravações do README que começam do zero.",
+ "montagem": {"comandos":[]},
+ "projeto": {"name":"Meu projeto 3D","grid":1,"workplane":{"w":255,"l":255,"h":255},"objects":[]},
+ "malhas": {}
+}

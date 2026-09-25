@@ -29,3 +29,6 @@ docs/*-evidence/
 # sobras de testes manuais (STL exportado, config de MCP com caminho local)
 build/*.stl
 build/mcp-*.json
+
+# saída da linha de comando do Bambu Studio
+/result.json

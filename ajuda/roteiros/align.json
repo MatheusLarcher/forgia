@@ -1,0 +1,18 @@
+{
+ "dica": "align",
+ "titulo": "Alinhar",
+ "cena": "arruelas",
+ "camera": {"alvo":[-2,8,0],"de":[-2,-167,140]},
+ "cursor": {"recorte":[0.09,0.14]},
+ "passos": [
+  {"apertar":true},
+  {"arrastar":{"recorte":[0.93,0.86]},"ms":850,"arco":0.04},
+  {"esperar":150},
+  {"tecla":"L"},
+  {"esperar":250},
+  {"mover":{"seletor":".align-dot[data-axis=\"2\"][data-where=\"0\"]"},"ms":650},
+  {"esperar":300},
+  {"clicar":{"seletor":".align-dot[data-axis=\"2\"][data-where=\"0\"]"},"ms":60,"foto":"alinhado"},
+  {"esperar":700}
+ ]
+}

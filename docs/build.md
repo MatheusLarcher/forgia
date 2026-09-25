@@ -180,6 +180,53 @@ validação. Não use `gerar_setup.bat` para preservar o instalador anterior na 
 - **Assinatura digital**: o instalador não é assinado, então o Windows SmartScreen exibe um aviso
   na primeira execução.
 
+## Dicas animadas: regravar os vídeos
+
+Os 22 vídeos do cartão de dica (`public/ajuda/<dica>-<tema>.webm`, 11 funções × claro e escuro)
+saem do próprio Forgia, a partir dos roteiros (`ajuda/roteiros/*.json`) e das cenas
+(`ajuda/cenas/*.json`). Regravar tudo é um comando:
+
+```bash
+npm run gravar-dicas
+```
+
+Ele faz o build do Vite e abre o **modo gravação** (`scripts/gravar-dicas.mjs` →
+`scripts/gravar/principal.cjs`): uma janela do Forgia sem moldura, de tamanho fixo, que aparece na
+tela sempre por cima e não recebe o mouse físico, com um perfil **temporário** (`--user-data-dir` e
+`FORGIA_DADOS` em `%TEMP%`, apagado no fim; nunca o `%APPDATA%\Forgia`). Não precisa de nada além
+do Electron do projeto: a captura é `desktopCapturer` + `MediaRecorder` (WebM VP9, sem som).
+Leva uns 4 minutos para os 22 vídeos (≈ 4,5 MB no total; o instalador cresce o mesmo tanto).
+
+Opções (depois de `--`): `--dicas=cruise,align` (só alguns roteiros), `--temas=claro`,
+`--cenas` (remonta as cenas pela `montagem` antes: Iniciantes + lote da ponte), `--so-cenas`,
+`--previa` (só a foto da pose inicial, para acertar o enquadramento), `--fotos=<pasta>`,
+`--resumo=<arquivo.json>` (tamanho, duração e a diferença início × fim de cada vídeo),
+`--roteiros=<pasta>` e `--saida=<pasta>`. O formato dos roteiros está em
+[arquitetura.md](arquitetura.md#dicas-animadas-modo-gravação).
+
+Conferência: `node --test tests/dicas-gravacao.test.mjs` (roteiros, cenas e os 22 vídeos: 640×480,
+VP9, 4–6 s, até 300 KB) e, no programa gerado,
+`FORGIA_EXE=release\fase-e\win-unpacked\Forgia.exe node --test tests/dicas-exe.test.mjs` (o cartão
+toca o vídeo do tema, troca com o tema, pausa, para ao fechar e a vista mantém os quadros).
+
+## Mídias do README
+
+Os GIFs de `docs/media/` saem do mesmo modo gravação. **Regravar exige o ffmpeg instalado na
+máquina** (é uma ferramenta do computador, não uma dependência do projeto; no Windows,
+`winget install Gyan.FFmpeg`):
+
+```bash
+npm run gravar-dicas                        # as dicas (se mudaram): public/ajuda
+npm run gravar-dicas -- --roteiros=docs/media/roteiros --temas=claro --saida=docs/fase-e-evidence/readme-video
+FFMPEG=<caminho do ffmpeg.exe> node scripts/gifs-readme.mjs
+```
+
+A segunda linha grava a janela inteira para as cenas do README (a IA montando o chaveiro,
+arrastar formas, exportar, Conectar IA); a terceira converte essas gravações e cinco dicas em GIF
+(paleta própria, até ~8 MB cada) e gera `docs/media/forgia-apresentacao.webm`. As gravações
+intermediárias ficam em `docs/fase-e-evidence/` (fora do Git). A pré-visualização local do README
+(conversor mínimo, não é o GitHub) é `npx electron scripts/previa-readme.cjs`.
+
 ## Publicando uma release no GitHub
 
 1. Atualize `"version"` no `package.json`.

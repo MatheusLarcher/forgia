@@ -1,0 +1,17 @@
+{
+ "dica": "mirror",
+ "titulo": "Espelhar",
+ "cena": "foguete",
+ "camera": {"alvo":[0,0,32],"de":[92,-218,130]},
+ "selecionar": ["aleta 1","aleta 2","aleta 3"],
+ "cursor": {"recorte":[0.86,0.88]},
+ "passos": [
+  {"tecla":"M"},
+  {"esperar":300},
+  {"mover":{"seletor":".mirror-btn[data-axis=\"1\"]"},"ms":750},
+  {"esperar":300},
+  {"clicar":{"seletor":".mirror-btn[data-axis=\"1\"]"},"ms":60,"foto":"espelhado"},
+  {"esperar":1000}
+ ],
+ "pausaInicial": 400
+}

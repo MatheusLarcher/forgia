@@ -1,0 +1,19 @@
+{
+ "dica": "measure",
+ "titulo": "Medir",
+ "cena": "arruelas",
+ "camera": {"alvo":[-19,-2,0],"de":[-19,-125,125]},
+ "cursor": {"recorte":[0.86,0.88]},
+ "passos": [
+  {"tecla":"R"},
+  {"esperar":200},
+  {"mover":{"mundo":[-38,12,5]},"ms":700},
+  {"esperar":150},
+  {"clicar":{"mundo":[-38,12,5]},"ms":60},
+  {"esperar":100},
+  {"mover":{"mundo":[0,-16,5]},"ms":950},
+  {"esperar":150},
+  {"clicar":{"mundo":[0,-16,5]},"ms":60,"foto":"medido"},
+  {"esperar":900}
+ ]
+}

@@ -1,0 +1,21 @@
+{
+ "dica": "duplicate",
+ "titulo": "Duplicar e repetir",
+ "cena": "lagarta",
+ "camera": {"alvo":[5,0,9],"de":[32,-150,92]},
+ "selecionar": ["gomo"],
+ "cursor": {"recorte":[0.62,0.86]},
+ "passos": [
+  {"tecla":"Ctrl+D"},
+  {"esperar":350},
+  {"tecla":"Shift+ArrowLeft"},
+  {"esperar":450},
+  {"tecla":"Ctrl+D"},
+  {"esperar":330},
+  {"tecla":"Ctrl+D"},
+  {"esperar":330},
+  {"tecla":"Ctrl+D","foto":"repetido"},
+  {"esperar":750}
+ ],
+ "pausaInicial": 400
+}

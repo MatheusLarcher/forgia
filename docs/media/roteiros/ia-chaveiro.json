@@ -1,0 +1,59 @@
+{
+ "dica": "ia-chaveiro",
+ "titulo": "A IA monta um chaveiro: reprodução do lote que o agente enviou na sessão p2 da Fase C (docs/fase-c-evidence/agente/depois/p2.jsonl), pela mesma ponte local",
+ "cena": "docs/media/cenas/vazia",
+ "recorte": {"janela":true},
+ "video": {"w":960,"h":607,"fps":30,"bitrate":1600000},
+ "camera": {"alvo":[-3,0,2],"de":[36,-92,78]},
+ "cursor": {"recorte":[0.52,0.66]},
+ "pausaInicial": 400,
+ "passos": [
+  {
+   "legenda": {"html":"Pedido ao agente de IA: <b>faça um chaveiro com o nome ANA</b>","recorte":[0.23,0.135]}
+  },
+  {"esperar":2300},
+  {
+   "ponte": {
+    "cmd": "lote",
+    "args": {
+     "comandos": [
+      {
+       "cmd": "criar",
+       "ref": "base",
+       "tipo": "caixa",
+       "nome": "base",
+       "medidas": [50,18,3],
+       "params": {"raio":3}
+      },
+      {
+       "cmd": "criar",
+       "ref": "nome",
+       "tipo": "texto",
+       "nome": "ANA",
+       "medidas": [38,11,2],
+       "params": {"texto":"ANA"},
+       "centro": [3,0,null],
+       "sobre": "$base"
+      },
+      {
+       "cmd": "criar",
+       "ref": "argola",
+       "tipo": "tubo",
+       "nome": "argola",
+       "medidas": [10,10,3],
+       "params": {"parede":2.5,"lados":48},
+       "centro": [-29,0,null]
+      },
+      {"cmd":"agrupar","ids":["$base","$nome","$argola"],"nome":"chaveiro ANA"}
+     ]
+    }
+   }
+  },
+  {"esperar":2600},
+  {"legenda":{"visivel":false}},
+  {"clicar":{"seletor":"#btn-export"},"ms":900},
+  {"esperar":450},
+  {"mover":{"seletor":".modal [data-formato=\"3mf\"]"},"ms":800},
+  {"esperar":2000}
+ ]
+}

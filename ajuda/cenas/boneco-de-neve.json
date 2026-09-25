@@ -1,0 +1,429 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (cena de dica)",
+ "nome": "Boneco de neve",
+ "descricao": "O boneco de neve dos Iniciantes sem o nariz, com o nariz de cone em pé na mesa, um pinheiro com estrela e um presente (Cruzeiro).",
+ "montagem": {
+  "iniciantes": ["boneco-de-neve"],
+  "comandos": [
+   {"cmd":"desagrupar","ids":["z4xj693h"]},
+   {
+    "cmd": "agrupar",
+    "ids": [
+     "qilbrrhv",
+     "pjpumlbr",
+     "bucbgw2q",
+     "lj63zcds",
+     "kmgsyjdu",
+     "hoqu8p3q",
+     "42k2r7t5",
+     "cb1fpqtc",
+     "oo6b1rjf",
+     "f3b736og",
+     "3mc5fpbe",
+     "medesac0"
+    ],
+    "nome": "Boneco de neve"
+   },
+   {
+    "cmd": "alterar",
+    "id": "rqv9pgxl",
+    "rotacao": [0,0,0],
+    "medidas": [6,6,15],
+    "centro": [30,-26,null],
+    "base_z": 0,
+    "nome": "nariz"
+   },
+   {
+    "cmd": "criar",
+    "ref": "tronco",
+    "tipo": "cilindro",
+    "medidas": [7,7,8],
+    "params": {"lados":32},
+    "centro": [-44,26,null],
+    "base_z": 0,
+    "cor": "#8a5a33",
+    "nome": "tronco"
+   },
+   {
+    "cmd": "criar",
+    "ref": "c1",
+    "tipo": "cone",
+    "medidas": [36,36,22],
+    "params": {"lados":40},
+    "centro": [-44,26,null],
+    "base_z": 6,
+    "cor": "#2f8f46",
+    "nome": "copa"
+   },
+   {
+    "cmd": "criar",
+    "ref": "c2",
+    "tipo": "cone",
+    "medidas": [28,28,19],
+    "params": {"lados":40},
+    "centro": [-44,26,null],
+    "base_z": 20,
+    "cor": "#2f8f46",
+    "nome": "copa"
+   },
+   {
+    "cmd": "criar",
+    "ref": "c3",
+    "tipo": "cone",
+    "medidas": [19,19,16],
+    "params": {"lados":40},
+    "centro": [-44,26,null],
+    "base_z": 33,
+    "cor": "#2f8f46",
+    "nome": "copa"
+   },
+   {
+    "cmd": "criar",
+    "ref": "estrela",
+    "tipo": "estrela",
+    "medidas": [10,10,2.5],
+    "rotacao": [90,0,0],
+    "centro": [-44,26,51],
+    "cor": "#f7c511",
+    "nome": "estrela"
+   },
+   {"cmd":"agrupar","ids":["$tronco","$c1","$c2","$c3","$estrela"],"nome":"pinheiro"},
+   {
+    "cmd": "criar",
+    "ref": "caixa",
+    "tipo": "caixa",
+    "medidas": [15,15,12],
+    "params": {"raio":0.6},
+    "centro": [-20,-24,null],
+    "base_z": 0,
+    "cor": "#e3302d",
+    "nome": "caixa"
+   },
+   {
+    "cmd": "criar",
+    "ref": "fita1",
+    "tipo": "caixa",
+    "medidas": [3,15.4,12.4],
+    "centro": [-20,-24,null],
+    "base_z": 0,
+    "cor": "#f7c511",
+    "nome": "fita"
+   },
+   {
+    "cmd": "criar",
+    "ref": "fita2",
+    "tipo": "caixa",
+    "medidas": [15.4,3,12.4],
+    "centro": [-20,-24,null],
+    "base_z": 0,
+    "cor": "#f7c511",
+    "nome": "fita"
+   },
+   {"cmd":"agrupar","ids":["$caixa","$fita1","$fita2"],"nome":"presente"}
+  ]
+ },
+ "projeto": {
+  "name": "Boneco de neve",
+  "grid": 1,
+  "workplane": {"w":255,"l":255,"h":255},
+  "objects": [
+   {
+    "id": "q8a3n13w",
+    "type": "group",
+    "name": "Boneco de neve",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [36,84,37.04999923706055],
+    "pos": [0,42,0],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1],
+    "children": [
+     {
+      "id": "qilbrrhv",
+      "type": "sphere",
+      "name": "corpo de baixo",
+      "color": "#ffffff",
+      "hole": false,
+      "params": {"steps":40},
+      "size": [36,36,36],
+      "pos": [0,-26,-0.525],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "pjpumlbr",
+      "type": "sphere",
+      "name": "corpo do meio",
+      "color": "#ffffff",
+      "hole": false,
+      "params": {"steps":40},
+      "size": [28,28,28],
+      "pos": [0,0,-0.525],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "bucbgw2q",
+      "type": "sphere",
+      "name": "cabeça",
+      "color": "#ffffff",
+      "hole": false,
+      "params": {"steps":40},
+      "size": [20,20,20],
+      "pos": [0,20,-0.525],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "lj63zcds",
+      "type": "box",
+      "name": "base reta",
+      "color": "#e3302d",
+      "hole": true,
+      "params": {"radius":0,"steps":10},
+      "size": [40,2,40],
+      "pos": [0,-43,-0.525],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "kmgsyjdu",
+      "type": "sphere",
+      "name": "olho",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {"steps":24},
+      "size": [3,3,3],
+      "pos": [-3.5,23,8.075],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "hoqu8p3q",
+      "type": "sphere",
+      "name": "olho",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {"steps":24},
+      "size": [3,3,3],
+      "pos": [3.5,23,8.075],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "42k2r7t5",
+      "type": "sphere",
+      "name": "botão",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {"steps":24},
+      "size": [3.5,3.5,3.5],
+      "pos": [0,4,12.975],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "cb1fpqtc",
+      "type": "sphere",
+      "name": "botão",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {"steps":24},
+      "size": [3.5,3.5,3.5],
+      "pos": [0,-2,13.275],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "oo6b1rjf",
+      "type": "sphere",
+      "name": "botão",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {"steps":24},
+      "size": [3.5,3.5,3.5],
+      "pos": [0,-20,16.775],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "f3b736og",
+      "type": "torus",
+      "name": "cachecol",
+      "color": "#e3302d",
+      "hole": false,
+      "params": {"tube":5,"sides":24,"steps":16},
+      "size": [22,5,22],
+      "pos": [0,11,-0.525],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "3mc5fpbe",
+      "type": "cylinder",
+      "name": "aba do chapéu",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {"sides":48,"bevel":0},
+      "size": [22,2,22],
+      "pos": [0,29,-0.525],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "medesac0",
+      "type": "cylinder",
+      "name": "copa do chapéu",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {"sides":48,"bevel":0},
+      "size": [14,12,14],
+      "pos": [0,36,-0.525],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     }
+    ]
+   },
+   {
+    "id": "rqv9pgxl",
+    "type": "cone",
+    "name": "nariz",
+    "color": "#f38a00",
+    "hole": false,
+    "params": {"top":0,"sides":20},
+    "size": [6,15,6],
+    "pos": [30,7.5,26],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   },
+   {
+    "id": "1x93cfrk",
+    "type": "group",
+    "name": "pinheiro",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [36,56,36],
+    "pos": [-44,28,-26],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1],
+    "children": [
+     {
+      "id": "gwa59p0z",
+      "type": "cylinder",
+      "name": "tronco",
+      "color": "#8a5a33",
+      "hole": false,
+      "params": {"sides":32,"bevel":0},
+      "size": [7,8,7],
+      "pos": [0,-24,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "5u1n6418",
+      "type": "cone",
+      "name": "copa",
+      "color": "#2f8f46",
+      "hole": false,
+      "params": {"top":0,"sides":40},
+      "size": [36,22,36],
+      "pos": [0,-11,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "pondxcjf",
+      "type": "cone",
+      "name": "copa",
+      "color": "#2f8f46",
+      "hole": false,
+      "params": {"top":0,"sides":40},
+      "size": [28,19,28],
+      "pos": [0,1.5,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "rzoprxud",
+      "type": "cone",
+      "name": "copa",
+      "color": "#2f8f46",
+      "hole": false,
+      "params": {"top":0,"sides":40},
+      "size": [19,16,19],
+      "pos": [0,13,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "sc11bhpb",
+      "type": "star",
+      "name": "estrela",
+      "color": "#f7c511",
+      "hole": false,
+      "params": {"points":5,"ratio":0.5},
+      "size": [10,2.5,10],
+      "pos": [0,23,0],
+      "quat": [0.7071067811865475,0,0,0.7071067811865476],
+      "flip": [1,1,1]
+     }
+    ]
+   },
+   {
+    "id": "xxsgz93a",
+    "type": "group",
+    "name": "presente",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [15.40000057220459,12.399999618530273,15.400001525878906],
+    "pos": [-20.000000476837158,6.199999809265137,24],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1],
+    "children": [
+     {
+      "id": "wjf9s2k3",
+      "type": "box",
+      "name": "caixa",
+      "color": "#e3302d",
+      "hole": false,
+      "params": {"radius":0.6,"steps":10},
+      "size": [15,12,15],
+      "pos": [0,-0.2,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "ednw12x6",
+      "type": "box",
+      "name": "fita",
+      "color": "#f7c511",
+      "hole": false,
+      "params": {"radius":0,"steps":10},
+      "size": [3,12.4,15.4],
+      "pos": [0,0,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "hyca2q6a",
+      "type": "box",
+      "name": "fita",
+      "color": "#f7c511",
+      "hole": false,
+      "params": {"radius":0,"steps":10},
+      "size": [15.4,12.4,3],
+      "pos": [0,0,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     }
+    ]
+   }
+  ]
+ },
+ "malhas": {}
+}

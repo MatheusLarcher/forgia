@@ -2,9 +2,15 @@
 // atalho e descrição de t.dicas[<chave>]. Um só cartão na página, com delegação de eventos no
 // document (serve também para botões criados depois, como os do inspetor).
 // data-dica-lado="direita" abre à direita (coluna de vista); senão abre abaixo (ou acima, sem espaço).
-// Com t.dicas[k].video (src) o cartão ganha um vídeo com botão pausar/tocar; sem src, o bloco não existe.
+// Com t.dicas[k].video (nome base, ex.: 'cruise') o cartão ganha o vídeo do tema ativo,
+// ./ajuda/<base>-<tema>.webm (gravados por npm run gravar-dicas), com botão pausar/tocar; sem
+// video, o bloco não existe. O vídeo só toca com o cartão aberto, para e solta o arquivo ao fechar,
+// e troca junto se o tema mudar com o cartão aberto.
 import { t } from './textos/index.js';
 import { ICONS } from './icons.js';
+import { theme } from './theme.js';
+
+export const videoSrc = (base, tema) => `./ajuda/${base}-${tema}.webm`;
 
 const OPEN_DELAY = 400; // ms com o ponteiro parado sobre o elemento
 const LEAVE_GRACE = 150; // ms para atravessar a setinha e alcançar o cartão (e o X)
@@ -40,6 +46,9 @@ export class Dica {
     document.addEventListener('keydown', (e) => this.onKey(e), true);
     window.addEventListener('blur', () => this.hide());
     window.addEventListener('resize', () => this.hide());
+    // tema trocado com o cartão aberto (Configurações não abrem com ele, mas o Windows pode mudar):
+    // o vídeo passa para o do outro tema, no mesmo ponto e no mesmo estado (tocando ou pausado)
+    theme.addEventListener('change', () => this.swapVideo());
   }
 
   get isOpen() {
@@ -129,7 +138,24 @@ export class Dica {
     this.owner = null;
     this.card.classList.remove('aberta');
     const video = this.card.querySelector('video');
-    if (video) video.pause();
+    if (video) {
+      // para e solta o decodificador: nada toca escondido
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    }
+  }
+
+  swapVideo() {
+    const video = this.card && this.isOpen ? this.card.querySelector('video') : null;
+    if (!video || !video.dataset.base) return;
+    const src = videoSrc(video.dataset.base, theme.name);
+    if (video.getAttribute('src') === src) return;
+    const at = video.currentTime;
+    const playing = !video.paused;
+    video.src = src;
+    video.addEventListener('loadedmetadata', () => (video.currentTime = Math.min(at, video.duration || at)), { once: true });
+    if (playing) video.play().catch(() => {});
   }
 
   // monta o conteúdo do cartão para a dica d = { titulo, atalho?, texto, video? }
@@ -166,13 +192,14 @@ export class Dica {
     return card;
   }
 
-  videoBlock(src) {
+  videoBlock(base) {
     const video = document.createElement('video');
     video.muted = true;
     video.loop = true;
     video.playsInline = true;
-    video.autoplay = true;
-    video.src = src;
+    video.preload = 'auto';
+    video.dataset.base = base;
+    video.src = videoSrc(base, theme.name);
     const btn = el('button', 'dica-play');
     btn.type = 'button';
     const sync = () => {

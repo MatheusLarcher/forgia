@@ -1,0 +1,62 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (cena de dica)",
+ "nome": "Mesa para desenhar",
+ "descricao": "Mesa com uma estrela e uma bolinha no fundo, espaço livre na frente para desenhar um coração (Desenhar).",
+ "montagem": {
+  "comandos": [
+   {
+    "cmd": "criar",
+    "tipo": "estrela",
+    "medidas": [20,20,4],
+    "centro": [36,30,null],
+    "base_z": 0,
+    "cor": "#f7c511",
+    "nome": "estrela"
+   },
+   {
+    "cmd": "criar",
+    "tipo": "esfera",
+    "medidas": [12,12,12],
+    "params": {"passos":32},
+    "centro": [-38,32,null],
+    "base_z": 0,
+    "cor": "#1b8bd2",
+    "nome": "bolinha"
+   }
+  ]
+ },
+ "projeto": {
+  "name": "Mesa para desenhar",
+  "grid": 1,
+  "workplane": {"w":255,"l":255,"h":255},
+  "objects": [
+   {
+    "id": "ny8uylaq",
+    "type": "star",
+    "name": "estrela",
+    "color": "#f7c511",
+    "hole": false,
+    "params": {"points":5,"ratio":0.5},
+    "size": [20,4,20],
+    "pos": [36,2,-30],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   },
+   {
+    "id": "5loxjjvb",
+    "type": "sphere",
+    "name": "bolinha",
+    "color": "#1b8bd2",
+    "hole": false,
+    "params": {"steps":32},
+    "size": [12,12,12],
+    "pos": [-38,6,-32],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   }
+  ]
+ },
+ "malhas": {}
+}

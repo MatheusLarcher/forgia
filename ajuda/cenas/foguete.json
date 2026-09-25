@@ -1,0 +1,118 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (cena de dica)",
+ "nome": "Foguete",
+ "descricao": "O foguete dos Iniciantes em partes soltas, com as três aletas de cabeça para baixo (Espelhar).",
+ "montagem": {
+  "iniciantes": ["foguete"],
+  "comandos": [
+   {"cmd":"desagrupar","ids":["12y6lfc4"]},
+   {"cmd":"espelhar","ids":["tppo98oi","2bmbd7ys","igaob2do"],"eixo":"z"}
+  ]
+ },
+ "projeto": {
+  "name": "Foguete",
+  "grid": 1,
+  "workplane": {"w":255,"l":255,"h":255},
+  "objects": [
+   {
+    "id": "hwk08n46",
+    "type": "cone",
+    "name": "motor",
+    "color": "#4a4f55",
+    "hole": false,
+    "params": {"top":4,"sides":40},
+    "size": [14,7,14],
+    "pos": [0,3.5,5.85],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   },
+   {
+    "id": "pmsbdh67",
+    "type": "cylinder",
+    "name": "corpo",
+    "color": "#c8ccd0",
+    "hole": false,
+    "params": {"sides":48,"bevel":0},
+    "size": [20,50,20],
+    "pos": [0,31,5.85],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   },
+   {
+    "id": "ctany1jr",
+    "type": "paraboloid",
+    "name": "bico",
+    "color": "#e3302d",
+    "hole": false,
+    "params": {"sides":48},
+    "size": [20,22,20],
+    "pos": [0,67,5.85],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   },
+   {
+    "id": "f5xztod6",
+    "type": "cylinder",
+    "name": "janela",
+    "color": "#4fb3e8",
+    "hole": false,
+    "params": {"sides":32,"bevel":0},
+    "size": [9,2,9],
+    "pos": [0,40,15.85],
+    "quat": [0.7071067811865475,0,0,0.7071067811865476],
+    "flip": [1,1,1]
+   },
+   {
+    "id": "80rq69dw",
+    "type": "cylinder",
+    "name": "faixa",
+    "color": "#e3302d",
+    "hole": false,
+    "params": {"sides":48,"bevel":0},
+    "size": [21,3,21],
+    "pos": [0,25.5,5.85],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   },
+   {
+    "id": "tppo98oi",
+    "type": "wedge",
+    "name": "aleta 1",
+    "color": "#e3302d",
+    "hole": false,
+    "params": {},
+    "size": [3,22,16],
+    "pos": [0,11,-12.15],
+    "quat": [1,0,6.123233995736766e-17,0],
+    "flip": [-1,1,1]
+   },
+   {
+    "id": "2bmbd7ys",
+    "type": "wedge",
+    "name": "aleta 2",
+    "color": "#e3302d",
+    "hole": false,
+    "params": {},
+    "size": [3,22,16],
+    "pos": [-15.588,11,14.85],
+    "quat": [-0.5000000000000002,0,0.8660254037844386,0],
+    "flip": [-1,1,1]
+   },
+   {
+    "id": "igaob2do",
+    "type": "wedge",
+    "name": "aleta 3",
+    "color": "#e3302d",
+    "hole": false,
+    "params": {},
+    "size": [3,22,16],
+    "pos": [15.588,11,14.85],
+    "quat": [0.5000000000000003,0,0.8660254037844385,0],
+    "flip": [-1,1,1]
+   }
+  ]
+ },
+ "malhas": {}
+}

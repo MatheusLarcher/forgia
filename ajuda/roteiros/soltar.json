@@ -1,0 +1,15 @@
+{
+ "dica": "soltar",
+ "titulo": "Soltar na mesa",
+ "cena": "brinquedos",
+ "camera": {"alvo":[4,0,22],"de":[40,-195,110]},
+ "cursor": {"recorte":[0.05,0.08]},
+ "passos": [
+  {"apertar":true},
+  {"arrastar":{"recorte":[0.96,0.7]},"ms":850,"arco":0.04},
+  {"esperar":200},
+  {"tecla":"Shift+D","foto":"solto"},
+  {"esperar":1200}
+ ],
+ "pausaInicial": 450
+}

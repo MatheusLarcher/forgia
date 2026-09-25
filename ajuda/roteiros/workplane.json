@@ -1,0 +1,20 @@
+{
+ "dica": "workplane",
+ "titulo": "Plano de trabalho",
+ "cena": "suporte-celular",
+ "camera": {"alvo":[-40,0,34],"de":[22,-215,190]},
+ "cursor": {"recorte":[0.86,0.88]},
+ "passos": [
+  {"tecla":"P"},
+  {"esperar":200},
+  {"mover":{"mundo":[-52,11.5,47]},"ms":700},
+  {"esperar":250},
+  {"clicar":{"mundo":[-52,11.5,47]},"ms":60,"foto":"plano"},
+  {"esperar":300},
+  {"clicar":{"seletor":".tile[data-label=\"Estrela\"]"},"ms":650},
+  {"mover":{"mundo":[-38,11.5,50]},"ms":700},
+  {"esperar":150},
+  {"clicar":{"mundo":[-38,11.5,50]},"ms":60,"foto":"estrela"},
+  {"esperar":650}
+ ]
+}

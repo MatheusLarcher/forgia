@@ -1,0 +1,17 @@
+{
+ "dica": "mark",
+ "titulo": "Marcar parte",
+ "cena": "caixa-com-tampa",
+ "camera": {"alvo":[40,0,6],"de":[78,-165,152]},
+ "cursor": {"recorte":[0.84,0.88]},
+ "passos": [
+  {"tecla":"N"},
+  {"esperar":200},
+  {"mover":{"mundo":[14,-17.2,6]},"ms":750},
+  {"esperar":300},
+  {"clicar":{"mundo":[14,-17.2,6]},"ms":60},
+  {"esperar":300},
+  {"digitar":"aumenta a aba em 1 mm","ms":1200,"foto":"pedido"},
+  {"esperar":700}
+ ]
+}

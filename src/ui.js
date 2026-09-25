@@ -551,6 +551,8 @@ export class UI {
         onclick: () => ed.setLocked(!locked),
       }),
       h('button', { class: 'icon-btn tiny', 'aria-label': t.inspetor.ocultar, 'data-dica': 'ocultar', html: ICONS.hide, onclick: () => ed.hideSelected() }),
+      // o mesmo Shift+D; o botão também é onde o cartão de dica (com vídeo) do Soltar na mesa aparece
+      h('button', { class: 'icon-btn tiny', 'aria-label': t.inspetor.soltar, 'data-dica': 'soltar', html: ICONS.soltar, disabled: locked, onclick: () => ed.dropToWorkplane() }),
       h('button', {
         class: 'icon-btn tiny collapse' + (this.collapsed ? ' up' : ''),
         'aria-label': this.collapsed ? t.inspetor.expandir : t.inspetor.recolher,

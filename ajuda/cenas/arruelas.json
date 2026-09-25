@@ -1,0 +1,202 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (cena de dica)",
+ "nome": "Arruelas",
+ "descricao": "Três arruelas com furo sextavado, de tamanhos e cores diferentes, espalhadas na mesa (Alinhar e Medir).",
+ "montagem": {
+  "comandos": [
+   {
+    "cmd": "criar",
+    "ref": "a1",
+    "tipo": "cilindro",
+    "medidas": [34,34,5],
+    "params": {"lados":64,"chanfro":0.8},
+    "centro": [-38,12,null],
+    "base_z": 0,
+    "cor": "#f38a00",
+    "nome": "corpo"
+   },
+   {
+    "cmd": "criar",
+    "ref": "f1",
+    "tipo": "poligono",
+    "medidas": [14,14,5],
+    "params": {"lados":6},
+    "furo": true,
+    "centro": [-38,12,null],
+    "base_z": 0,
+    "nome": "furo sextavado"
+   },
+   {"cmd":"agrupar","ids":["$a1","$f1"],"nome":"arruela laranja"},
+   {
+    "cmd": "criar",
+    "ref": "a2",
+    "tipo": "cilindro",
+    "medidas": [28,28,5],
+    "params": {"lados":64,"chanfro":0.8},
+    "centro": [0,-16,null],
+    "base_z": 0,
+    "cor": "#1b8bd2",
+    "nome": "corpo"
+   },
+   {
+    "cmd": "criar",
+    "ref": "f2",
+    "tipo": "poligono",
+    "medidas": [12,12,5],
+    "params": {"lados":6},
+    "furo": true,
+    "centro": [0,-16,null],
+    "base_z": 0,
+    "nome": "furo sextavado"
+   },
+   {"cmd":"agrupar","ids":["$a2","$f2"],"nome":"arruela azul"},
+   {
+    "cmd": "criar",
+    "ref": "a3",
+    "tipo": "cilindro",
+    "medidas": [22,22,5],
+    "params": {"lados":64,"chanfro":0.8},
+    "centro": [34,16,null],
+    "base_z": 0,
+    "cor": "#3fb34f",
+    "nome": "corpo"
+   },
+   {
+    "cmd": "criar",
+    "ref": "f3",
+    "tipo": "poligono",
+    "medidas": [10,10,5],
+    "params": {"lados":6},
+    "furo": true,
+    "centro": [34,16,null],
+    "base_z": 0,
+    "nome": "furo sextavado"
+   },
+   {"cmd":"agrupar","ids":["$a3","$f3"],"nome":"arruela verde"}
+  ]
+ },
+ "projeto": {
+  "name": "Arruelas",
+  "grid": 1,
+  "workplane": {"w":255,"l":255,"h":255},
+  "objects": [
+   {
+    "id": "a6u5gzeu",
+    "type": "group",
+    "name": "arruela laranja",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [34,5,34],
+    "pos": [-38,2.5,-12],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1],
+    "children": [
+     {
+      "id": "u8bgt9ew",
+      "type": "cylinder",
+      "name": "corpo",
+      "color": "#f38a00",
+      "hole": false,
+      "params": {"sides":64,"bevel":0.8},
+      "size": [34,5,34],
+      "pos": [0,0,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "hg07m7jx",
+      "type": "polygon",
+      "name": "furo sextavado",
+      "color": "#233e91",
+      "hole": true,
+      "params": {"sides":6},
+      "size": [14,5,14],
+      "pos": [0,0,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     }
+    ]
+   },
+   {
+    "id": "sqn1cata",
+    "type": "group",
+    "name": "arruela azul",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [28,5,28],
+    "pos": [0,2.5,16],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1],
+    "children": [
+     {
+      "id": "nnkasohh",
+      "type": "cylinder",
+      "name": "corpo",
+      "color": "#1b8bd2",
+      "hole": false,
+      "params": {"sides":64,"bevel":0.8},
+      "size": [28,5,28],
+      "pos": [0,0,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "9i9px8cf",
+      "type": "polygon",
+      "name": "furo sextavado",
+      "color": "#233e91",
+      "hole": true,
+      "params": {"sides":6},
+      "size": [12,5,12],
+      "pos": [0,0,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     }
+    ]
+   },
+   {
+    "id": "2nqlfms3",
+    "type": "group",
+    "name": "arruela verde",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [22,5,22],
+    "pos": [34,2.5,-16],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1],
+    "children": [
+     {
+      "id": "kt0szmk2",
+      "type": "cylinder",
+      "name": "corpo",
+      "color": "#3fb34f",
+      "hole": false,
+      "params": {"sides":64,"bevel":0.8},
+      "size": [22,5,22],
+      "pos": [0,0,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "i532ykya",
+      "type": "polygon",
+      "name": "furo sextavado",
+      "color": "#233e91",
+      "hole": true,
+      "params": {"sides":6},
+      "size": [10,5,10],
+      "pos": [0,0,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     }
+    ]
+   }
+  ]
+ },
+ "malhas": {}
+}

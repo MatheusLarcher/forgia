@@ -1,0 +1,17 @@
+{
+ "dica": "encaixe",
+ "titulo": "Criar encaixe",
+ "cena": "suporte-celular",
+ "camera": {"alvo":[-26,0,22],"de":[30,-235,290]},
+ "recorte": {"dx":90},
+ "selecionar": ["Suporte de celular"],
+ "cursor": {"recorte":[0.84,0.86]},
+ "passos": [
+  {"clicar":{"seletor":"[data-cmd=\"encaixe\"]"},"ms":700,"selo":"Criar encaixe","seloMs":1300},
+  {"esperar":350},
+  {"clicar":{"seletor":".modal [data-escolha=\"criar-encaixe\"]"},"ms":600},
+  {"esperar":200},
+  {"mover":{"recorte":[0.84,0.86]},"ms":600,"foto":"encaixe"},
+  {"esperar":600}
+ ]
+}

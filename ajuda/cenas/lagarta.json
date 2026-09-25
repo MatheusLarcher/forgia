@@ -1,0 +1,253 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (cena de dica)",
+ "nome": "Lagarta",
+ "descricao": "Cabeça de lagarta com olhos e antenas e um gomo do corpo, para repetir com Ctrl+D (Duplicar e repetir).",
+ "montagem": {
+  "comandos": [
+   {
+    "cmd": "criar",
+    "ref": "cab",
+    "tipo": "esfera",
+    "medidas": [17,17,17],
+    "params": {"passos":40},
+    "centro": [30,0,8.5],
+    "cor": "#7ac943",
+    "nome": "cabeça"
+   },
+   {
+    "cmd": "criar",
+    "ref": "o1",
+    "tipo": "esfera",
+    "medidas": [5,5,5],
+    "params": {"passos":24},
+    "centro": [32.2,-7.3,11.5],
+    "cor": "#ffffff",
+    "nome": "olho"
+   },
+   {
+    "cmd": "criar",
+    "ref": "o2",
+    "tipo": "esfera",
+    "medidas": [5,5,5],
+    "params": {"passos":24},
+    "centro": [37.2,-3.2,11.5],
+    "cor": "#ffffff",
+    "nome": "olho"
+   },
+   {
+    "cmd": "criar",
+    "ref": "p1",
+    "tipo": "esfera",
+    "medidas": [2.2,2.2,2.2],
+    "centro": [32.8,-9.6,11.9],
+    "cor": "#1d1f22",
+    "nome": "pupila"
+   },
+   {
+    "cmd": "criar",
+    "ref": "p2",
+    "tipo": "esfera",
+    "medidas": [2.2,2.2,2.2],
+    "centro": [39.2,-4.4,11.9],
+    "cor": "#1d1f22",
+    "nome": "pupila"
+   },
+   {
+    "cmd": "criar",
+    "ref": "a1",
+    "tipo": "cilindro",
+    "medidas": [1.4,1.4,9],
+    "rotacao": [0,18,0],
+    "centro": [30.5,-2.5,19.5],
+    "cor": "#3a7d2c",
+    "nome": "antena"
+   },
+   {
+    "cmd": "criar",
+    "ref": "a2",
+    "tipo": "cilindro",
+    "medidas": [1.4,1.4,9],
+    "rotacao": [0,-12,0],
+    "centro": [26.5,2.5,19.5],
+    "cor": "#3a7d2c",
+    "nome": "antena"
+   },
+   {
+    "cmd": "criar",
+    "ref": "b1",
+    "tipo": "esfera",
+    "medidas": [3.4,3.4,3.4],
+    "centro": [31.9,-2.5,24],
+    "cor": "#f7c511",
+    "nome": "ponta da antena"
+   },
+   {
+    "cmd": "criar",
+    "ref": "b2",
+    "tipo": "esfera",
+    "medidas": [3.4,3.4,3.4],
+    "centro": [25.6,2.5,24],
+    "cor": "#f7c511",
+    "nome": "ponta da antena"
+   },
+   {
+    "cmd": "agrupar",
+    "ids": ["$cab","$o1","$o2","$p1","$p2","$a1","$a2","$b1","$b2"],
+    "nome": "cabeça da lagarta"
+   },
+   {
+    "cmd": "criar",
+    "tipo": "esfera",
+    "medidas": [15,15,15],
+    "params": {"passos":40},
+    "centro": [19,0,7.5],
+    "cor": "#3fb34f",
+    "nome": "gomo"
+   }
+  ]
+ },
+ "projeto": {
+  "name": "Lagarta",
+  "grid": 1,
+  "workplane": {"w":255,"l":255,"h":255},
+  "objects": [
+   {
+    "id": "0n77ctm7",
+    "type": "group",
+    "name": "cabeça da lagarta",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [18.799999237060547,25.700000762939453,19.199999809265137],
+    "pos": [30.899999618530273,12.850000381469727,1.0999999046325684],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1],
+    "children": [
+     {
+      "id": "isa6c7uu",
+      "type": "sphere",
+      "name": "cabeça",
+      "color": "#7ac943",
+      "hole": false,
+      "params": {"steps":40},
+      "size": [17,17,17],
+      "pos": [-0.9,-4.35,-1.1],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "h97s8gs2",
+      "type": "sphere",
+      "name": "olho",
+      "color": "#ffffff",
+      "hole": false,
+      "params": {"steps":24},
+      "size": [5,5,5],
+      "pos": [1.3,-1.35,6.2],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "ux40hu9e",
+      "type": "sphere",
+      "name": "olho",
+      "color": "#ffffff",
+      "hole": false,
+      "params": {"steps":24},
+      "size": [5,5,5],
+      "pos": [6.3,-1.35,2.1],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "fsy3t5kh",
+      "type": "sphere",
+      "name": "pupila",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {"steps":24},
+      "size": [2.2,2.2,2.2],
+      "pos": [1.9,-0.95,8.5],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "nqqi70mx",
+      "type": "sphere",
+      "name": "pupila",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {"steps":24},
+      "size": [2.2,2.2,2.2],
+      "pos": [8.3,-0.95,3.3],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "di8phx9y",
+      "type": "cylinder",
+      "name": "antena",
+      "color": "#3a7d2c",
+      "hole": false,
+      "params": {"sides":20,"bevel":0},
+      "size": [1.4,9,1.4],
+      "pos": [-0.4,6.65,1.4],
+      "quat": [0,0,-0.15643446504023084,0.9876883405951378],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "wsxltw32",
+      "type": "cylinder",
+      "name": "antena",
+      "color": "#3a7d2c",
+      "hole": false,
+      "params": {"sides":20,"bevel":0},
+      "size": [1.4,9,1.4],
+      "pos": [-4.4,6.65,-3.6],
+      "quat": [0,0,0.10452846326765347,0.9945218953682733],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "gxvngs74",
+      "type": "sphere",
+      "name": "ponta da antena",
+      "color": "#f7c511",
+      "hole": false,
+      "params": {"steps":24},
+      "size": [3.4,3.4,3.4],
+      "pos": [1,11.15,1.4],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "9q68f96q",
+      "type": "sphere",
+      "name": "ponta da antena",
+      "color": "#f7c511",
+      "hole": false,
+      "params": {"steps":24},
+      "size": [3.4,3.4,3.4],
+      "pos": [-5.3,11.15,-3.6],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     }
+    ]
+   },
+   {
+    "id": "ser5sfp3",
+    "type": "sphere",
+    "name": "gomo",
+    "color": "#3fb34f",
+    "hole": false,
+    "params": {"steps":40},
+    "size": [15,15,15],
+    "pos": [19,7.5,0],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   }
+  ]
+ },
+ "malhas": {}
+}

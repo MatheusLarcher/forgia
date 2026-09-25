@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="300" viewBox="0 0 760 300" role="img" aria-label="Ilustração do aviso do Windows SmartScreen: clique em Mais informações e depois em Executar assim mesmo">
+<style>text{font-family:'Segoe UI',Verdana,sans-serif}</style>
+<rect width="760" height="300" rx="14" fill="#f3f5f7"/>
+<g transform="translate(24 24)">
+ <rect width="340" height="230" rx="6" fill="#0f5ea8"/>
+ <text x="22" y="46" font-size="21" fill="#fff" font-weight="600">O Windows protegeu o</text>
+ <text x="22" y="72" font-size="21" fill="#fff" font-weight="600">computador</text>
+ <text x="22" y="108" font-size="12.5" fill="#dce9f7">O SmartScreen do Windows impediu que um</text>
+ <text x="22" y="126" font-size="12.5" fill="#dce9f7">aplicativo desconhecido fosse iniciado…</text>
+ <text x="22" y="156" font-size="13" fill="#fff" text-decoration="underline">Mais informações</text>
+ <rect x="16" y="140" width="128" height="24" rx="4" fill="none" stroke="#f58220" stroke-width="3"/>
+ <circle cx="162" cy="152" r="13" fill="#f58220"/><text x="162" y="157" font-size="14" fill="#1b1e22" text-anchor="middle" font-weight="700">1</text>
+ <rect x="232" y="190" width="92" height="28" rx="3" fill="#ffffff" opacity=".9"/><text x="278" y="209" font-size="12.5" fill="#1b1e22" text-anchor="middle">Não executar</text>
+</g>
+<path d="M378 139h24" stroke="#56708a" stroke-width="3" stroke-linecap="round"/><path d="m396 131 10 8-10 8" fill="none" stroke="#56708a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(416 24)">
+ <rect width="320" height="230" rx="6" fill="#0f5ea8"/>
+ <text x="22" y="46" font-size="21" fill="#fff" font-weight="600">O Windows protegeu o</text>
+ <text x="22" y="72" font-size="21" fill="#fff" font-weight="600">computador</text>
+ <text x="22" y="108" font-size="12.5" fill="#dce9f7">Aplicativo: Forgia-Setup-0.1.0.exe</text>
+ <text x="22" y="126" font-size="12.5" fill="#dce9f7">Fornecedor: Fornecedor desconhecido</text>
+ <rect x="22" y="186" width="150" height="30" rx="3" fill="#ffffff"/><text x="97" y="206" font-size="12.5" fill="#1b1e22" text-anchor="middle">Executar assim mesmo</text>
+ <rect x="18" y="182" width="158" height="38" rx="5" fill="none" stroke="#f58220" stroke-width="3"/>
+ <circle cx="194" cy="201" r="13" fill="#f58220"/><text x="194" y="206" font-size="14" fill="#1b1e22" text-anchor="middle" font-weight="700">2</text>
+ <rect x="212" y="186" width="92" height="30" rx="3" fill="#ffffff" opacity=".9"/><text x="258" y="206" font-size="12.5" fill="#1b1e22" text-anchor="middle">Não executar</text>
+</g>
+<text x="380" y="284" font-size="12.5" fill="#6a727b" text-anchor="middle">Ilustração do aviso (não é captura de tela). O texto exato pode variar com a versão do Windows.</text>
+</svg>

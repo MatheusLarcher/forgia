@@ -1,0 +1,85 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (cena de dica)",
+ "nome": "Chaveiro com nome",
+ "descricao": "Placa, nome em relevo e o furo da argola ainda soltos (Agrupar com furo).",
+ "montagem": {
+  "comandos": [
+   {
+    "cmd": "criar",
+    "tipo": "caixa",
+    "medidas": [76,22,3],
+    "params": {"raio":1.5},
+    "centro": [4,0,null],
+    "base_z": 0,
+    "cor": "#1b8bd2",
+    "nome": "placa"
+   },
+   {
+    "cmd": "criar",
+    "tipo": "cilindro",
+    "medidas": [7,7,5],
+    "params": {"lados":40},
+    "furo": true,
+    "centro": [-27,0,null],
+    "base_z": 0,
+    "nome": "furo da argola"
+   },
+   {
+    "cmd": "criar",
+    "tipo": "texto",
+    "params": {"texto":"FORGIA"},
+    "medidas": [null,11,1.6],
+    "centro": [10,0,null],
+    "base_z": 3,
+    "cor": "#ffffff",
+    "nome": "nome"
+   }
+  ]
+ },
+ "projeto": {
+  "name": "Chaveiro com nome",
+  "grid": 1,
+  "workplane": {"w":255,"l":255,"h":255},
+  "objects": [
+   {
+    "id": "b72jt248",
+    "type": "box",
+    "name": "placa",
+    "color": "#1b8bd2",
+    "hole": false,
+    "params": {"radius":1.5,"steps":10},
+    "size": [76,3,22],
+    "pos": [4,1.5,0],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   },
+   {
+    "id": "jpz23slp",
+    "type": "cylinder",
+    "name": "furo da argola",
+    "color": "#f38a00",
+    "hole": true,
+    "params": {"sides":40,"bevel":0},
+    "size": [7,5,7],
+    "pos": [-27,2.5,0],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   },
+   {
+    "id": "v6f92g98",
+    "type": "text",
+    "name": "nome",
+    "color": "#ffffff",
+    "hole": false,
+    "params": {"text":"FORGIA"},
+    "size": [53.58,1.6,11],
+    "pos": [10,3.8,0],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   }
+  ]
+ },
+ "malhas": {}
+}

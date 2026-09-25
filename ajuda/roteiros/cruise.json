@@ -1,0 +1,22 @@
+{
+ "dica": "cruise",
+ "titulo": "Cruzeiro",
+ "cena": "boneco-de-neve",
+ "camera": {"alvo":[-4,0,32],"de":[108,-236,150]},
+ "selecionar": ["nariz"],
+ "cursor": {"recorte":[0.88,0.9]},
+ "passos": [
+  {"tecla":"C"},
+  {"esperar":200},
+  {"mover":{"seletor":".cruise-ball"},"ms":600},
+  {"apertar":true,"pausa":100},
+  {
+   "caminho": [{"mundo":[16,-22,5]},{"mundo":[10,-15.5,16]},{"mundo":[4.2,-13.3,43]},{"mundo":[0,-9.9,61.5]}],
+   "ms": 1700,
+   "foto": "no-rosto"
+  },
+  {"esperar":150},
+  {"soltar":true},
+  {"esperar":650}
+ ]
+}
