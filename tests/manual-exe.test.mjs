@@ -46,13 +46,15 @@ test('manual × Forgia.exe', { skip: !EXE && 'defina FORGIA_EXE com o Forgia.exe
       assert.equal(SCENARIOS.p1.check(st).ok, true, 'o próprio exemplo passa na conferência do pedido 1');
     });
 
-    await t.test('caixa com tampa da receita: folga de 0,2 mm por lado', async () => {
+    // Fase D: a receita usa a caixa paramétrica (caixa_com_tampa), com 0,25 mm por lado
+    await t.test('caixa com tampa da receita: folga de 0,25 mm por lado', async () => {
       await clear();
-      const src = lotes(SECTIONS.receitas).find((s) => s.includes('"tampo"'));
+      const src = lotes(SECTIONS.receitas).find((s) => s.includes('"caixa_com_tampa"'));
       await api('lote', JSON.parse(src));
       const check = SCENARIOS.p3.check(await api('estado', { filhos: true }));
       assert.equal(check.ok, true, JSON.stringify(check));
-      assert.deepEqual(check.folga.porLado, [0.2, 0.2]);
+      assert.deepEqual(check.folga.porLado, [0.25, 0.25]);
+      assert.deepEqual(check.medidas, [125, 40, 28]);
     });
 
     await t.test('chaveiro da receita: texto sobre a base e argola', async () => {

@@ -30,28 +30,40 @@ forgia/
 │   ├── ponte-comandos.js # comandos da IA (estado, criar, lote…) no sistema do usuário
 │   ├── ponte-codigo.js # Worker do código livre da IA (fachada forgia.*)
 │   ├── captura.js      # PNG da vista (IA e Marcar parte), com câmera temporária
-│   ├── statusbar.js    # barra de status: X/Y/Z da seleção, IA conectada, Conectar IA
+│   ├── statusbar.js    # barra de status: X/Y/Z da seleção, plano, IA conectada, Conectar IA, crédito
 │   ├── conectar.js     # diálogo Conectar IA
+│   ├── arquivo.js      # projeto em arquivo: .forgia, "•", Recentes, cópia de segurança, recuperação, migração
+│   ├── projeto.js      # formato .forgia (ZIP: projeto.json com versão + malhas + miniatura)
+│   ├── zip.js          # ZIP escrito à mão (CRC32 + CompressionStream 'deflate-raw') e leitura (fflate do three)
+│   ├── exportar3mf.js  # .3MF com uma peça por objeto e cor por basematerials (multicor/AMS)
+│   ├── lista.js        # lista de objetos (aba Objetos): árvore, olho, cadeado, renomear
+│   ├── encaixe.js      # Criar encaixe: bloco aberto em cima + cópia como furo com folga por forma
+│   ├── plano.js        # Plano de trabalho (tecla P): quadro da face, grade no plano, escolha da face
 │   ├── importar.js     # leitura de STL/OBJ/3MF (Importar e comando importar)
 │   ├── csg.js          # booleanas: sólidos − furos dentro de grupos
 │   ├── handles.js      # alças de manipulação e transferidor de rotação
 │   ├── edges.js        # contorno de seleção (arestas reais após CSG)
 │   ├── viewcube.js     # cubo de navegação
 │   ├── materials.js    # materiais de sólido e de furo (listrado)
-│   ├── thumbs.js       # miniaturas 3D da biblioteca
+│   ├── thumbs.js       # miniaturas 3D da biblioteca (forma, grupo pronto ou cena de várias peças)
+│   ├── biblioteca.js   # biblioteca em categorias: ícones, favoritos, Suas criações
+│   ├── iniciantes.js   # os projetos Iniciantes (public/iniciantes/*.json) como itens da biblioteca
+│   ├── geradores/      # Hardware e Geradores de forma: geometria pura, em mm (index.js = registro)
 │   ├── gpu.js          # cria os renderizadores WebGL (GPU forte → software → aviso)
 │   ├── threemf.js      # leitor de .3MF (inclui extensão de produção do Bambu)
 │   ├── icons.js        # ícones SVG (copiados do Lucide + próprios do Forgia)
 │   └── style.css       # estilos; toda cor da interface vem de variável do tema
 ├── electron/
 │   ├── main.cjs        # janela do programa desktop
-│   ├── preload.cjs     # preload mínimo: só a ponte da IA (contextBridge)
+│   ├── preload.cjs     # preload mínimo: a ponte da IA e o projeto em arquivo (contextBridge)
+│   ├── projeto.cjs     # .forgia por diálogo, Recentes, cópia de segurança em pasta fixa, pergunta ao fechar
 │   ├── ponte.cjs       # ponte da IA no processo main (ponte.json, IPC, arquivos)
 │   ├── ponte-servidor.cjs # servidor HTTP da ponte (Node puro, testado sem Electron)
 │   └── mcp/            # servidor MCP (vai para resources\mcp, fora do asar)
 │       ├── forgia-mcp.cjs  # JSON-RPC stdio escrito à mão
 │       ├── ferramentas.cjs # ferramentas forgia_* (tools/list)
 │       └── manual.cjs      # instructions (≤ 2 KB) e forgia_manual por seção
+├── public/iniciantes/  # chaveiro, suporte de celular, caixa com tampa, boneco de neve, foguete (JSON)
 ├── gerar_setup.bat     # gera o instalador do Windows com dois cliques
 └── vite.config.js
 ```
@@ -65,14 +77,14 @@ seus filhos. As malhas three.js são **derivadas** desses dados.
 Isso permite que:
 
 - o **histórico** (desfazer/refazer) seja uma pilha de snapshots em JSON;
-- o **salvamento** seja apenas gravar esse JSON no `localStorage` (`forgia.design.v1`);
+- o **salvamento** seja gravar esse JSON (`editor.projectData()`: `{ name, objects, grid,
+  workplane }`) no arquivo `.forgia` e na cópia de segurança (veja *Projeto em arquivo*);
 - a cena seja reconstruída a qualquer momento a partir dos dados (`sync`).
 
-Malhas importadas (STL/OBJ/3MF) são guardadas à parte (`forgia.meshes.v1`) e referenciadas pelos
-objetos. Se não couberem no armazenamento, o usuário é avisado.
-
-No programa, esse `localStorage` fica na pasta de dados do Forgia (`%APPDATA%\Forgia`, pelo nome
-do produto). No `npm run dev`, fica no navegador usado para desenvolver, separado do programa.
+Malhas importadas (STL/OBJ/3MF) ficam à parte, na memória (`getMesh`/`setMesh` de `shapes.js`), e
+são referenciadas pelos objetos (`params.ref`). Vão para o `.forgia` e para a cópia de segurança
+como binário; até a Fase C ficavam no `localStorage` (`forgia.design.v1`, `forgia.meshes.v1`), que
+hoje só se usa no `npm run dev` e na migração.
 
 ## Fluxo de uma alteração
 
@@ -84,7 +96,7 @@ editor.change(fn)  ── altera os objetos (dados)
         │
         ├─► empilha snapshot no histórico
         ├─► sync(): recria/atualiza as malhas da cena
-        ├─► save(): grava no localStorage
+        ├─► save(): emite 'persist' ──► src/arquivo.js: "•" no título e cópia de segurança (~0,4 s)
         └─► emite eventos ('selection', 'history'…) ──► UI atualiza inspetor e botões
 ```
 
@@ -100,8 +112,52 @@ escalada para o tamanho em mm do objeto, com normais vincadas para manter aresta
 suaves.
 
 Para adicionar uma forma nova: crie a entrada em `SHAPES`, ponha o nome em `t.formas.nomes` (e os
-rótulos de parâmetros novos em `t.formas.params`) e inclua o tipo na lista `BASIC` de `ui.js`
-para ela aparecer na biblioteca.
+rótulos de parâmetros novos em `t.formas.params`) e inclua o tipo na lista `BASIC` de
+`src/biblioteca.js` para ela aparecer em *Formas básicas*.
+
+### Hardware e Geradores (`src/geradores/`)
+
+Os geradores são funções puras (parâmetros → `BufferGeometry` em mm, fechada e centrada) com
+descritores em `GERADORES` (`src/geradores/index.js`): categoria (`hardware`/`geradores`), nome na
+ponte, cor, se nasce como furo, parâmetros (`number`, `choice`, `toggle`, `text`, com limites e
+opções) e `size(params)`. O `shapes.js` registra cada um como um tipo de `SHAPES` (laço no fim do
+arquivo) com `generator: true`, `category` e `sizeFor` = o tamanho natural: a geometria sai no
+tamanho natural e `normalizeTo` não deforma nada. Daí em diante é uma forma como as outras
+(biblioteca, inspetor, CSG, `.forgia`, 3MF, ponte). Pontos da integração:
+
+- **Medidas acompanham os parâmetros**: mudar um parâmetro (inspetor, `editor.setParam`, ou
+  `alterar` da ponte sem `medidas`) refaz o tamanho natural, mantendo a base no lugar.
+- **Listas**: `choice`/`toggle` viram `<select class="param-select">` no inspetor, com rótulos
+  de `t.formas.opcoes[optionsKey]`; na ponte, o valor aceita o nome (`rosca: "real"`).
+- **Dica da peça**: `t.formas.dicas[tipo]` no inspetor (`.insp-dica`); porca e parafuso com
+  rosca real abaixo de M4 ganham o destaque `.aviso`.
+- **Furo por padrão**: `furo_parafuso`/`furo_inserto` nascem como furo (`hole` do descritor), na
+  biblioteca e no `criar` da ponte, se o pedido não disser `furo`.
+- Os textos vieram de `TEXTOS_SUGERIDOS` do gerador para `t.formas` (nomes, parâmetros, opções,
+  dicas); `tests/geradores.test.mjs` confere que continuam iguais.
+
+## Biblioteca (`src/biblioteca.js`)
+
+`Library` monta os itens de cada categoria (`CATEGORY_ORDER`): *Suas criações*, *Favoritos*,
+*Formas básicas* (`BASIC`), *Letras e números*, *Iniciantes do projeto*, *Hardware* e
+*Geradores de forma* (os tipos de `SHAPES` com essa `category`). Cada item tem `key`
+(`categoria:tipo`), `label` e `spec` para `editor.startPlacing` — uma forma (`{ type, params }`)
+ou um objeto pronto (`{ object, meshes }`, grupos inteiros). O seletor (`#lib-category`, menu
+`#menu-categorias`) mostra um ícone por categoria, renderizado por `thumbs.js` (cenas pequenas
+do próprio Forgia).
+
+- **Favoritos**: estrela em cada bloco (`.tile-fav`); as chaves ficam em
+  `localStorage['forgia.favoritos']`.
+- **Suas criações**: `Library.creationObject(sel)` junta a seleção numa peça (a forma sozinha,
+  sem giro, ou um grupo novo, centrado em X/Y) e grava como `.forgia` (o mesmo formato de
+  `projeto.js`, com as malhas importadas). No desktop vai pela IPC `criacoes:*` de
+  `electron/projeto.cjs` para a pasta fixa `<userData>\criacoes\<id>.forgia`, com o nome em
+  `indice.json` (o renderer só manda bytes e nome; o main escolhe o caminho). No `npm run dev`,
+  `localStorage['forgia.criacoes']`. Renomear e excluir pelos botões do bloco.
+- **Iniciantes**: `public/iniciantes/*.json`, um grupo por arquivo (centrado, na mesa), importados
+  por `src/iniciantes.js` (entram no build do Vite). Foram gerados no Forgia pela ponte
+  (`tests/gerar-iniciantes.mjs`).
+- **Miniaturas**: `thumbsFor(items)` renderiza numa leva só as que faltam e guarda por `key`.
 
 ### Forma `desenho` (`outline.js`)
 
@@ -349,8 +405,9 @@ agente de IA ──stdio (JSON-RPC)──► Forgia.exe + ELECTRON_RUN_AS_NODE=1
 - Respostas JSON `{ ok, ... }`: 200 feito; 422 recusado pelo editor (erro que ensina, com
   `validos` e `exemplo`); 409 ocupado; 401/403/404/405/413/503 para o resto.
 - A página **não ganha disco**: `importar` lê o arquivo no main (`.stl/.obj/.3mf`, até 200 MB) e
-  entrega os bytes; `exportar_stl` recebe o STL da página e grava no main, só em caminho absoluto
-  `.stl` mandado pelo agente (dono do token). A sessão da janela cancela `http(s)`/`ws(s)`: o
+  entrega os bytes; `exportar_stl` e `exportar_3mf` recebem os bytes da página e o main grava, só
+  em caminho absoluto `.stl`/`.3mf` (conforme o comando, tabela `EXPORTS` de `electron/ponte.cjs`)
+  mandado pelo agente (dono do token), numa pasta que já existe; os bytes não voltam ao agente. A sessão da janela cancela `http(s)`/`ws(s)`: o
   Forgia é offline e o código livre não alcança a rede.
 - `electron/preload.cjs` expõe só `window.forgiaPonte` (`aoPedido`, `responder`, `configurar`,
   `info`, `aoEstado`, `copiar`); `contextIsolation` e `sandbox` ligados, `nodeIntegration`
@@ -385,7 +442,17 @@ agente de IA ──stdio (JSON-RPC)──► Forgia.exe + ELECTRON_RUN_AS_NODE=1
   partes…), objetos e seleção voltam ao snapshot e nada entra no histórico. A pilha de desfazer é
   uma só para IA e usuário.
 - `lote`: lista de comandos `{ cmd, ...args }` (ou `{ cmd, args }`) aplicada como **um** passo;
-  `ref` em `criar`/`agrupar`/`duplicar`/`importar` e `"$ref"` nos ids seguintes.
+  `ref` em `criar`/`agrupar`/`duplicar`/`importar`/`criar_encaixe` e `"$ref"` nos ids seguintes.
+- `criar_encaixe { id, folga, margem, nome, ref }` chama `createFit` (`src/encaixe.js`, o mesmo do
+  botão): devolve o grupo, o bloco e a cópia em `criados`/`objetos`, e em `encaixes` a folga, a
+  margem e `folga_exata`; folga aproximada vira `avisos`. Vale sozinho ou no lote. (`encaixe.js`
+  importa quadros e `renormalize` daqui: o ciclo de módulos é seguro porque os dois lados só se
+  usam dentro de funções.)
+- `exportar_3mf { caminho, ids }` monta o 3MF com `build3MF` (`src/exportar3mf.js`, o mesmo do
+  menu Exportar) e devolve `objetos`, `pecas` (nome e triângulos) e `cores`.
+- Hardware e geradores são tipos de `criar`/`alterar` como os outros; sem `medidas`, o tamanho sai
+  dos parâmetros (`sizeFor`), e `formas` traz `categoria`, `opcoes`/`valores`,
+  `medidas_automaticas` e `nasce_como_furo`.
 - **Ocupado**: com o usuário arrastando (`editor.drag`) ou colocando forma (`editor.placing`),
   comando que altera volta 409 e nada muda. Os pedidos são atendidos um de cada vez.
 - **Como a IA aparece**: aviso no canto da vista "IA: criou 2, alterou 1 · Desfazer" por ~6 s
@@ -435,23 +502,28 @@ conteúdo `image` (PNG base64).
   `forgia_alterar`, `forgia_excluir`, `forgia_agrupar`, `forgia_desagrupar`, `forgia_alinhar`,
   `forgia_espelhar`, `forgia_soltar_na_mesa`, `forgia_selecionar`, `forgia_duplicar`,
   `forgia_lote`, `forgia_captura`, `forgia_medir`, `forgia_marcacoes`, `forgia_exportar_stl`,
-  `forgia_importar`, `forgia_desfazer`, `forgia_refazer`, `forgia_executar_codigo` e
-  `forgia_manual` (respondida pelo próprio servidor, funciona com o Forgia fechado).
+  `forgia_exportar_3mf`, `forgia_criar_encaixe`, `forgia_importar`, `forgia_desfazer`,
+  `forgia_refazer`, `forgia_executar_codigo` e `forgia_manual` (respondida pelo próprio servidor,
+  funciona com o Forgia fechado) — 24 ao todo.
 
 ### Manual da IA (`electron/mcp/manual.cjs`)
 
 Não há skill à parte: o manual vive no servidor MCP e acompanha a versão instalada. Três lugares:
 
-1. **`instructions`** do `initialize` (1.337 bytes; o Claude Code corta em ~2 KB e injeta em
+1. **`instructions`** do `initialize` (1.619 bytes; o Claude Code corta em ~2 KB e injeta em
    **toda** conversa, então só o essencial): o que é o Forgia, coordenadas, "monte num
    `forgia_lote`", "confira pelo retorno, não pela imagem", "leia `forgia_manual` antes da primeira
-   modelagem", marcações e a regra do código livre só em último caso. O limite é conferido em
-   `tests/mcp-manual.test.mjs`.
+   modelagem", hardware e geradores como tipos do `forgia_criar` (medidas saem dos params),
+   `forgia_criar_encaixe` e `forgia_exportar_3mf`, marcações e a regra do código livre só em
+   último caso. O limite é conferido em `tests/mcp-manual.test.mjs`.
 2. **Descrição de cada ferramenta e parâmetro** (`ferramentas.cjs`), com unidade e exemplo.
-3. **`forgia_manual`**: sem seção, o **guia rápido** (medidas de cada forma, posição, furos e um
-   exemplo de lote completo, numa chamada só); com seção, o detalhe: `coordenadas`, `receitas`
-   (chaveiro, caixa com tampa, padrão em círculo, furo de lado, peça orgânica por `importar`),
-   `impressao` (paredes, texto, folgas, parafusos, balanços), `marcacoes`, `codigo_livre` e `erros`.
+3. **`forgia_manual`**: sem seção, o **guia rápido** (medidas de cada forma, hardware e
+   geradores, posição, furos e um exemplo de lote completo, numa chamada só); com seção, o
+   detalhe: `coordenadas`, `receitas` (chaveiro, caixa com tampa pela `caixa_com_tampa`, furo M3
+   com porca numa parede lateral, par de engrenagens, encaixe, porca no parafuso, exportar 3MF,
+   padrão em círculo, furo de lado, peça orgânica por `importar`), `impressao` (paredes, texto,
+   folgas, parafusos, rosca real só de M4 para cima, balanços), `marcacoes`, `codigo_livre` e
+   `erros`.
 
 Foi escrito como skill, com o método das skills de criação de skill (`writing-skills`,
 `skill-creator`): linha de base dos pedidos de teste 1–4 **sem** o manual, falhas anotadas
@@ -459,7 +531,12 @@ Foi escrito como skill, com o método das skills de criação de skill (`writing
 largura), receitas positivas para essas falhas e a regra de disciplina (código livre) explícita,
 com o que **não** a justifica. As regras de impressão vêm da skill `3d-print-modeling`. Todo
 exemplo de lote do manual roda no exe (`tests/manual-exe.test.mjs`) e os pedidos de teste rodam
-com um agente real (`tests/agente-real.mjs`, números em `docs/fase-c-evidence/agente/`).
+com um agente real (`tests/agente-real.mjs`, números em `docs/fase-c-evidence/agente/`). Na Fase D
+as receitas novas foram escritas para os pedidos 3, 5 e 6 e para o encaixe, conferidas no exe
+(`tests/ia-fase-d-exe.test.mjs`: cada lote das receitas roda e bate com o "Confira no retorno",
+inclusive as engrenagens sem sobreposição) e rodadas com o agente real
+(`node tests/agente-real.mjs --pedido=p5 --evidencias=fase-d-evidence …`; conferências em
+`tests/agente-pedidos.mjs`, números em `docs/fase-d-evidence/agente/`).
 
 ### Conectar IA (`src/conectar.js`)
 
@@ -484,8 +561,143 @@ exe, guarda o texto de cada agente e roda o `claude mcp add` gerado no Git Bash 
 ### Barra de status (`src/statusbar.js`)
 
 X/Y/Z do centro e medidas da seleção (uma peça: o mesmo cálculo do `forgia_estado`; várias: a
-caixa de todas), o indicador da IA (`conectada` até 10 min depois do último pedido, `pronta`,
-`desligada`, `indisponivel`) e o botão **Conectar IA**.
+caixa de todas, com "N selecionadas"), o rótulo *Plano de trabalho* quando ele está ativo, o
+indicador da IA (`conectada` até 10 min depois do último pedido, `pronta`, `desligada`,
+`indisponivel`), o botão **Conectar IA** e, na ponta direita, o crédito **por LarcherTech**
+(`#statusbar a.credit`, HTML fixo; saiu do pé da biblioteca e continua no *Sobre*).
+
+## Projeto em arquivo (`.forgia`)
+
+Decisão `dec-salvar-arquivo`: **Ctrl+S + cópia de segurança automática**, como Word e Blender.
+
+```
+página: src/arquivo.js ── window.forgiaProjeto (preload) ── IPC ──► main: electron/projeto.cjs
+   bytes do .forgia, projeto da cópia                              diálogos, caminho atual,
+   (nunca um caminho para gravar)                                  Recentes, pastas fixas
+```
+
+- **Formato** (`src/projeto.js`): ZIP com `projeto.json` = `{ formato: 'forgia.projeto', versao: 1,
+  app, salvoEm, projeto: editor.projectData(), malhas: { <ref>: { arquivo, triangulos } } }`,
+  `malhas/<ref>.bin` (Float32 little-endian, triângulos soltos, Y para cima) e `miniatura.png`
+  (captura iso 256 px). `versao` muda só quando um campo muda de sentido; arquivo de versão mais
+  nova é recusado com mensagem; malha que falta vira caixa, com aviso. Abrir valida os objetos com
+  `validateProject` (o mesmo dos comandos da IA).
+- **ZIP sem dependência** (`src/zip.js`): cabeçalho local, diretório central e fim escritos à mão,
+  CRC32 por tabela, compressão `CompressionStream('deflate-raw')` (método 8) só quando diminui
+  (senão método 0), nomes UTF-8 (bit 11). A leitura usa o `unzipSync` do fflate que vem dentro do
+  three.js (o mesmo do leitor de 3MF).
+- **Segurança do preload**: a página manda **bytes**, nunca caminho. Salvar grava no arquivo atual
+  (guardado no main) ou abre o `showSaveDialog`; Abrir usa o `showOpenDialog`, um índice dos
+  Recentes (lista do main, `<userData>\recentes.json`, 5 itens) ou o arquivo que o Windows mandou
+  (argumento do exe na associação `.forgia`, também na segunda instância). O arquivo lido só vira o
+  atual quando a página confirma que o leu (`adotar(id)`): um arquivo estragado nunca é
+  sobrescrito por engano. A cópia de segurança grava só em `<userData>\recuperacao\`
+  (`%APPDATA%\Forgia\recuperacao`): `projeto.json` (projeto + nome, arquivo, sujo, data) e
+  `malhas\<ref>.bin`, com gravação atômica (arquivo temporário + rename); refs só `[A-Za-z0-9_-]`.
+- **Cópia de segurança a cada alteração**: `editor.save()` emite `persist`; ~0,4 s depois a página
+  manda o JSON do projeto e só as malhas que o main ainda não tem (o main devolve as que ficaram).
+- **"•"**: sujo = o JSON do projeto difere do salvo (ou aberto); desfazer até o salvo tira o "•".
+  Projeto que nunca foi salvo fica sujo quando tem peças. Título: `nome • — Forgia`; ao lado do nome
+  do projeto, o arquivo com "•".
+- **Abertura** (`startDesktop`): cópia com arquivo e suja → "Há alterações não salvas de X
+  (data/hora). Recuperar?" (Recuperar / Descartar, que reabre o arquivo salvo); cópia sem arquivo →
+  volta sozinha, como antes; "Não salvar" da última vez → reabre o arquivo; arquivo pedido pelo
+  Windows com cópia valiosa → pergunta antes (Recuperar / Descartar e abrir). A ponte da IA só
+  atende depois que o projeto chegou (`Ponte(editor, arquivo.ready)`).
+- **Fechar**: o main segura o `close` e pergunta à página, que responde na hora (`fechando`) e
+  mostra *Salvar / Não salvar / Cancelar* se houver alteração. Sem resposta em 2 s (página
+  travada), fecha. *Não salvar* num projeto com arquivo descarta a cópia (a próxima abertura vale o
+  arquivo); num projeto sem arquivo a cópia fica (ele volta). Trocar de projeto (Novo, Abrir,
+  Recentes, Windows) com alteração pergunta o mesmo.
+- **Migração** (primeira abertura desta versão): sem cópia de segurança e com `forgia.design.v1` no
+  `localStorage`, o projeto e as malhas de `forgia.meshes.v1` viram o projeto atual e a cópia é
+  gravada na hora; as chaves antigas ficam como estão (`forgia.migrado.v1` marca a data).
+- **npm run dev** (sem preload): o projeto continua no `localStorage` como antes; Salvar baixa o
+  `.forgia` e Abrir usa o seletor de arquivo do navegador.
+
+## Exportar 3MF (`src/exportar3mf.js`)
+
+Decisão `dec-exportar-3mf`, fonte <https://wiki.bambulab.com/en/bambu-studio/Standard-3MF-File-Color-Parsing>.
+3MF core (`http://schemas.microsoft.com/3dmanufacturing/core/2015/02`), `unit="millimeter"`:
+
+- um `<object type="model">` por peça do topo, com o nome da peça e a malha da cena (grupos já
+  resolvidos pela booleana); furos soltos e ocultos não saem;
+- `<basematerials>`: cada cor distinta vira um `<base displaycolor="#RRGGBB">`, **na ordem em que
+  aparece no projeto** (o Bambu liga grupo de cor → slot do AMS pela ordem); peça de uma cor leva
+  `pid`/`pindex` no objeto, grupo multicolorido leva `pid`/`p1` por triângulo;
+- vértices compartilhados (iguais até 0,0001 mm; triângulo degenerado sai), Z para cima (sistema do
+  usuário), no centro da peça com a base em z = 0; a posição vai no `<item transform>`, com a origem
+  no canto da mesa (X + largura/2, Y + comprimento/2), como a mesa dos fatiadores;
+- ZIP com `[Content_Types].xml`, `_rels/.rels` e `3D/3dmodel.model` (o mesmo `src/zip.js`).
+
+Botão *Exportar > .3MF (cores e peças separadas)*, para *Tudo* ou *Selecionadas*. Ida e volta: o
+leitor `src/threemf.js` reimporta com as mesmas medidas (`tests/projeto-exe.test.mjs`).
+
+## Plano de trabalho (`src/plano.js`, tecla P)
+
+Decisões `amb-plano-trabalho` e `dec-atalhos-novos` (P, não W). `editor.wplane` é um
+`WorkplaneFrame` (origem = ponto clicado, y local = normal da face, x = aresta da borda da face
+plana mais perto do clique — `surface.nearestEdgeDir`, pela topologia do `surface.js` — e z = x × y;
+sem aresta, o X da mesa projetado). É **temporário**: fica fora do projeto, do histórico e da cópia
+de segurança, e `loadProject` o limpa. `P`/botão: com plano ativo volta à mesa; senão liga a
+ferramenta `workplane` (escolha da face com o verde do Cruzeiro; clique na mesa = mesa).
+
+Tudo que supunha a mesa passa pelo quadro **só quando `wplane` existe** (modo normal intocado):
+
+- colocação (`updatePlacing`): o plano é o chão quando o raio o pega antes de outra peça (ou pega a
+  própria face): giro = giro do plano, base no plano, x/z na grade do plano (`snapPoint`);
+- arraste (`startMoveDrag`): plano paralelo ao de trabalho pelo ponto clicado, passo da grade nos
+  eixos dele; setas (`nudge`) nos eixos do plano (dy = normal); cone de elevar pela normal;
+  `Shift+D` (`dropToWorkplane`) e a cota de elevação (`e`) usam `planeExtent` (altura mínima dos
+  vértices sobre o plano, em cache como `worldBox`);
+- várias peças: `getFrame` devolve a caixa delas nos eixos do plano, e `applyFrame` escala nos
+  eixos do quadro (com a mesa, o giro do quadro é nulo e a conta é a de antes);
+- barra de status: centro relativo ao plano (`toUser`: X = x, Y = −z, Z = normal) e o rótulo
+  `#sb-plano`; as medidas continuam as das peças.
+
+Desenhar, Medir, Cruzeiro, Marcar parte e a IA continuam na mesa (sistema único do usuário).
+Grade: linhas de 1 e 10 mm (±100 mm) e uma placa translúcida, cores do tema (`theme.watch`).
+Roteiro sem regressão: `tests/plano-exe.test.mjs` roda o mesmo roteiro do modo normal no exe da Fase C
+e no novo e compara os números.
+
+## Criar encaixe (`src/encaixe.js`)
+
+Decisão `amb-encaixe-folga`. `createFit(ed, peça, { folga = 0,25, margem = 3, names })` roda num
+`editor.batch` (um desfazer): bloco `box` = caixa da peça no mundo + margem nos lados e embaixo,
+com o topo 0,01 mm abaixo do topo da peça (a cópia com folga sempre atravessa: **aberto em cima**)
+e a cópia da peça como furo, agrupados, ao lado da peça (+X, 10 mm) e com o bloco na mesa.
+
+A folga é **por forma** (`growShape(o, f, fatores)`; as formas são unitárias esticadas pelo
+`size`, então a folga vira medida e parâmetro):
+
+| Forma | Conta |
+|---|---|
+| caixa | `size + 2f`; arredondada: raio + f e 20 passos (≥ 98,5% de f no canto facetado) |
+| cilindro, polígono | faces laterais afastadas f pelo **apótema** do lathe de n lados (não pelo canto); chanfro + f |
+| esfera | `size + 2f / cos(π/passos)` |
+| cunha, telhado | o triângulo do perfil cresce em volta do **incentro** por (ρ + f)/ρ (cada lado se afasta f); o centro anda o que o incentro manda |
+| cone | lateral afastada f na perpendicular (× 1/cos(π/n)): raio da base e do topo recalculados, altura + 2f |
+| pirâmide | ápice sobe f / sen β, base desce f, mesma inclinação |
+| tubo | parede cresce e o furo de dentro encolhe f |
+| toroide | diâmetro, altura e espessura do anel + 2f: o furo do meio encolhe f |
+| grupo | sólidos crescem f, furos encolhem f (recursivo), `renormalize` recentra |
+| demais (malha, contornos, texto, curvas) | `size + 2f` (escala por eixo) → aviso "folga aproximada" |
+
+A folga de cada forma exata é **medida na geometria** em `tests/encaixe.test.mjs`: todo vértice da
+original fica a ≥ f (e perto de f) dos planos das faces da cópia. O deslocamento de malha de
+verdade (manifold-3d, `sug-manifold-offset`) ficou para depois e exigiria uma dependência.
+
+## Lista de objetos (`src/lista.js`)
+
+Aba **Objetos** do painel lateral (abas `.side-tab`, `#tab-biblioteca`/`#tab-objetos`, com a
+contagem `#obj-count`): árvore de `editor.objects` com grupos e partes, inclusive ocultos
+(esmaecidos) e bloqueados, e o que a IA criou. Clique seleciona (Shift/Ctrl somam; numa parte,
+seleciona o grupo do topo, porque a seleção do editor é só do topo); olho, cadeado e duplo clique
+no nome mudam `hidden`/`locked`/`name` de um objeto de qualquer nível num `editor.change` (um
+desfazer). Ocultar uma parte muda a booleana: `renormalize` (o mesmo dos comandos da IA) mantém o
+resto do grupo no lugar; a última parte visível não se oculta. A árvore só é refeita quando muda o
+que ela mostra (assinatura de ids, nomes, tipos, oculto, bloqueado, cor e seleção), nunca a cada
+quadro de arraste.
 
 ### Testes
 
@@ -496,16 +708,40 @@ caixa de todas), o indicador da IA (`conectada` até 10 min depois do último pe
   lote e desfazer, parte de grupo, código livre com erro, laço infinito e projeto inválido,
   Permitir IA, ocupado, captura minimizada, exportar/importar, fechar e reabrir). Evidências em
   `docs/fase-c-evidence/ponte/` (fora do Git). Sem `FORGIA_EXE`, o teste é pulado.
+- `node --test tests/arquivo-formatos.test.mjs`: ZIP (CRC32 contra o zlib, deflate e store),
+  3MF (objetos, ordem das cores, vértices compartilhados, transform) e `.forgia` (ida e volta,
+  versão mais nova recusada, malha que falta).
+- `FORGIA_EXE=release\fase-d\win-unpacked\Forgia.exe FORGIA_PERFIL_ANTIGO=<pasta> node --test
+  tests/projeto-exe.test.mjs`: migração de um perfil preparado com o exe da Fase C
+  (`tests/migracao-antiga.mjs`), `.forgia` com malha > 5 MB salvo pelo diálogo real do Windows
+  (preenchido pela UI Automation, `fileDialog` em `tests/forgia-exe.mjs`), "•", fechar pelo X
+  (WM_CLOSE) com Cancelar e Não salvar, Recentes, Ctrl+O, matar o processo e recuperar/descartar,
+  abrir pelo argumento (associação de arquivo), 3MF reimportado, lista de objetos e barra de status.
 - `FORGIA_EXE=… node --test tests/marcar-exe.test.mjs`: Marcar parte com mouse e teclado reais
   (realce da parte, alfinete na aba e na parede do furo dentro de um grupo, Enter copia texto +
   imagem conferidos na área de transferência do Windows, fora do projeto e do desfazer,
   `forgia_marcacoes`, captura com alfinetes, some ao excluir, Limpar marcações).
+- `FORGIA_EXE=… node --test tests/ia-fase-d-exe.test.mjs`: pelo MCP do exe, `forgia_criar_encaixe`
+  (0,25 mm, um desfazer, no lote com `$ref`, aviso de folga aproximada, erros que ensinam),
+  `forgia_exportar_3mf` (gravado pelo main, uma peça por objeto e as cores, reimportado com as
+  mesmas medidas; caminho relativo, extensão errada e pasta inexistente recusados), hardware e
+  geradores pelo `forgia_criar` e cada receita do manual conferida no exe.
+- `node --test tests/biblioteca.test.mjs`: geradores como tipos de `SHAPES` (nome, rótulos,
+  geometria no tamanho natural), porca M3/M8 nas medidas ISO 4032, catálogo da IA (nomes da
+  ponte, opções por nome, furo por padrão) e os 5 Iniciantes como projetos válidos.
+- `FORGIA_EXE=… node --test tests/biblioteca-exe.test.mjs`: as 7 categorias com ícone, cada
+  Iniciante arrastado para a mesa, favoritos e Suas criações (salvar, reabrir o Forgia, usar,
+  renomear, excluir), porca M3 no parafuso M3 (volume da união = soma; meio passo fora colide),
+  engrenagens z20 × z12 engrenadas (e a contraprova sem o meio dente), 3MF de todos os geradores
+  com cada objeto fechado e relido. Evidências em `docs/fase-d-evidence/biblioteca/`.
 
 ## Desktop (Electron)
 
 `electron/main.cjs` abre uma janela sem menu que carrega `dist/index.html`. Por isso o Vite usa
 `base: './'` (caminhos relativos, que funcionam via `file://`). Há trava de instância única:
-abrir o programa de novo apenas foca a janela existente. Links `http(s)` que pedem janela nova,
+abrir o programa de novo apenas foca a janela existente (e, se veio com um `.forgia` no argumento,
+pede à página para abri-lo). O instalador associa a extensão `.forgia` ao Forgia
+(`build.fileAssociations` do electron-builder, ícone do Forgia). Links `http(s)` que pedem janela nova,
 como o crédito da LarcherTech, abrem no navegador padrão (`setWindowOpenHandler`), não dentro do
 programa.
 

@@ -6,6 +6,7 @@ import { gpuInfo, GpuUnavailableError } from './gpu.js';
 import { theme } from './theme.js';
 import { Ponte } from './ponte.js';
 import { StatusBar } from './statusbar.js';
+import { Arquivo } from './arquivo.js';
 
 // Sem WebGL algum: explica no lugar do 3D em vez de deixar a tela em branco
 function showGpuFailure(viewport) {
@@ -28,13 +29,16 @@ applyTexts();
 const viewport = document.getElementById('viewport');
 try {
   const editor = new Editor(viewport);
-  // ponte da IA (só existe no Electron, pelo preload) e barra de status
-  const ponte = new Ponte(editor);
-  const ui = new UI(editor, ponte);
+  // projeto em arquivo e cópia de segurança (src/arquivo.js); a ponte da IA só atende depois que
+  // o projeto chegou (recuperação, migração do localStorage antigo ou .forgia pedido pelo Windows)
+  const arquivo = new Arquivo(editor);
+  const ponte = new Ponte(editor, arquivo.ready);
+  const ui = new UI(editor, ponte, arquivo);
   new StatusBar(editor, ponte, { onConnect: () => ui.connectDialog() });
   if (gpuInfo.mode === 'software') ui.toast(t.avisos.modoSoftware);
   // acesso para depuração no console
-  window.forgia = { editor, ui, gpu: gpuInfo, theme, ponte };
+  window.forgia = { editor, ui, gpu: gpuInfo, theme, ponte, arquivo };
+  arquivo.start(ui);
 } catch (err) {
   if (!(err instanceof GpuUnavailableError)) throw err;
   console.error(err.cause || err);

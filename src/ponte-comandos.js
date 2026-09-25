@@ -5,6 +5,12 @@ import { groupResult, aliasGroupResult, objectMatrix } from './csg.js';
 import { toUser, fromUser, boxToUser } from './coords.js';
 import { prepareOutline } from './outline.js';
 import { parseModel, ImportError } from './importar.js';
+import { GERADORES, TEXTOS_SUGERIDOS } from './geradores/index.js';
+import { t } from './textos/index.js';
+import { build3MF } from './exportar3mf.js';
+// encaixe.js também importa daqui (quadros e renormalize): o ciclo é seguro porque os dois lados
+// só usam o outro dentro de funções, nunca ao carregar o módulo
+import { createFit, FOLGA_PADRAO, MARGEM_PADRAO, FOLGA_MAX } from './encaixe.js';
 
 // Comandos da ponte da IA, no sistema do usuário (src/coords.js): mm, Z para cima, X para a direita,
 // Y para o fundo, origem no centro da mesa; posição = centro do objeto; rotação em graus [X, Y, Z]
@@ -46,6 +52,8 @@ export const TYPE_NAMES = {
   paraboloid: 'paraboloide', torus: 'toroide', tube: 'tubo', star: 'estrela', heart: 'coracao',
   icosahedron: 'icosaedro', desenho: 'desenho', mesh: 'importado', group: 'grupo',
 };
+// Hardware e Geradores (src/geradores/): o nome na ponte vem do próprio gerador (porca, engrenagem…)
+for (const [type, g] of Object.entries(GERADORES)) TYPE_NAMES[type] = g.bridge;
 const CREATABLE = Object.keys(TYPE_NAMES).filter((k) => k !== 'mesh' && k !== 'group');
 const norm = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().replace(/[\s-]+/g, '_');
 const FROM_NAME = {};
@@ -93,10 +101,21 @@ const PARAMS = {
   icosahedron: { detalhe: P('detail', '', 'subdivisões') },
   desenho: { pontos: P('points', 'mm', 'contorno fechado [[X, Y], ...] no plano da mesa, sem repetir o 1º ponto e sem cruzar') },
 };
+// geradores: parâmetros pelo nome da ponte (m, rosca, modulo, dentes…), significado e medidas
+// escritos para o agente em src/geradores/textos-sugeridos.js
+for (const [type, g] of Object.entries(GERADORES)) {
+  PARAMS[type] = {};
+  for (const d of g.params) {
+    PARAMS[type][d.bridge] = { key: d.key, unidade: d.unit === '°' ? 'graus' : d.unit, o_que: (TEXTOS_SUGERIDOS.significados[type] || {})[d.key] || '', opcoes: d.bridgeOptions || null, valores: d.options || null };
+  }
+  SIZE_NOTES[type] = TEXTOS_SUGERIDOS.medidas[type];
+}
 
 const EXAMPLES = {
   criar: { tipo: 'caixa', medidas: [80, 60, 5], centro: [0, 0, null], base_z: 0, nome: 'base' },
   alterar: { id: '<id>', medidas: [null, null, 12], mover: [0, 5, 0] },
+  criar_encaixe: { id: '<id da peça>', folga: 0.25, margem: 3 },
+  exportar_3mf: { caminho: 'C:\\Users\\voce\\pecas.3mf' },
   lote: { comandos: [{ cmd: 'criar', ref: 'base', tipo: 'caixa', medidas: [80, 60, 5] }, { cmd: 'criar', ref: 'furo', tipo: 'cilindro', medidas: [8, 8, 5], furo: true }, { cmd: 'agrupar', ids: ['$base', '$furo'], nome: 'suporte' }] },
 };
 
@@ -118,10 +137,19 @@ export function catalog(tipo) {
         continue;
       }
       const p = def.params.find((q) => q.key === spec.key);
-      params[nome] = p.kind === 'text' ? { padrao: p.value, o_que: spec.o_que } : { padrao: p.value, min: p.min, max: p.max, ...(spec.unidade ? { unidade: spec.unidade } : {}), o_que: spec.o_que };
+      if (p.kind === 'text') params[nome] = { padrao: p.value, o_que: spec.o_que };
+      else if (spec.opcoes) params[nome] = { padrao: Object.keys(spec.opcoes).find((k) => spec.opcoes[k] === p.value) ?? p.value, opcoes: Object.keys(spec.opcoes), o_que: spec.o_que };
+      else if (spec.valores) params[nome] = { padrao: p.value, valores: spec.valores, ...(spec.unidade ? { unidade: spec.unidade } : {}), o_que: spec.o_que };
+      else params[nome] = { padrao: p.value, min: p.min, max: p.max, ...(spec.unidade ? { unidade: spec.unidade } : {}), o_que: spec.o_que };
     }
     const size = type === 'desenho' ? [20, 20, 2] : sizeToUser(defaultSize(type, defaultParams(type)));
-    return { tipo: TYPE_NAMES[type], nome: def.label, medidas_padrao: size.map(r2), medidas: SIZE_NOTES[type] || SIZE_NOTES._, params };
+    const out = { tipo: TYPE_NAMES[type], nome: def.label, medidas_padrao: size.map(r2), medidas: SIZE_NOTES[type] || SIZE_NOTES._, params };
+    if (def.generator) {
+      out.categoria = def.category;
+      out.medidas_automaticas = 'as medidas saem dos parâmetros (omita "medidas"); esticar deforma rosca e dentes';
+    }
+    if (def.hole) out.nasce_como_furo = true;
+    return out;
   });
 }
 
@@ -291,6 +319,7 @@ function userParams(o) {
   const out = {};
   for (const [nome, spec] of Object.entries(map)) {
     if (spec.key === 'points') out.pontos_qtd = (o.params.points || []).length;
+    else if (spec.opcoes) out[nome] = Object.keys(spec.opcoes).find((k) => spec.opcoes[k] === o.params[spec.key]) ?? o.params[spec.key];
     else out[nome] = o.params[spec.key];
   }
   return out;
@@ -443,7 +472,7 @@ export function validateProject(objects) {
 
 // contexto de um pedido: apelidos (ref) e o que foi criado/alterado/excluído
 function newCtx() {
-  return { refs: {}, created: [], altered: new Set(), deleted: [], avisos: [] };
+  return { refs: {}, created: [], altered: new Set(), deleted: [], avisos: [], encaixes: [] };
 }
 
 function resolveIds(ed, ctx, v, name = 'ids') {
@@ -502,10 +531,18 @@ function internalParams(type, given) {
     const def = SHAPES[type].params.find((q) => q.key === spec.key);
     if (def.kind === 'text') {
       if (typeof v !== 'string' || v.length > 40) fail('texto precisa ser um texto de até 40 caracteres.');
-      params.text = v;
+      params[spec.key] = v;
+      continue;
+    }
+    // opção por nome (rosca: "real" | "lisa", padrao: "colmeia"…) ou pelo valor numérico
+    if (spec.opcoes && typeof v === 'string') {
+      const k = norm(v);
+      if (!(k in spec.opcoes)) fail(`params.${nome} precisa ser uma de: ${Object.keys(spec.opcoes).join(', ')}.`, { validos: Object.keys(spec.opcoes) });
+      params[spec.key] = spec.opcoes[k];
       continue;
     }
     params[spec.key] = num(v, `params.${nome}`, { min: def.min, max: def.max });
+    if (spec.valores && !spec.valores.includes(params[spec.key])) fail(`params.${nome} = ${v} não existe; use um de: ${spec.valores.join(', ')}.`, { validos: spec.valores });
   }
   return { params, outline };
 }
@@ -571,7 +608,8 @@ function criar(ed, ctx, args) {
     size = size.map((s, k) => (m[k] === null ? s : m[k]));
     if (type === 'text' && m[0] === null) size[0] = textWidthFor(full, size[2]);
   }
-  const opts = { params: full, size: size.map(r3), hole: !!args.furo };
+  // furo: o pedido manda; sem ele, o padrão da forma (furo para parafuso e para inserto nascem furo)
+  const opts = { params: full, size: size.map(r3), hole: args.furo == null ? !!SHAPES[type].hole : !!args.furo };
   if (args.nome != null) opts.name = String(args.nome).slice(0, 80);
   if (args.cor != null) opts.color = color(args.cor);
   const o = ed.createObject(type, opts);
@@ -608,6 +646,11 @@ function alterar(ed, ctx, args) {
     Object.assign(o.params, params);
     if (outline && args.medidas == null) o.size = [outline.size[0], o.size[1], outline.size[1]];
     if (o.type === 'text' && params.text !== undefined && (args.medidas == null || args.medidas[0] === null)) o.size[0] = textWidthFor(o.params, o.size[2]);
+    // Hardware e Geradores: medidas voltam às naturais dos parâmetros novos (M3 → M5 cresce)
+    if (SHAPES[o.type].generator && args.medidas == null) {
+      const f = axisFactors(o, frame);
+      o.size = SHAPES[o.type].sizeFor(o.params).map((s, k) => r3(s / f[k]));
+    }
     reshaped = true;
   }
   if (args.rotacao != null) {
@@ -806,7 +849,30 @@ function importar(ed, ctx, args, file) {
   return o;
 }
 
-const MUTATORS = { criar, alterar, excluir, agrupar, desagrupar, alinhar, espelhar, soltar_na_mesa: soltar, selecionar, duplicar, importar };
+// Criar encaixe (src/encaixe.js): ao lado da peça, grupo com um bloco aberto em cima e a cópia da
+// peça como furo, com a folga por lado. A peça não muda. Devolve o grupo e as duas partes.
+function criar_encaixe(ed, ctx, args) {
+  checkKeys(args, ['id', 'folga', 'margem', 'nome', 'ref'], 'criar_encaixe');
+  if (args.id == null) fail('criar_encaixe precisa de "id": a peça (objeto do topo) que vai entrar no encaixe.', { exemplo: EXAMPLES.criar_encaixe });
+  const objs = topLevel(ed, ctx, [args.id].flat(), 'criar_encaixe');
+  if (objs.length !== 1) fail(`criar_encaixe: indique uma peça só (recebido ${objs.length}); para várias, agrupe antes.`);
+  const piece = objs[0];
+  if (piece.hole) fail(`criar_encaixe: ${piece.id} é um furo; o encaixe é feito de uma peça sólida.`);
+  const folga = args.folga == null ? FOLGA_PADRAO : num(args.folga, 'folga', { min: 0, max: FOLGA_MAX });
+  const margem = args.margem == null ? MARGEM_PADRAO : num(args.margem, 'margem', { min: 0.5, max: 50 });
+  const tx = t.encaixe;
+  const r = createFit(ed, piece, { folga, margem, names: { grupo: tx.grupo(piece.name), bloco: tx.bloco, copia: tx.copia(piece.name) } });
+  const g = r.grupo;
+  if (args.nome != null) g.name = String(args.nome).slice(0, 80);
+  const [bloco, copia] = g.children;
+  ctx.created.push(g.id, bloco.id, copia.id);
+  if (args.ref != null) ctx.refs[String(args.ref).replace(/^\$/, '')] = [g.id];
+  ctx.encaixes.push({ grupo: g.id, bloco: bloco.id, copia: copia.id, folga: r.folga, margem: r.margem, folga_exata: r.exata });
+  if (!r.exata) ctx.avisos.push(`Folga aproximada no encaixe de ${piece.id}: a peça tem forma sem folga exata (malha importada, texto, contorno, gerador…); a cópia cresceu 2 × folga em cada eixo. Confira as medidas.`);
+  return g;
+}
+
+const MUTATORS = { criar, alterar, excluir, agrupar, desagrupar, alinhar, espelhar, soltar_na_mesa: soltar, selecionar, duplicar, importar, criar_encaixe };
 export const LOTE_COMMANDS = Object.keys(MUTATORS);
 
 // um item de lote: { cmd, ...args } (forma curta) ou { cmd, args: { ... } }
@@ -838,6 +904,7 @@ function summary(ed, ctx) {
   if (Object.keys(ctx.refs).length) out.refs = Object.fromEntries(Object.entries(ctx.refs).map(([k, v]) => [k, v.length === 1 ? v[0] : v]));
   out.objetos = ids.slice(0, MAX).map((id) => describeOne(ed, id));
   if (ids.length > MAX) out.mais = ids.length - MAX;
+  if (ctx.encaixes.length) out.encaixes = ctx.encaixes;
   if (ctx.avisos.length) out.avisos = ctx.avisos;
   return out;
 }
@@ -915,4 +982,15 @@ export function stl(ed, args) {
   return { ok: true, objetos: group.children.length, triangulos: Math.round(tris), stl: dv.buffer };
 }
 
-export { describeOne, locate, frameOf, groupFrame, geometryOf, frameQuat };
+// 3MF de ids (ou de tudo): uma peça por objeto do topo, com a cor dela (src/exportar3mf.js); o main
+// grava os bytes (tresmf) no caminho .3mf do agente
+export async function tresMF(ed, args) {
+  checkKeys(args, ['caminho', 'ids'], 'exportar_3mf');
+  const ctx = newCtx();
+  const list = args.ids == null ? ed.objects : topLevel(ed, ctx, args.ids, 'exportar_3mf');
+  const res = await build3MF(ed, list);
+  if (!res) fail('Nada para exportar: só sólidos visíveis saem no 3MF (furo solto não).');
+  return { ok: true, objetos: res.objetos, pecas: res.resumo.map((p) => ({ nome: p.nome, triangulos: p.triangulos })), cores: res.cores, tresmf: res.dados };
+}
+
+export { describeOne, locate, frameOf, groupFrame, geometryOf, frameQuat, snapshotChain, renormalize, worldBox as dataWorldBox, userBox };

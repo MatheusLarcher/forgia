@@ -4,13 +4,16 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { parseModel, ImportError, MODEL_EXTS } from './importar.js';
 import { SHAPES, PALETTE, registerMesh } from './shapes.js';
 import { ICONS } from './icons.js';
-import { renderThumbnails } from './thumbs.js';
 import { gpuInfo } from './gpu.js';
 import { fmt } from './editor.js';
 import { t } from './textos/index.js';
 import { THEMES, theme } from './theme.js';
 import { Dica } from './dica.js';
 import { connectContent } from './conectar.js';
+import { build3MF } from './exportar3mf.js';
+import { ObjectList } from './lista.js';
+import { createFit, FOLGA_PADRAO, MARGEM_PADRAO, FOLGA_MAX } from './encaixe.js';
+import { Library, CATEGORY_ORDER } from './biblioteca.js';
 
 // áreas de impressão prontas: chave do rótulo em t.barra.areas e medidas em mm
 const AREA_PRESETS = [
@@ -23,7 +26,7 @@ const AREA_PRESETS = [
 ];
 // passos do "Ajustar grade", em mm (0 = desligado)
 const GRID_STEPS = [0, 0.1, 0.25, 0.5, 1, 2, 5, 10];
-// teclas das ferramentas, sem modificador (P fica reservada para a Fase D)
+// teclas das ferramentas, sem modificador; P (plano de trabalho) liga e desliga em toggleWorkplane
 const TOOL_KEYS = { b: 'draw', c: 'cruise', r: 'measure', n: 'mark' };
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -40,49 +43,23 @@ const h = (tag, attrs = {}, ...children) => {
   return el;
 };
 
-// sem versões "(furo)": qualquer forma vira furo com H ou o botão Furo do inspetor
-const BASIC = [
-  { type: 'box' },
-  { type: 'cylinder' },
-  { type: 'sphere' },
-  { type: 'roof' },
-  { type: 'cone' },
-  { type: 'roundRoof' },
-  { type: 'text' },
-  { type: 'wedge' },
-  { type: 'pyramid' },
-  { type: 'halfSphere' },
-  { type: 'polygon' },
-  { type: 'paraboloid' },
-  { type: 'torus' },
-  { type: 'tube' },
-  { type: 'star' },
-  { type: 'heart' },
-  { type: 'icosahedron' },
-];
-const LETTER_COLORS = ['#e3302d', '#f38a00', '#f7c511', '#3fb34f', '#1b8bd2', '#8e44ad'];
-const LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'].map((ch, i) => ({
-  type: 'text',
-  params: { text: ch },
-  label: ch,
-  name: ch,
-  color: LETTER_COLORS[i % LETTER_COLORS.length],
-}));
-const CATEGORIES = { basic: BASIC, letters: LETTERS };
-const labelOf = (spec) => spec.label || SHAPES[spec.type].label;
+// categorias e itens da biblioteca: src/biblioteca.js
 
 export class UI {
-  constructor(editor, ponte = null) {
+  constructor(editor, ponte = null, arquivo = null) {
     this.ed = editor;
     this.ponte = ponte;
+    this.arquivo = arquivo;
     this.thumbs = new Map();
     this.paletteOpen = false;
     this.collapsed = false;
     this.initIcons();
     this.initTopbar();
+    this.initFileMenu();
     this.initToolbar();
     this.initView();
     this.initLibrary();
+    this.initSidePanel();
     this.initKeys();
     this.initMisc();
     // cartão de dica: não abre durante arraste, colocação de forma nem com modal aberto
@@ -114,14 +91,21 @@ export class UI {
     name.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') name.blur();
     });
-    const novo = t.dialogos.novo;
-    $('#btn-new').addEventListener('click', () =>
-      this.confirm(novo.titulo, novo.texto, novo.ok, () => {
+    // projeto trocado (abrir, recuperar, novo): nome, grade
+    this.ed.addEventListener('projeto', () => {
+      name.value = this.ed.name;
+      const snap = $('#snap-select');
+      if (snap) snap.value = String(this.ed.grid);
+    });
+    // Novo: pergunta antes só se houver alteração não salva (src/arquivo.js)
+    $('#btn-new').addEventListener('click', () => {
+      if (this.arquivo) this.arquivo.newProject();
+      else {
         this.ed.newDesign();
         this.ed.setName(t.editor.nomePadrao);
         name.value = this.ed.name;
-      }),
-    );
+      }
+    });
     $('#btn-export').addEventListener('click', () => this.exportDialog());
     $('#btn-help').addEventListener('click', () => this.helpDialog());
     // sol/lua: o ícone mostra o tema para onde o botão leva
@@ -183,6 +167,84 @@ export class UI {
     });
   }
 
+  // ---------- menu Arquivo (Abrir, Salvar, Salvar como, Recentes) e o nome do arquivo ----------
+  initFileMenu() {
+    const btn = $('#btn-arquivo');
+    const label = $('#file-name');
+    const arq = this.arquivo;
+    if (!arq) {
+      btn.hidden = true;
+      return;
+    }
+    arq.addEventListener('estado', (e) => {
+      const { file, dirty } = e.detail;
+      label.textContent = file ? file.nome + (dirty ? ' •' : '') : dirty ? '• ' + t.arquivo.semArquivo : '';
+      label.classList.toggle('sujo', dirty);
+      label.dataset.sujo = String(dirty);
+    });
+    btn.addEventListener('click', () => this.toggleFileMenu());
+  }
+
+  async toggleFileMenu() {
+    const btn = $('#btn-arquivo');
+    if (this.closeMenu()) return;
+    const arq = this.arquivo;
+    const recents = await arq.recents();
+    const item = (text, key, fn, opts = {}) => {
+      const b = h('button', { class: 'menu-item', role: 'menuitem', type: 'button', disabled: opts.disabled || false, title: opts.title || null }, h('span', { class: 'menu-texto' }, text), key ? h('kbd', {}, key) : null);
+      b.addEventListener('click', () => {
+        this.closeMenu();
+        fn();
+      });
+      return b;
+    };
+    const tx = t.arquivo;
+    const menu = h(
+      'div',
+      { class: 'menu', role: 'menu', id: 'menu-arquivo' },
+      item(tx.abrir, 'Ctrl+O', () => arq.open()),
+      item(tx.salvar, 'Ctrl+S', () => arq.save()),
+      item(tx.salvarComo, 'Ctrl+Shift+S', () => arq.save({ como: true })),
+      h('div', { class: 'menu-sep', role: 'separator' }),
+      h('div', { class: 'menu-titulo' }, tx.recentes),
+      ...(recents.length
+        ? recents.map((r, i) => item(r.existe ? r.nome : `${r.nome} (${tx.naoEncontrado})`, null, () => arq.openRecent(i), { title: r.caminho, disabled: !r.existe }))
+        : [h('div', { class: 'menu-vazio' }, tx.semRecentes)]),
+    );
+    document.body.append(menu);
+    const r = btn.getBoundingClientRect();
+    menu.style.left = Math.min(r.left, innerWidth - menu.offsetWidth - 8) + 'px';
+    menu.style.top = r.bottom + 4 + 'px';
+    btn.setAttribute('aria-expanded', 'true');
+    this.menuEl = menu;
+    const first = menu.querySelector('.menu-item:not(:disabled)');
+    if (first) first.focus({ preventScroll: true });
+  }
+
+  // fecha o menu aberto; true se havia um
+  closeMenu() {
+    if (!this.menuEl) return false;
+    this.menuEl.remove();
+    this.menuEl = null;
+    (this.menuBtn || $('#btn-arquivo')).setAttribute('aria-expanded', 'false');
+    this.menuBtn = null;
+    return true;
+  }
+
+  // ---------- painel lateral: abas Biblioteca | Objetos ----------
+  initSidePanel() {
+    this.list = new ObjectList(this.ed, { toast: (m) => this.toast(m) });
+    const tabs = $$('.side-tab');
+    const show = (aba) => {
+      for (const tb of tabs) tb.setAttribute('aria-selected', String(tb.dataset.aba === aba));
+      $('#pane-biblioteca').hidden = aba !== 'biblioteca';
+      $('#pane-objetos').hidden = aba !== 'objetos';
+      this.list.setVisible(aba === 'objetos');
+    };
+    for (const tb of tabs) tb.addEventListener('click', () => show(tb.dataset.aba));
+    this.showPane = show;
+  }
+
   initToolbar() {
     const ed = this.ed;
     const cmds = {
@@ -197,12 +259,25 @@ export class UI {
       ungroup: () => ed.ungroup(),
       align: () => ed.setMode('align'),
       mirror: () => ed.setMode('mirror'),
+      encaixe: () => this.fitDialog(),
       draw: () => ed.setTool('draw'),
       cruise: () => ed.setTool('cruise'),
       measure: () => ed.setTool('measure'),
       mark: () => ed.setTool('mark'),
+      workplane: () => this.toggleWorkplane(),
     };
     for (const b of $$('[data-cmd]')) b.addEventListener('click', () => cmds[b.dataset.cmd]());
+    ed.addEventListener('plano', () => this.refresh());
+  }
+
+  // Plano de trabalho (P / botão): com o plano ativo, volta para a mesa; senão, escolhe a face
+  toggleWorkplane() {
+    const ed = this.ed;
+    if (ed.wplane) {
+      if (ed.tool && ed.tool.name === 'workplane') ed.setTool(null);
+      ed.clearWorkplaneFrame();
+    } else ed.setTool('workplane');
+    this.refresh();
   }
 
   refreshToolbar() {
@@ -220,15 +295,17 @@ export class UI {
       ungroup: ed.selected.some((o) => o.type === 'group'),
       align: n > 1,
       mirror: n > 0,
+      encaixe: n === 1 && !ed.selected[0].hole,
       draw: true,
       cruise: ed.selected.some((o) => !o.locked),
       measure: true,
       mark: ed.objects.length > 0,
+      workplane: ed.objects.length > 0 || !!ed.wplane,
     };
     const tool = ed.tool ? ed.tool.name : null;
     for (const b of $$('[data-cmd]')) {
       b.disabled = !en[b.dataset.cmd];
-      b.classList.toggle('active', ed.mode === b.dataset.cmd || tool === b.dataset.cmd);
+      b.classList.toggle('active', ed.mode === b.dataset.cmd || tool === b.dataset.cmd || (b.dataset.cmd === 'workplane' && !!ed.wplane));
     }
   }
 
@@ -251,49 +328,177 @@ export class UI {
     b.classList.toggle('active', this.ed.isOrtho);
   }
 
-  // ---------- biblioteca de formas ----------
+  // ---------- biblioteca de formas (categorias, favoritos, suas criações: src/biblioteca.js) ----------
   initLibrary() {
-    const cat = $('#lib-category');
+    const api = this.arquivo && this.arquivo.api;
+    this.lib = new Library({ api, toast: (m) => this.toast(m) });
+    this.category = 'basic';
     const search = $('#lib-search');
-    cat.addEventListener('change', () => this.renderLibrary());
     search.addEventListener('input', () => this.renderLibrary());
     search.addEventListener('keydown', (e) => e.stopPropagation());
+    $('#lib-category').addEventListener('click', () => this.toggleCategoryMenu());
+    $('#btn-salvar-criacao').addEventListener('click', () => this.saveCreationDialog());
+    this.ed.addEventListener('selection', () => this.refreshCreationButton());
+    this.renderCategoryButton();
     this.renderLibrary();
+    this.lib.loadCreations().then(() => {
+      if (this.category === 'criacoes' || this.category === 'favoritos') this.renderLibrary();
+    });
   }
 
-  thumbsFor(key, specs) {
-    if (!this.thumbs.has(key)) this.thumbs.set(key, renderThumbnails(specs));
-    return this.thumbs.get(key);
+  renderCategoryButton() {
+    const btn = $('#lib-category');
+    btn.querySelector('.lib-cat-ico').src = this.lib.categoryIcons()[this.category];
+    btn.querySelector('.lib-cat-nome').textContent = t.biblioteca.categorias[this.category];
+    btn.querySelector('.lib-cat-seta').innerHTML = ICONS.chevron;
+    btn.dataset.categoria = this.category;
+    this.refreshCreationButton();
+  }
+
+  refreshCreationButton() {
+    const b = $('#btn-salvar-criacao');
+    b.hidden = this.category !== 'criacoes';
+    b.disabled = !this.ed.selection.length;
+  }
+
+  toggleCategoryMenu() {
+    if (this.closeMenu()) return;
+    const btn = $('#lib-category');
+    const icons = this.lib.categoryIcons();
+    const menu = h(
+      'div',
+      { class: 'menu menu-categorias', role: 'listbox', id: 'menu-categorias' },
+      CATEGORY_ORDER.map((cat) => {
+        const it = h(
+          'button',
+          { class: 'menu-item menu-cat' + (cat === this.category ? ' on' : ''), role: 'option', type: 'button', 'aria-selected': String(cat === this.category), 'data-categoria': cat },
+          h('img', { src: icons[cat], alt: '', width: '36', height: '36' }),
+          h('span', { class: 'menu-texto' }, t.biblioteca.categorias[cat]),
+        );
+        it.addEventListener('click', () => {
+          this.closeMenu();
+          this.category = cat;
+          $('#lib-search').value = '';
+          this.renderCategoryButton();
+          this.renderLibrary();
+        });
+        return it;
+      }),
+    );
+    document.body.append(menu);
+    const r = btn.getBoundingClientRect();
+    menu.style.left = r.left + 'px';
+    menu.style.top = r.bottom + 4 + 'px';
+    menu.style.width = r.width + 'px';
+    btn.setAttribute('aria-expanded', 'true');
+    this.menuEl = menu;
+    this.menuBtn = btn;
   }
 
   renderLibrary() {
-    const key = $('#lib-category').value;
-    const specs = CATEGORIES[key];
-    const imgs = this.thumbsFor(key, specs);
+    const cat = this.category;
+    const items = this.lib.items(cat);
+    const imgs = this.lib.thumbsFor(items);
     const q = $('#lib-search').value.trim().toLowerCase();
     const grid = $('#lib-grid');
     grid.innerHTML = '';
-    grid.classList.toggle('letters', key === 'letters');
-    specs.forEach((spec, i) => {
-      const label = labelOf(spec);
-      if (q && !label.toLowerCase().includes(q)) return;
+    grid.classList.toggle('letters', cat === 'letters');
+    items.forEach((it, i) => {
+      if (q && !it.label.toLowerCase().includes(q)) return;
+      const fav = this.lib.favorites.has(it.key);
+      const star = h('button', { class: 'tile-btn tile-fav' + (fav ? ' on' : ''), type: 'button', 'aria-label': fav ? t.biblioteca.desfavoritar : t.biblioteca.favoritar, 'aria-pressed': String(fav), html: ICONS.star });
+      star.addEventListener('pointerdown', (e) => e.stopPropagation());
+      star.addEventListener('click', () => {
+        this.lib.toggleFavorite(it.key);
+        this.renderLibrary();
+      });
       const tile = h(
         'div',
-        { class: 'tile', 'data-label': label, title: '' },
-        h('img', { src: imgs[i], alt: label, draggable: 'false' }),
-        h('span', { class: 'tile-label' }, label),
+        { class: 'tile', 'data-label': it.label, 'data-item': it.key, title: '' },
+        h('img', { src: imgs[i], alt: it.label, draggable: 'false' }),
+        h('span', { class: 'tile-label' }, it.label),
+        star,
       );
+      if (it.creation) {
+        const ren = h('button', { class: 'tile-btn tile-ren', type: 'button', 'aria-label': t.biblioteca.renomearCriacao, html: ICONS.rename });
+        const del = h('button', { class: 'tile-btn tile-del', type: 'button', 'aria-label': t.biblioteca.excluirCriacao, html: ICONS.delete });
+        for (const b of [ren, del]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+        ren.addEventListener('click', () => this.renameCreationDialog(it.creation));
+        del.addEventListener('click', () => this.deleteCreationDialog(it.creation));
+        tile.append(ren, del);
+      }
       tile.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
         e.preventDefault();
-        const { label: _l, ...rest } = spec;
-        this.ed.startPlacing({ ...rest, name: spec.name || SHAPES[spec.type].label });
+        this.ed.startPlacing({ ...it.spec });
         this.ed.placing.tileDrag = true;
         this.refreshHint();
       });
       grid.append(tile);
     });
-    if (!grid.children.length) grid.append(h('div', { class: 'lib-empty' }, t.biblioteca.nenhuma));
+    if (!grid.children.length) {
+      const empty = cat === 'criacoes' ? t.biblioteca.semCriacoes : cat === 'favoritos' ? t.biblioteca.semFavoritos : t.biblioteca.nenhuma;
+      grid.append(h('div', { class: 'lib-empty' }, q ? t.biblioteca.nenhuma : empty));
+    }
+  }
+
+  // "Salvar seleção como criação": nome e grava na pasta de criações
+  saveCreationDialog() {
+    const sel = this.ed.selected;
+    if (!sel.length) return;
+    const tx = t.biblioteca;
+    const input = h('input', { type: 'text', class: 'param-text largo', maxlength: '80', value: sel.length === 1 ? sel[0].name : tx.criacaoPadrao, 'data-criacao': 'nome' });
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') save();
+    });
+    const save = async () => {
+      const nome = input.value.trim().slice(0, 80) || tx.criacaoPadrao;
+      this.closeModal();
+      const ok = await this.lib.saveCreation(sel, nome);
+      this.toast(ok ? tx.criacaoSalva(nome) : tx.criacaoNaoSalva);
+      this.category = 'criacoes';
+      this.renderCategoryButton();
+      this.renderLibrary();
+    };
+    this.modal(tx.salvarCriacao, h('div', { class: 'settings' }, h('p', {}, tx.salvarCriacaoExplica), h('label', { class: 'campo' }, tx.nomeCriacao, input)), [
+      h('button', { class: 'btn', onclick: () => this.closeModal() }, t.dialogos.cancelar),
+      h('button', { class: 'btn primary', 'data-escolha': 'salvar-criacao', onclick: save }, tx.salvar),
+    ]);
+    input.focus();
+    input.select();
+  }
+
+  renameCreationDialog(c) {
+    const tx = t.biblioteca;
+    const input = h('input', { type: 'text', class: 'param-text largo', maxlength: '80', value: c.nome, 'data-criacao': 'nome' });
+    const ok = async () => {
+      const nome = input.value.trim().slice(0, 80);
+      this.closeModal();
+      if (nome && nome !== c.nome) {
+        await this.lib.renameCreation(c.id, nome);
+        this.lib.thumbs.delete(`criacoes:${c.id}`);
+        this.renderLibrary();
+      }
+    };
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') ok();
+    });
+    this.modal(tx.renomearCriacao, h('label', { class: 'campo' }, tx.nomeCriacao, input), [
+      h('button', { class: 'btn', onclick: () => this.closeModal() }, t.dialogos.cancelar),
+      h('button', { class: 'btn primary', 'data-escolha': 'renomear-criacao', onclick: ok }, tx.renomear),
+    ]);
+    input.focus();
+    input.select();
+  }
+
+  deleteCreationDialog(c) {
+    const tx = t.biblioteca;
+    this.confirm(tx.excluirCriacao, tx.excluirCriacaoTexto(c.nome), tx.excluir, async () => {
+      await this.lib.deleteCreation(c.id);
+      this.renderLibrary();
+    });
   }
 
   // ---------- inspetor ----------
@@ -396,6 +601,12 @@ export class UI {
     if (single && single.type !== 'group' && SHAPES[single.type].params.length) {
       body.append(section(t.inspetor.parametros));
       for (const p of SHAPES[single.type].params) body.append(this.paramRow(single, p));
+      // Hardware e Geradores: a dica da peça (rosca real abaixo de M4 fica em destaque)
+      const dica = SHAPES[single.type].generator && t.formas.dicas[single.type];
+      if (dica) {
+        const fraca = (single.type === 'nut' || single.type === 'bolt') && single.params.thread === 1 && single.params.m < 4;
+        body.append(h('div', { class: 'insp-note insp-dica' + (fraca ? ' aviso' : ''), 'data-dica-peca': single.type }, dica));
+      }
     }
     if (single && single.type === 'group') {
       body.append(section(t.inspetor.grupo), h('div', { class: 'insp-note' }, t.inspetor.agrupadas(single.children.length)));
@@ -435,6 +646,18 @@ export class UI {
   paramRow(o, p) {
     const ed = this.ed;
     const value = o.params[p.key];
+    if (p.kind === 'choice') {
+      // lista (medida M, rosca real/lisa, padrão…): rótulos em t.formas.opcoes
+      const labels = t.formas.opcoes[p.optionsKey] || {};
+      const sel = h('select', { class: 'param-select', 'data-param': p.key }, p.options.map((v) => h('option', { value: String(v) }, labels[v] || String(v))));
+      sel.value = String(value);
+      sel.addEventListener('keydown', (e) => e.stopPropagation());
+      sel.addEventListener('change', () => {
+        ed.setParam(p.key, parseFloat(sel.value), true);
+        this.renderInspector();
+      });
+      return h('div', { class: 'param' }, h('label', {}, p.label), sel);
+    }
     if (p.kind === 'text') {
       const input = h('input', { type: 'text', class: 'param-text', value, maxlength: '40' });
       input.addEventListener('keydown', (e) => e.stopPropagation());
@@ -471,9 +694,24 @@ export class UI {
     const ed = this.ed;
     window.addEventListener('keydown', (e) => {
       const el = e.target;
+      // Ctrl+S / Ctrl+Shift+S / Ctrl+O valem até com o cursor num campo (menos com diálogo aberto)
+      const kk = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && (kk === 's' || (kk === 'o' && !e.shiftKey)) && this.arquivo && !$('.modal-back')) {
+        e.preventDefault();
+        if (e.repeat) return;
+        if (el && el.tagName === 'INPUT') el.blur(); // o nome digitado entra antes de salvar
+        if (kk === 's') this.arquivo.save({ como: e.shiftKey });
+        else this.arquivo.open();
+        return;
+      }
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
       if ($('.modal-back')) {
         if (e.key === 'Escape') this.closeModal();
+        return;
+      }
+      if (this.menuEl && e.key === 'Escape') {
+        this.closeMenu();
+        e.preventDefault();
         return;
       }
       // a ferramenta ativa trata as teclas dela primeiro (ex.: Enter fecha o desenho)
@@ -519,6 +757,8 @@ export class UI {
       else if (ctrl) handled = false;
       else if (plain && TOOL_KEYS[k]) {
         if (!e.repeat) ed.setTool(TOOL_KEYS[k]);
+      } else if (plain && k === 'p') {
+        if (!e.repeat) this.toggleWorkplane();
       } else if (k === 'h') ed.setHole(true);
       else if (k === 's') ed.setHole(false);
       else if (k === 'd') ed.dropToWorkplane();
@@ -535,12 +775,13 @@ export class UI {
   }
 
   initMisc() {
-    // fecha a paleta ao clicar fora do inspetor
+    // fecha a paleta ao clicar fora do inspetor, e o menu Arquivo ao clicar fora dele
     document.addEventListener('pointerdown', (e) => {
       if (this.paletteOpen && !e.target.closest('#inspector')) {
         this.paletteOpen = false;
         this.renderInspector();
       }
+      if (this.menuEl && !e.target.closest('.menu') && !e.target.closest('#btn-arquivo') && !e.target.closest('#lib-category')) this.closeMenu();
     });
   }
 
@@ -572,6 +813,41 @@ export class UI {
     if (fn) fn();
   }
 
+  // pergunta com vários botões: buttons = [[valor, rótulo, primário?], ...] -> Promise do valor
+  // escolhido; fechar pelo X, Esc ou fora devolve dflt (ou o primeiro)
+  choose(title, text, buttons, dflt = buttons[0][0]) {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (v) => {
+        if (done) return;
+        done = true;
+        resolve(v);
+      };
+      const btns = buttons.map(([v, label, primary]) =>
+        h('button', { class: 'btn' + (primary ? ' primary' : ''), 'data-escolha': v, onclick: () => {
+          finish(v);
+          this.closeModal();
+        } }, label),
+      );
+      this.modal(title, h('p', {}, text), btns, () => finish(dflt));
+      const main = btns.find((b) => b.classList.contains('primary'));
+      if (main) main.focus();
+    });
+  }
+
+  // seletor de arquivo do navegador (npm run dev, sem o preload): Promise do File ou null
+  pickFile(accept) {
+    return new Promise((resolve) => {
+      const input = h('input', { type: 'file', accept, hidden: true });
+      input.addEventListener('change', () => {
+        resolve(input.files[0] || null);
+        input.remove();
+      });
+      document.body.append(input);
+      input.click();
+    });
+  }
+
   confirm(title, text, ok, fn) {
     this.modal(title, h('p', {}, text), [
       h('button', { class: 'btn', onclick: () => this.closeModal() }, t.dialogos.cancelar),
@@ -599,6 +875,8 @@ export class UI {
       h('div', { class: 'radio-row' }, h('label', {}, all, tx.tudo), h('label', {}, sel, tx.selecionadas)),
       h('h4', {}, tx.impressao),
       h('div', { class: 'export-btns' }, btn(tx.stl, (s) => this.exportSTL(s)), btn(tx.obj, (s) => this.exportOBJ(s)), btn(tx.glb, (s) => this.exportGLB(s))),
+      h('div', { class: 'export-btns' }, h('button', { class: 'btn export largo', 'data-formato': '3mf', onclick: () => this.export3MF(sel.checked) }, tx.tresmf)),
+      h('p', { class: 'muted' }, tx.nota3mf),
       h('p', { class: 'muted' }, tx.nota),
     );
     this.modal(tx.titulo, body);
@@ -649,6 +927,67 @@ export class UI {
       (err) => this.toast(t.avisos.falhaExportar(err.message)),
       { binary: true },
     );
+  }
+
+  // Criar encaixe (src/encaixe.js): folga (0–1 mm) e parede do bloco, lembradas para a próxima vez
+  fitDialog() {
+    const ed = this.ed;
+    const [piece] = ed.selected;
+    if (!piece || ed.selection.length !== 1 || piece.hole) return;
+    const tx = t.encaixe;
+    let saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem('forgia.encaixe') || '{}') || {};
+    } catch {}
+    const folga = h('input', { type: 'number', min: 0, max: FOLGA_MAX, step: 0.05, value: saved.folga ?? FOLGA_PADRAO, 'data-encaixe': 'folga' });
+    const margem = h('input', { type: 'number', min: 0.5, max: 20, step: 0.5, value: saved.margem ?? MARGEM_PADRAO, 'data-encaixe': 'margem' });
+    for (const i of [folga, margem]) i.addEventListener('keydown', (e) => e.stopPropagation());
+    const body = h(
+      'div',
+      { class: 'settings' },
+      h('p', {}, tx.explica),
+      h('div', { class: 'field-row' }, h('label', {}, tx.folga, folga), h('label', {}, tx.margem, margem)),
+      h('p', { class: 'muted' }, tx.folgaAjuda),
+    );
+    const create = () => {
+      const num = (el, lo, hi, d) => {
+        const v = parseFloat(String(el.value).replace(',', '.'));
+        return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d;
+      };
+      const f = num(folga, 0, FOLGA_MAX, FOLGA_PADRAO);
+      const m = num(margem, 0.5, 20, MARGEM_PADRAO);
+      try {
+        localStorage.setItem('forgia.encaixe', JSON.stringify({ folga: f, margem: m }));
+      } catch {}
+      this.closeModal();
+      const r = createFit(ed, piece, { folga: f, margem: m, names: { grupo: tx.grupo(piece.name), bloco: tx.bloco, copia: tx.copia(piece.name) } });
+      ed.select([r.grupo.id]);
+      this.toast(r.exata ? tx.feito(fmt(r.folga)) : tx.aproximada);
+    };
+    this.modal(tx.titulo, body, [
+      h('button', { class: 'btn', onclick: () => this.closeModal() }, t.dialogos.cancelar),
+      h('button', { class: 'btn primary', 'data-escolha': 'criar-encaixe', onclick: create }, tx.criar),
+    ]);
+    folga.focus();
+    folga.select();
+  }
+
+  // .3MF com cada peça separada e com a sua cor (src/exportar3mf.js)
+  make3MF(onlySel) {
+    const ed = this.ed;
+    return build3MF(ed, onlySel && ed.selection.length ? ed.selected : ed.objects);
+  }
+
+  async export3MF(onlySel) {
+    let res;
+    try {
+      res = await this.make3MF(onlySel);
+    } catch (err) {
+      return this.toast(t.avisos.falhaExportar(err.message));
+    }
+    if (!res) return this.toast(t.avisos.nadaExportar);
+    this.download(new Blob([res.dados], { type: 'model/3mf' }), this.fileName('.3mf'));
+    this.closeModal();
   }
 
   async importFile(file) {

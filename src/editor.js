@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { SHAPES, shapeGeometry, defaultParams, defaultSize, textWidthFor } from './shapes.js';
+import { SHAPES, shapeGeometry, defaultParams, defaultSize, textWidthFor, setMesh } from './shapes.js';
 import { solidMaterial, holeMaterial, outlineSelected, outlineHover } from './materials.js';
 import { groupResult, aliasGroupResult, objectMatrix, geometrySize } from './csg.js';
 import { Handles, Protractor } from './handles.js';
@@ -15,8 +15,8 @@ import { CruiseTool } from './cruise.js';
 import { MeasureTool } from './measure.js';
 import { MarkTool } from './marcar.js';
 import { Surface } from './surface.js';
+import { WorkplaneTool } from './plano.js';
 
-const STORAGE = 'forgia.design.v1';
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -50,9 +50,12 @@ export class Editor extends EventTarget {
     theme.watch((colors) => this.applyTheme(colors));
     this.initOverlay();
     this.surface = new Surface(this);
-    this.tools = { draw: new DrawTool(this), cruise: new CruiseTool(this), measure: new MeasureTool(this), mark: new MarkTool(this) };
+    this.tools = { draw: new DrawTool(this), cruise: new CruiseTool(this), measure: new MeasureTool(this), mark: new MarkTool(this), workplane: new WorkplaneTool(this) };
+    this.wplane = null; // plano de trabalho ativo (src/plano.js): temporário, fora do projeto
     this.initEvents();
-    this.load();
+    // começa vazio; o projeto chega pelo src/arquivo.js (cópia de segurança, .forgia ou, no
+    // npm run dev, o localStorage) via loadProject()
+    this.loadProject(null);
     this.loop();
   }
 
@@ -427,7 +430,7 @@ export class Editor extends EventTarget {
       type,
       name: opts.name || def.label,
       color: opts.color || def.color,
-      hole: !!opts.hole,
+      hole: opts.hole == null ? !!def.hole : !!opts.hole,
       params,
       size,
       pos: [0, size[1] / 2, 0],
@@ -578,37 +581,44 @@ export class Editor extends EventTarget {
     this.emit('selection');
   }
 
+  // o projeto mudou: quem guarda (src/arquivo.js: cópia de segurança, título com "•") escuta 'persist'
   save() {
-    try {
-      localStorage.setItem(
-        STORAGE,
-        JSON.stringify({ name: this.name, objects: this.objects, grid: this.grid, workplane: this.workplane }),
-      );
-    } catch (e) {
-      console.warn('Não foi possível salvar', e);
-    }
+    this.emit('persist');
   }
 
-  load() {
-    try {
-      const data = JSON.parse(localStorage.getItem(STORAGE) || 'null');
-      if (data) {
-        this.name = data.name || this.name;
-        this.objects = Array.isArray(data.objects) ? data.objects : [];
-        this.grid = data.grid ?? 1;
-        if (data.workplane) {
-          this.workplane = { h: 255, ...data.workplane };
-          this.initWorkplane();
-        }
-      }
-    } catch (e) {
-      console.warn('Projeto salvo inválido; começando vazio', e);
-      this.objects = [];
+  // dados do projeto: o que vai para o .forgia, a cópia de segurança e o forgia.design.v1 antigo
+  projectData() {
+    return { name: this.name, objects: this.objects, grid: this.grid, workplane: this.workplane };
+  }
+
+  // troca o projeto inteiro (abrir, recuperar, novo): histórico novo, sem seleção, vista inicial.
+  // data = projectData() de outro projeto, ou null para um projeto vazio
+  loadProject(data, { view = true } = {}) {
+    if (this.tool) this.setTool(null);
+    if (this.mode) this.setMode(null);
+    this.cancelPlacing();
+    this.clearWorkplaneFrame();
+    this.drag = null;
+    this.name = (data && data.name) || t.editor.nomePadrao;
+    this.objects = data && Array.isArray(data.objects) ? data.objects : [];
+    this.grid = data && Number.isFinite(data.grid) ? data.grid : 1;
+    const wp = data && data.workplane && Number.isFinite(data.workplane.w) ? { h: 255, ...data.workplane } : null;
+    if (wp && (wp.w !== this.workplane.w || wp.l !== this.workplane.l || wp.h !== this.workplane.h)) {
+      this.workplane = wp;
+      this.initWorkplane();
     }
+    this.selection = [];
+    this.lastDuplicate = null;
+    this.hoverId = null;
+    this.alignKey = null;
     this.sync();
     this.history = [this.snapshot()];
     this.historyIndex = 0;
-    this.homeViewInstant();
+    if (view) this.homeViewInstant();
+    this.emit('workplane');
+    this.emit('projeto');
+    this.emit('selection');
+    this.emit('history');
   }
 
   homeViewInstant() {
@@ -705,6 +715,55 @@ export class Editor extends EventTarget {
       this.commit();
     }
     return result;
+  }
+
+  // ---------------- plano de trabalho (src/plano.js) ----------------
+  // temporário: fora do projeto e do histórico; 'plano' avisa a UI e a barra de status
+
+  setWorkplaneFrame(frame) {
+    this.clearWorkplaneFrame(false);
+    this.wplane = frame;
+    this.scene.add(frame.visual);
+    this.emit('plano');
+  }
+
+  clearWorkplaneFrame(emit = true) {
+    if (!this.wplane) return;
+    this.scene.remove(this.wplane.visual);
+    this.wplane.dispose();
+    this.wplane = null;
+    if (emit) this.emit('plano');
+  }
+
+  // altura mínima e máxima da peça (vértices no mundo) sobre o plano ativo e o ponto mais baixo;
+  // em cache por geometria + matriz + plano, como worldBox
+  planeExtent(o) {
+    const wp = this.wplane;
+    const m = this.meshes.get(o.id);
+    if (!wp || !m) return null;
+    m.updateMatrixWorld(true);
+    const key = wp.id + m.geometry.uuid + m.matrixWorld.elements.join(',');
+    if (m.userData.planeKey === key) return m.userData.planeExt;
+    const pos = m.geometry.attributes.position;
+    const v = V3();
+    let min = Infinity;
+    let max = -Infinity;
+    let low = null;
+    const local = { min: V3(Infinity, Infinity, Infinity), max: V3(-Infinity, -Infinity, -Infinity) };
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+      const l = wp.toLocal(v);
+      local.min.min(l);
+      local.max.max(l);
+      if (l.y < min) {
+        min = l.y;
+        low = v.clone();
+      }
+      if (l.y > max) max = l.y;
+    }
+    m.userData.planeKey = key;
+    m.userData.planeExt = { min, max, low, local };
+    return m.userData.planeExt;
   }
 
   // marcações do Marcar parte (editor.marks): fora do projeto e do desfazer
@@ -830,6 +889,13 @@ export class Editor extends EventTarget {
       () => {
         o.params[key] = value;
         if (o.type === 'text' && key === 'text') o.size[0] = textWidthFor(o.params, o.size[2]);
+        // Hardware e Geradores: a medida acompanha os parâmetros (M3 → M5 cresce), com a base parada
+        if (SHAPES[o.type].generator) {
+          const before = this.worldBox(o).min.y;
+          o.size = SHAPES[o.type].sizeFor(o.params).map(r3);
+          this.updateMesh(o);
+          o.pos[1] = r3(o.pos[1] + before - this.worldBox(o).min.y);
+        }
       },
       { commit },
     );
@@ -856,17 +922,26 @@ export class Editor extends EventTarget {
   dropToWorkplane(objs = this.selected.filter((o) => !o.locked)) {
     const sel = objs;
     if (!sel.length) return;
+    const wp = this.wplane;
     this.change(() =>
       sel.forEach((o) => {
+        if (wp) {
+          // com plano de trabalho: desce pela normal até o ponto mais baixo encostar no plano
+          const d = wp.normal.clone().multiplyScalar(-this.planeExtent(o).min);
+          o.pos = [r3(o.pos[0] + d.x), r3(o.pos[1] + d.y), r3(o.pos[2] + d.z)];
+          return;
+        }
         const b = this.worldBox(o);
         o.pos[1] = r3(o.pos[1] - b.min.y);
       }),
     );
   }
 
+  // (dx, dy, dz) nos eixos da mesa; com plano de trabalho, nos eixos do plano (dy = normal)
   nudge(dx, dy, dz) {
     const sel = this.selected.filter((o) => !o.locked);
     if (!sel.length) return;
+    if (this.wplane) ({ x: dx, y: dy, z: dz } = this.wplane.dirToWorld(dx, dy, dz));
     this.change(() =>
       sel.forEach((o) => {
         o.pos[0] = r3(o.pos[0] + dx);
@@ -1050,6 +1125,12 @@ export class Editor extends EventTarget {
     if (!o || o.locked || !(value >= 0)) return;
     this.change(() => {
       if (k === 'e') {
+        if (this.wplane) {
+          // elevação sobre o plano de trabalho, pela normal dele
+          const d = this.wplane.normal.clone().multiplyScalar(value - this.planeExtent(o).min);
+          o.pos = [r3(o.pos[0] + d.x), r3(o.pos[1] + d.y), r3(o.pos[2] + d.z)];
+          return;
+        }
         const b = this.worldBox(o);
         o.pos[1] = r3(o.pos[1] + value - b.min.y);
         return;
@@ -1099,14 +1180,32 @@ export class Editor extends EventTarget {
       return;
     }
     if (!p.obj) {
-      const { type, ...opts } = p.spec;
-      p.obj = this.createObject(type, opts);
+      if (p.spec.object) {
+        // peça pronta da biblioteca (Iniciantes, Suas criações): cópia com ids novos; as malhas
+        // importadas que ela usa voltam para o armazenamento em memória
+        if (p.spec.meshes) for (const [ref, pos] of p.spec.meshes) setMesh(ref, pos);
+        p.obj = this.reId(clone(p.spec.object));
+        delete p.obj.locked;
+        if (p.spec.name) p.obj.name = p.spec.name;
+      } else {
+        const { type, ...opts } = p.spec;
+        p.obj = this.createObject(type, opts);
+      }
       this.objects.push(p.obj);
     }
     // segue qualquer face sob o cursor (topo, lateral, inclinada), alinhada a ela, com a face em
     // verde; na mesa e em face virada para cima, x/z grudam na grade como antes
     const s = this.surface.hit(e, new Set([p.obj.id]));
-    if (s) {
+    const wp = this.wplane;
+    // com plano de trabalho, o plano é o chão: vale quando o raio pega o plano antes de outra peça
+    // (ou pega a própria face do plano); a forma nasce alinhada a ele, na grade dele
+    const pw = wp ? wp.intersectRay(this.raycaster.ray) : null;
+    if (pw && (!s || s.table || wp.contains(s.point, s.normal) || pw.distanceTo(this.raycaster.ray.origin) <= s.point.distanceTo(this.raycaster.ray.origin))) {
+      const P = wp.snapPoint(pw, this.grid);
+      p.obj.quat = wp.quat.toArray();
+      p.obj.pos = P.addScaledVector(wp.normal, p.obj.size[1] / 2).toArray().map(r3);
+      this.surface.hide();
+    } else if (s) {
       const P = s.point.clone();
       if (s.table || s.normal.y > 0.999) {
         P.x = this.snap(P.x);
@@ -1211,7 +1310,8 @@ export class Editor extends EventTarget {
   startMoveDrag(hit, e) {
     const movable = this.selected.filter((o) => !o.locked);
     if (!movable.length) return;
-    const plane = new THREE.Plane(V3(0, 1, 0), -hit.point.y);
+    // arraste no plano horizontal do ponto clicado; com plano de trabalho, paralelo a ele
+    const plane = this.wplane ? new THREE.Plane().setFromNormalAndCoplanarPoint(this.wplane.normal, hit.point) : new THREE.Plane(V3(0, 1, 0), -hit.point.y);
     this.drag = {
       kind: 'move',
       plane,
@@ -1261,6 +1361,14 @@ export class Editor extends EventTarget {
       }
       const p = V3();
       if (!this.raycaster.ray.intersectPlane(d.plane, p)) return;
+      if (this.wplane) {
+        // passo da grade nos eixos do plano de trabalho
+        const l = this.wplane.dirToLocal(p.clone().sub(d.start));
+        const w = this.wplane.dirToWorld(this.snap(l.x), 0, this.snap(l.z));
+        for (const it of d.items) it.o.pos = [r3(it.pos[0] + w.x), r3(it.pos[1] + w.y), r3(it.pos[2] + w.z)];
+        this.sync();
+        return;
+      }
       const dx = this.snap(p.x - d.start.x);
       const dz = this.snap(p.z - d.start.z);
       for (const it of d.items) {
@@ -1353,6 +1461,19 @@ export class Editor extends EventTarget {
       const o = sel[0];
       return { pos: V3().fromArray(o.pos), quat: new THREE.Quaternion().fromArray(o.quat), size: V3(...o.size) };
     }
+    if (this.wplane) {
+      // várias peças com plano de trabalho: a caixa delas nos eixos do plano
+      const wp = this.wplane;
+      const min = V3(Infinity, Infinity, Infinity);
+      const max = V3(-Infinity, -Infinity, -Infinity);
+      for (const o of sel) {
+        const ext = this.planeExtent(o);
+        if (!ext) continue;
+        min.min(ext.local.min);
+        max.max(ext.local.max);
+      }
+      return { pos: wp.toWorld(min.clone().add(max).multiplyScalar(0.5)), quat: wp.quat.clone(), size: max.clone().sub(min) };
+    }
     const b = this.selectionBox(sel);
     return { pos: b.getCenter(V3()), quat: new THREE.Quaternion(), size: b.getSize(V3()) };
   }
@@ -1369,7 +1490,8 @@ export class Editor extends EventTarget {
     if (h.type === 'corner' || h.type === 'edge') {
       plane = new THREE.Plane().setFromNormalAndCoplanarPoint(up, hp);
     } else if (h.type === 'top' || h.type === 'lift') {
-      axis = h.type === 'lift' ? V3(0, 1, 0) : up;
+      // o cone de elevar sobe pela vertical da mesa, ou pela normal do plano de trabalho
+      axis = h.type === 'lift' ? (this.wplane ? this.wplane.normal.clone() : V3(0, 1, 0)) : up;
       const toCam = this.camera.position.clone().sub(hp);
       if (this.isOrtho) toCam.copy(V3(0, 0, 1).applyQuaternion(this.camera.quaternion));
       const n = toCam.sub(axis.clone().multiplyScalar(toCam.dot(axis)));
@@ -1456,8 +1578,9 @@ export class Editor extends EventTarget {
       }
       pos = f0.pos.clone().add(off.applyQuaternion(f0.quat));
     } else if (h.type === 'lift') {
-      const dy = this.snap(p.y - d.start.y);
-      pos = f0.pos.clone().add(V3(0, dy, 0));
+      const n = d.axis;
+      const dy = this.snap(p.clone().sub(d.start).dot(n));
+      pos = f0.pos.clone().addScaledVector(n, dy);
     } else if (h.type === 'rot') {
       const c = f0.pos;
       const v0 = d.start.clone().sub(c);
@@ -1490,14 +1613,17 @@ export class Editor extends EventTarget {
       o.quat = nf.quat.toArray();
       return;
     }
-    const R = nf.quat.clone().multiply(f0.quat.clone().invert());
+    // escala nos eixos do quadro (a mesa, ou o plano de trabalho); com o quadro da mesa (giro
+    // nulo), qi é a identidade e as contas são as de sempre
+    const qi = f0.quat.clone().invert();
+    const R = nf.quat.clone().multiply(qi);
     const fs = V3(nf.size.x / f0.size.x, nf.size.y / f0.size.y, nf.size.z / f0.size.z);
     for (const { o, data } of d.items) {
-      const rel = V3().fromArray(data.pos).sub(f0.pos).multiply(fs).applyQuaternion(R);
+      const rel = V3().fromArray(data.pos).sub(f0.pos).applyQuaternion(qi).multiply(fs).applyQuaternion(nf.quat);
       o.pos = nf.pos.clone().add(rel).toArray().map(r3);
       const q0 = new THREE.Quaternion().fromArray(data.quat);
       o.quat = R.clone().multiply(q0).toArray();
-      const m = new THREE.Matrix4().makeRotationFromQuaternion(q0).elements;
+      const m = new THREE.Matrix4().makeRotationFromQuaternion(qi.clone().multiply(q0)).elements;
       const ns = [0, 1, 2].map((i) => {
         const col = V3(m[i * 4], m[i * 4 + 1], m[i * 4 + 2]).multiply(fs);
         return r3(data.size[i] * col.length());
@@ -1630,6 +1756,14 @@ export class Editor extends EventTarget {
       h: !lift && { p: toW(hw + off * 0.7, 0, hd + off * 0.7), v: o.size[1], seg: [toW(hw + off * 0.7, -hh, hd + off * 0.7), toW(hw + off * 0.7, hh, hd + off * 0.7)], ext: [] },
       e: { p: V3(box.max.x + off, box.min.y / 2, box.max.z + off), v: box.min.y, show: lift || Math.abs(box.min.y) > 0.001, seg: [V3(box.max.x + off, 0, box.max.z + off), V3(box.max.x + off, box.min.y, box.max.z + off)], ext: [] },
     };
+    if (this.wplane) {
+      // elevação sobre o plano de trabalho: do ponto mais baixo da peça até o plano, pela normal
+      const ext = this.planeExtent(o);
+      const n = this.wplane.normal;
+      const top = ext.low.clone();
+      const foot = top.clone().addScaledVector(n, -ext.min);
+      items.e = { p: foot.clone().lerp(top, 0.5), v: ext.min, show: lift || Math.abs(ext.min) > 0.001, seg: [foot, top], ext: [] };
+    }
     let svg = '';
     const line = (a, b, cls) => {
       const p = this.project(a);

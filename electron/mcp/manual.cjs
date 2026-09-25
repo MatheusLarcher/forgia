@@ -17,6 +17,7 @@ Coordenadas: mm; Z para cima, X para a direita, Y para o fundo; origem no centro
 Monte o pedido inteiro num só forgia_lote: vira um passo de desfazer e, se um comando falhar, nada fica. "ref" em criar/agrupar e "$ref" nos ids seguintes; posicione com base_z, sobre e alinhar_com em vez de fazer conta.
 Confira pelo retorno (medidas, caixa min/max, apoiado_em), não pela imagem; forgia_captura é para mostrar o resultado no fim, uma vez.
 Furo só recorta quando está no mesmo grupo que o sólido.
+Hardware (porca, parafuso, furo_parafuso, furo_inserto) e geradores (engrenagem, caixa_com_tampa, grade, mola, dobradica, texto_curvo) são tipos do forgia_criar: omita medidas, elas saem dos params. Soquete de uma peça: forgia_criar_encaixe. Para o fatiador: forgia_exportar_3mf.
 Se o usuário disser "aqui", "essa parte" ou "a 1": leia forgia_marcacoes e altere só a parte marcada, pelo id dela.
 Código livre (forgia_executar_codigo) só em último caso, quando nenhum comando pronto resolve: posicionar, repetir e alinhar se fazem com lote, duplicar e alinhar. Antes de usar, diga ao usuário por quê.`;
 
@@ -44,6 +45,15 @@ Projeto já existente: forgia_estado (partes dos grupos com filhos:true).
 - desenho: contorno livre extrudado. params pontos [[X,Y],…] em mm (fechado, sem repetir o 1º, sem cruzar); medidas Z = altura (padrão 2)
 Limites e padrões exatos: forgia_formas (só se precisar).
 
+## Hardware e geradores (omita medidas: saem dos params; opções pelo nome)
+- porca: params m (2, 2.5, 3, 4, 5, 6, 8), rosca real|lisa. parafuso: m, comprimento (do corpo), cabeca sextavada|cilindrica, rosca; cabeça embaixo. Rosca real abaixo de M4 imprime mal em FDM: avise e sugira lisa ou inserto.
+- furo_parafuso (nasce furo): m, comprimento (= espessura da peça), cabeca cilindrica|sextavada|sem_rebaixo, bolsao_porca sim|nao. Eixo em Z: bolsão da porca embaixo, rebaixo da cabeça em cima. M3: passante Ø3,4; comprimento mínimo = rebaixo + bolsão + 1 mm (M3: 6,8; sem rebaixo 3,6), senão ele cresce.
+- furo_inserto (nasce furo): m 2|3|4, boca para cima.
+- engrenagem: modulo, dentes, espessura, furo (Ø do eixo). Ø externo = modulo × (dentes + 2). Engrenam: mesmo modulo e espessura, mesmo base_z, a 2ª à direita (+X) da 1ª a modulo × (z1 + z2) / 2 entre centros, sem giro na 1ª e rotacao [0,0,180/z2] na 2ª se z2 for par.
+- caixa_com_tampa: largura, profundidade, altura (fechada, externas), parede, fundo, tampa, aba, folga (por lado), pecas caixa_e_tampa|caixa|tampa: caixa e tampa prontas para imprimir, lado a lado (medidas X = 2 × largura + 5).
+- grade, mola, dobradica, texto_curvo: forgia_formas {"tipo":...}.
+Receitas com hardware, engrenagens e encaixe: forgia_manual {"secao":"receitas"}.
+
 ## Posição (criar, alterar, importar)
 Sem posição: centro da mesa, apoiado nela. centro [X,Y,Z] (null mantém o eixo); base_z = altura da base (Z mín); sobre:id = base no topo dele e X/Y no centro dele; alinhar_com:id = mesmo X/Y; mover [dX,dY,dZ] soma no fim. rotacao [X,Y,Z] graus nos eixos da mesa.
 Em alterar, medidas/rotacao/params mantêm o centro X/Y e a base. esticar {lado:"+Z", mm:2} cresce um lado e deixa o oposto parado.
@@ -62,7 +72,7 @@ As partes mantêm o id dentro do grupo: forgia_alterar e forgia_excluir funciona
 Confira no retorno: grupo com caixa X de −40 a 40; o furo com medidas [8,8,7] e centro X 0, Y 0.
 
 ## Mais
-Seções: receitas (chaveiro, caixa com tampa, padrão em círculo, texto gravado, peça orgânica), impressao (paredes, folgas, parafusos), coordenadas, marcacoes, codigo_livre, erros. Chame forgia_manual {"secao":"receitas"} etc.`;
+Seções: receitas (chaveiro, caixa com tampa, furo M3 com porca numa parede, par de engrenagens, encaixe, exportar 3MF, padrão em círculo, texto gravado, peça orgânica), impressao (paredes, folgas, parafusos), coordenadas, marcacoes, codigo_livre, erros. Chame forgia_manual {"secao":"receitas"} etc.`;
 
 const SECTIONS = {
   coordenadas: `# Coordenadas
@@ -85,15 +95,34 @@ Texto com X definido (as letras esticam para caber), base um pouco maior, argola
 A argola encosta 1 mm na base (une) e o furo dela (Ø5) fica livre. Texto gravado em vez de relevo: o mesmo texto com espessura 2, "furo":true e base_z = topo da base − 1, agrupado com a base.
 
 ## Caixa 60×40×30 com tampa e folga
-Corpo oco (parede 2) e tampa com aba que entra na boca, folga 0,2 mm por lado; tampa ao lado, de cabeça para cima para imprimir:
+Um comando: a caixa paramétrica sai pronta, com a tampa ao lado (placa na mesa, aba para cima) e a aba entrando na boca com a folga por lado:
+{"comandos":[{"cmd":"criar","tipo":"caixa_com_tampa","nome":"caixa com tampa","params":{"largura":60,"profundidade":40,"altura":30,"parede":2,"folga":0.25}}]}
+Confira no retorno: medidas [125, 40, 28] (2 × 60 + 5 lado a lado; caixa com 30 − tampa 2 = 28) e params.folga. Folga 0,2 mm por lado encaixa justo; 0,3 mm solto. Só a caixa ou só a tampa: params.pecas "caixa" | "tampa".
+
+## Furo para parafuso M3 com porca numa parede lateral
+furo_parafuso deitado: rotacao [0,90,0] põe o eixo em X (rebaixo da cabeça para +X, bolsão da porca para −X; [0,-90,0] inverte; [90,0,0] põe o eixo em Y). comprimento = espessura da parede + 0,1, centrado nela: passa 0,05 mm de cada face (corta limpo sem tirar fundo do bolsão). A parede precisa caber rebaixo + bolsão + 1 mm (M3: 6,8; com cabeca "sem_rebaixo", 3,6):
 {"comandos":[
- {"cmd":"criar","ref":"corpo","tipo":"caixa","nome":"corpo","medidas":[60,40,30],"centro":[-35,0,null]},
- {"cmd":"criar","ref":"oco","tipo":"caixa","nome":"oco","medidas":[56,36,29],"alinhar_com":"$corpo","base_z":2,"furo":true},
- {"cmd":"agrupar","ref":"caixa","ids":["$corpo","$oco"],"nome":"caixa"},
- {"cmd":"criar","ref":"tampo","tipo":"caixa","nome":"tampo","medidas":[60,40,2],"centro":[35,0,null]},
- {"cmd":"criar","ref":"aba","tipo":"caixa","nome":"aba","medidas":[55.6,35.6,4],"sobre":"$tampo"},
- {"cmd":"agrupar","ids":["$tampo","$aba"],"nome":"tampa"}]}
-(56 − 2×0,2 = 55,6). Folga: 0,2 mm por lado encaixa justo; 0,3 mm solto.
+ {"cmd":"criar","ref":"base","tipo":"caixa","nome":"base","medidas":[40,30,4]},
+ {"cmd":"criar","ref":"parede","tipo":"caixa","nome":"parede","medidas":[8,30,25],"centro":[16,0,null],"sobre":"$base"},
+ {"cmd":"criar","ref":"furo","tipo":"furo_parafuso","nome":"furo M3","params":{"m":3,"comprimento":8.1,"cabeca":"cilindrica","bolsao_porca":"sim"},"rotacao":[0,90,0],"alinhar_com":"$parede","centro":[null,null,16.5]},
+ {"cmd":"agrupar","ids":["$base","$parede","$furo"],"nome":"suporte com furo M3"}]}
+Confira no retorno: furo com caixa X de 11,95 a 20,05 (a parede vai de 12 a 20) e centro Z 16,5. Parede fina (caixa oca de 2 mm): engrosse só em volta do furo com um ressalto (caixa de 8 mm por dentro, no mesmo grupo).
+
+## Par de engrenagens (20 dentes engrenando noutra)
+Mesmo modulo e espessura, a 2ª à direita (+X) da 1ª, centros a modulo × (z1 + z2) / 2; se z2 for par, a 2ª gira 180/z2 graus em Z (o dente entra no vão):
+{"comandos":[
+ {"cmd":"criar","ref":"g1","tipo":"engrenagem","nome":"engrenagem 20 dentes","params":{"modulo":1.5,"dentes":20,"espessura":6,"furo":5},"centro":[-12,0,null]},
+ {"cmd":"criar","ref":"g2","tipo":"engrenagem","nome":"engrenagem 12 dentes","params":{"modulo":1.5,"dentes":12,"espessura":6,"furo":5},"centro":[12,0,null],"rotacao":[0,0,15]}]}
+1,5 × (20 + 12) / 2 = 24 mm entre centros. Confira no retorno: medidas [33, 33, 6] e [21, 21, 6] (Ø externo = modulo × (dentes + 2)), centros X −12 e 12, mesmo Z. Não agrupe as duas: viram uma peça só e não giram.
+
+## Encaixe (soquete) de uma peça
+Negativo da peça com folga, para imprimir o suporte onde ela entra: {"cmd":"criar_encaixe","id":"$peca","folga":0.25} no lote (ou forgia_criar_encaixe). Sai ao lado (+X) o grupo "Encaixe de …": bloco aberto em cima (parede "margem", 3 mm) e a cópia da peça como furo; o retorno traz as medidas das duas partes e, em avisos, se a folga ficou aproximada (malha, texto, contorno, gerador).
+
+## Porca no parafuso
+parafuso e porca do mesmo m, no mesmo centro X/Y: a porca casa com a rosca quando a base_z dela é múltipla do passo (M3 0,5; M4 0,7; M5 0,8; M6 1; M8 1,25) acima da base do parafuso.
+
+## Exportar para o fatiador
+forgia_exportar_3mf {"caminho":"C:\\\\...\\\\pecas.3mf"}: uma peça por objeto do topo, cada cor vira um filamento atribuível. Uma malha só: forgia_exportar_stl.
 
 ## Padrão em círculo (6 pinos num raio de 20 mm)
 Crie um e use duplicar com giro em torno do centro: {"cmd":"criar","ref":"p","tipo":"cilindro","medidas":[4,4,10],"centro":[20,0,null]}, {"cmd":"duplicar","ids":["$p"],"vezes":5,"giro_z":60,"centro_giro":[0,0],"ref":"pinos"}. Fileira: deslocamento [10,0,0].
@@ -111,7 +140,8 @@ forgia_estado (filhos:true para ver as partes) -> forgia_alterar pelo id da part
 - Parede estrutural ≥ 1,2 mm (0,8 é o mínimo); fundo e tampas ≥ 1,2–2 mm. Detalhe que precisa aparecer ≥ 0,6 mm; abaixo disso o fatiador some com ele.
 - Texto em relevo: letras com ≥ 5 mm de altura e ≥ 0,6 mm de relevo (1–2 mm fica bom). Gravado: ≥ 0,6 mm de profundidade.
 - Folga entre peças que encaixam: 0,2 mm por lado (justo) a 0,3 mm (solto); peças que deslizam ou giram: 0,3–0,5 mm.
-- Parafusos: furo de passagem = nominal + 0,4 mm (M3 → Ø3,4; M4 → Ø4,4). Porca M3: sextavado 5,5 mm entre faces + 0,2, altura 2,4 + 0,2.
+- Parafusos: furo de passagem = nominal + 0,4 mm (M3 → Ø3,4; M4 → Ø4,4). Porca M3: sextavado 5,5 mm entre faces + 0,2, altura 2,4 + 0,2. O furo_parafuso já sai com essas medidas (passante, rebaixo e bolsão).
+- Rosca real impressa só de M4 para cima; abaixo, rosca lisa (parafuso autoatarraxante) ou inserto a quente (furo_inserto).
 - Balanço: até ~45° sem suporte. Teto plano no ar precisa de suporte; prefira chanfro ou arco.
 - Tudo apoiado na mesa (apoiado_em "mesa" ou em outra parte). Caixas e copos: abertura para cima. Tampas: a face grande para baixo.
 - A peça tem que caber na mesa (forgia_estado.mesa, 255×255×255 por padrão).

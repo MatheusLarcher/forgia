@@ -6,6 +6,7 @@ import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import fontData from 'three/examples/fonts/helvetiker_bold.typeface.json';
 import { t } from './textos/index.js';
 import { outlineSize } from './outline.js';
+import { GERADORES, defaultsOf } from './geradores/index.js';
 
 const DEG = Math.PI / 180;
 const { nomes, params: paramLabels, textoPadrao } = t.formas;
@@ -294,41 +295,52 @@ export const SHAPES = {
   },
 };
 
-// ---------- malhas importadas (STL/OBJ) ----------
+// ---------- malhas importadas (STL/OBJ/3MF) ----------
 
-const MESH_STORE = 'forgia.meshes.v1';
+// Posições (triângulos soltos, Float32Array, Y para cima) por referência (params.ref do objeto
+// 'mesh'). Ficam só na memória: quem guarda em disco é o projeto (src/arquivo.js: cópia de
+// segurança e .forgia no programa; forgia.meshes.v1 no localStorage só no npm run dev).
 const meshStore = new Map();
-try {
-  const raw = JSON.parse(localStorage.getItem(MESH_STORE) || '{}');
-  for (const [ref, b64] of Object.entries(raw)) meshStore.set(ref, b64ToF32(b64));
-} catch {
-  /* armazenamento vazio ou corrompido */
+let meshPersister = null;
+
+export const getMesh = (ref) => meshStore.get(ref);
+export const setMesh = (ref, positions) => meshStore.set(ref, positions);
+export const meshRefs = () => [...meshStore.keys()];
+// quem guarda as malhas novas: fn(ref, positions) -> true se guardou (false = não coube)
+export function setMeshPersister(fn) {
+  meshPersister = fn;
+}
+// esquece as malhas que o projeto novo não usa
+export function keepMeshes(refs) {
+  const keep = new Set(refs);
+  for (const ref of [...meshStore.keys()]) if (!keep.has(ref)) meshStore.delete(ref);
 }
 
-function f32ToB64(arr) {
+export function f32ToB64(arr) {
   const bytes = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
   let s = '';
   for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
   return btoa(s);
 }
-function b64ToF32(b64) {
+export function b64ToF32(b64) {
   const s = atob(b64);
   const bytes = new Uint8Array(s.length);
   for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
   return new Float32Array(bytes.buffer);
 }
 
-// Guarda as posições (triângulos soltos) e devolve a referência; false se não couber no armazenamento
+// Guarda as posições (triângulos soltos) e devolve a referência; saved false se o armazenamento
+// recusou (só no npm run dev, com o localStorage cheio)
 export function registerMesh(positions) {
   const ref = 'm' + Math.random().toString(36).slice(2, 10);
   meshStore.set(ref, positions);
   let saved = true;
-  try {
-    const raw = JSON.parse(localStorage.getItem(MESH_STORE) || '{}');
-    raw[ref] = f32ToB64(positions);
-    localStorage.setItem(MESH_STORE, JSON.stringify(raw));
-  } catch {
-    saved = false;
+  if (meshPersister) {
+    try {
+      saved = meshPersister(ref, positions) !== false;
+    } catch {
+      saved = false;
+    }
   }
   return { ref, saved };
 }
@@ -343,6 +355,30 @@ SHAPES.mesh = {
     return finalize(normalizeTo(g, size), 30);
   },
 };
+
+// ---------- Hardware e Geradores de forma (src/geradores/) ----------
+
+// Cada gerador vira um tipo como os outros (biblioteca, inspetor, CSG, ponte da IA). A geometria
+// vem em mm no tamanho natural (sizeFor): no tamanho natural, normalizeTo não deforma nada.
+// Parâmetros 'choice'/'toggle' (medida M, rosca real/lisa, padrão…) aparecem como lista no
+// inspetor, com os rótulos de t.formas.opcoes.
+for (const [type, g] of Object.entries(GERADORES)) {
+  const params = g.params.map((d) => {
+    const kind = d.kind === 'text' ? 'text' : d.kind === 'choice' || d.kind === 'toggle' ? 'choice' : 'number';
+    return { ...P(d.key, d.value, d.min, d.max, d.step, kind), options: d.options, optionsKey: d.optionsKey, unit: d.unit };
+  });
+  SHAPES[type] = {
+    label: nomes[type],
+    color: g.color,
+    hole: !!g.hole,
+    category: g.category,
+    generator: true,
+    size: g.size(defaultsOf(g.params), font),
+    params,
+    build: (size, p) => finalize(normalizeTo(g.build(p, font), size), 30),
+    sizeFor: (p) => g.size(p, font),
+  };
+}
 
 // ---------- API ----------
 

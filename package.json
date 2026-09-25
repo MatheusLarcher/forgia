@@ -41,6 +41,9 @@
       { "from": "THIRD-PARTY-NOTICES", "to": "THIRD-PARTY-NOTICES.txt" }
     ],
     "asar": true,
+    "fileAssociations": [
+      { "ext": "forgia", "name": "Forgia.Projeto", "description": "Projeto do Forgia", "icon": "public/branding/forgia-forge-v1.ico" }
+    ],
     "win": { "target": "nsis", "artifactName": "Forgia-Setup-${version}.exe", "icon": "public/branding/forgia-forge-v1.ico" },
     "nsis": {
       "guid": "153d514a-c2d8-5c34-bb9e-2434891e3e5f",

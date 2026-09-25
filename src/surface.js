@@ -353,6 +353,54 @@ export class Surface {
     this.edges.visible = false;
     this.shown = null;
   }
+
+  // Plano de trabalho (src/plano.js): direção (mundo, unitária, no plano da face) da aresta da
+  // borda da face plana de h mais perto do ponto clicado. null em face curva, malha grande ou mesa.
+  nearestEdgeDir(h) {
+    if (!h || h.table || !h.mesh) return null;
+    const geo = h.mesh.geometry;
+    if (triCount(geo) > MAX_TOPOLOGY_TRIS) return null;
+    const T = topology(geo);
+    const reg = planarRegion(T, h.tri);
+    if (reg.smooth && reg.tris.length < 3) return null;
+    // arestas da borda: as que só um triângulo da região usa (vértices agrupados por posição)
+    const count = new Map();
+    const key = (a, b) => (a < b ? a + ':' + b : b + ':' + a);
+    for (const t of reg.tris) {
+      for (let k = 0; k < 3; k++) {
+        const a = T.vid[t * 3 + k];
+        const b = T.vid[t * 3 + ((k + 1) % 3)];
+        const kk = key(a, b);
+        const e = count.get(kk);
+        if (e) e.n++;
+        else count.set(kk, { n: 1, t, k });
+      }
+    }
+    const pos = geo.attributes.position;
+    const index = geo.index;
+    const corner = (t, k, v) => v.fromBufferAttribute(pos, index ? index.getX(t * 3 + k) : t * 3 + k).applyMatrix4(h.mesh.matrixWorld);
+    const a = new THREE.Vector3();
+    const b = new THREE.Vector3();
+    const line = new THREE.Line3();
+    const q = new THREE.Vector3();
+    let best = null;
+    let bestD = Infinity;
+    for (const e of count.values()) {
+      if (e.n !== 1) continue;
+      corner(e.t, e.k, a);
+      corner(e.t, (e.k + 1) % 3, b);
+      if (a.distanceToSquared(b) < 1e-8) continue;
+      line.set(a, b);
+      const d = line.closestPointToPoint(h.point, true, q).distanceToSquared(h.point);
+      if (d < bestD) {
+        bestD = d;
+        best = b.clone().sub(a);
+      }
+    }
+    if (!best) return null;
+    best.addScaledVector(h.normal, -best.dot(h.normal));
+    return best.lengthSq() > 1e-10 ? best.normalize() : null;
+  }
 }
 
 // raio da área em volta do ponto (face curva): passa da base da peça para o verde aparecer em volta

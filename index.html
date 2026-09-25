@@ -30,7 +30,9 @@
         </a>
         <button class="icon-btn grid-btn" id="btn-new" data-t-aria="barra.novo" data-dica="novo"></button>
         <input id="design-name" class="design-name" spellcheck="false" />
+        <span class="file-name" id="file-name"></span>
         <div class="spacer"></div>
+        <button class="text-btn" id="btn-arquivo" data-t="barra.arquivo" data-dica="arquivo" aria-haspopup="menu" aria-expanded="false"></button>
         <button class="text-btn" id="btn-import" data-t="barra.importar"></button>
         <button class="text-btn" id="btn-export" data-t="barra.exportar"></button>
         <button class="text-btn" id="btn-help" data-t="barra.atalhos"></button>
@@ -55,11 +57,13 @@
           <button class="icon-btn" data-cmd="ungroup" data-t-aria="ferramentas.ungroup" data-dica="ungroup"></button>
           <button class="icon-btn" data-cmd="align" data-t-aria="ferramentas.align" data-dica="align"></button>
           <button class="icon-btn" data-cmd="mirror" data-t-aria="ferramentas.mirror" data-dica="mirror"></button>
+          <button class="icon-btn" data-cmd="encaixe" data-t-aria="ferramentas.encaixe" data-dica="encaixe"></button>
           <span class="tb-sep"></span>
           <button class="icon-btn" data-cmd="draw" data-t-aria="ferramentas.draw" data-dica="draw"></button>
           <button class="icon-btn" data-cmd="cruise" data-t-aria="ferramentas.cruise" data-dica="cruise"></button>
           <button class="icon-btn" data-cmd="measure" data-t-aria="ferramentas.measure" data-dica="measure"></button>
           <button class="icon-btn" data-cmd="mark" data-t-aria="ferramentas.mark" data-dica="mark"></button>
+          <button class="icon-btn" data-cmd="workplane" data-t-aria="ferramentas.workplane" data-dica="workplane"></button>
         </div>
       </div>
 
@@ -92,37 +96,50 @@
         </section>
 
         <aside id="library">
-          <div class="lib-head">
-            <div class="lib-title" data-t="biblioteca.titulo"></div>
-            <div class="lib-controls">
-              <select id="lib-category">
-                <option value="basic" data-t="biblioteca.basicas"></option>
-                <option value="letters" data-t="biblioteca.letras"></option>
-              </select>
-              <div class="lib-search">
-                <span class="search-ico"></span>
-                <input id="lib-search" data-t-placeholder="biblioteca.pesquisar" />
+          <!-- abas do painel lateral: Biblioteca | Objetos (lista de objetos, src/lista.js) -->
+          <div class="side-tabs" role="tablist" data-t-aria="painel.rotulo">
+            <button class="side-tab lib-title" role="tab" id="tab-biblioteca" data-aba="biblioteca" aria-selected="true" aria-controls="pane-biblioteca" data-t="painel.biblioteca" data-dica="abaBiblioteca"></button>
+            <button class="side-tab" role="tab" id="tab-objetos" data-aba="objetos" aria-selected="false" aria-controls="pane-objetos" data-dica="abaObjetos"><span data-t="painel.objetos"></span><span class="tab-count" id="obj-count"></span></button>
+          </div>
+          <div class="side-pane" id="pane-biblioteca" role="tabpanel" aria-labelledby="tab-biblioteca">
+            <div class="lib-head">
+              <div class="lib-controls">
+                <!-- seletor de categoria com ícone (desenhado pelo Forgia, src/biblioteca.js) -->
+                <button class="lib-cat" id="lib-category" type="button" aria-haspopup="listbox" aria-expanded="false" data-dica="categoria">
+                  <img class="lib-cat-ico" alt="" width="30" height="30" />
+                  <span class="lib-cat-nome"></span>
+                  <span class="lib-cat-seta"></span>
+                </button>
+                <div class="lib-search">
+                  <span class="search-ico"></span>
+                  <input id="lib-search" data-t-placeholder="biblioteca.pesquisar" />
+                </div>
+                <button class="btn lib-salvar" id="btn-salvar-criacao" type="button" data-t="biblioteca.salvarCriacao" data-dica="salvarCriacao" hidden></button>
               </div>
             </div>
+            <div class="lib-grid" id="lib-grid"></div>
           </div>
-          <div class="lib-grid" id="lib-grid"></div>
-          <footer class="lib-foot">
-            <a class="credit" href="https://larchertech.com/" target="_blank" rel="noopener noreferrer" data-t-aria="biblioteca.creditoAria">
-              <img src="./branding/larchertech-lb.png" width="18" height="17" alt="" />
-              <span data-t="biblioteca.credito"></span>
-            </a>
-          </footer>
+          <div class="side-pane" id="pane-objetos" role="tabpanel" aria-labelledby="tab-objetos" hidden>
+            <div class="obj-list" id="obj-list" role="tree" data-t-aria="painel.objetos"></div>
+          </div>
         </aside>
       </main>
 
-      <!-- barra de status: X/Y/Z e medidas da seleção (mm, Z para cima) e a ponte da IA -->
+      <!-- barra de status: X/Y/Z e medidas da seleção (mm, Z para cima), plano de trabalho, a ponte
+           da IA e o crédito LarcherTech na ponta direita -->
       <footer id="statusbar">
         <span class="sb-coords" id="sb-coords" data-t-aria="status.rotuloCentro"></span>
         <span class="sb-size" id="sb-size"></span>
+        <span class="sb-plano" id="sb-plano" hidden></span>
         <span class="spacer"></span>
         <button class="text-btn small" id="btn-limpar-marcas" data-dica="limparMarcas" hidden></button>
         <button class="sb-ia" id="sb-ia" data-dica="ia_pronta"><span class="sb-ia-ponto"></span><span class="sb-ia-texto"></span></button>
         <button class="text-btn small" id="btn-conectar-ia" data-t="status.conectar" data-dica="conectarIA"></button>
+        <span class="sb-sep"></span>
+        <a class="credit" id="sb-credito" href="https://larchertech.com/" target="_blank" rel="noopener noreferrer" data-t-aria="status.creditoAria" data-dica="credito">
+          <img src="./branding/larchertech-lb.png" width="16" height="15" alt="" />
+          <span data-t="status.credito"></span>
+        </a>
       </footer>
     </div>
 

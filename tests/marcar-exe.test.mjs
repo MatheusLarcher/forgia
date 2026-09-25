@@ -133,8 +133,11 @@ test('Marcar parte no Forgia.exe', { skip: !EXE && 'defina FORGIA_EXE com o Forg
     await t.test('marcações fora do projeto e do desfazer', async () => {
       assert.equal(await app.js('forgia.editor.historyIndex'), h0);
       assert.equal(await app.js('forgia.editor.snapshot()'), snap0);
-      assert.equal(await app.js("JSON.parse(localStorage.getItem('forgia.design.v1')).objects.length"), 1);
-      assert.ok(!(await app.js("localStorage.getItem('forgia.design.v1')")).includes('marca'));
+      // desde a Fase D o projeto vai para a cópia de segurança (<perfil>\recuperacao\projeto.json)
+      await app.js('forgia.arquivo.flush().then(() => true)');
+      const copia = fs.readFileSync(path.join(app.profile, 'recuperacao', 'projeto.json'), 'utf8');
+      assert.equal(JSON.parse(copia).projeto.objects.length, 1);
+      assert.ok(!copia.includes('marca'));
     });
 
     await t.test('forgia_marcacoes e captura com os alfinetes pela ponte', async () => {

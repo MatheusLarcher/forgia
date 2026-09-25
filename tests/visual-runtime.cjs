@@ -779,8 +779,10 @@ async function checkCard(app, theme, outDir, full) {
 }
 
 async function checkCreditLink(app) {
-  const link = await app.js(`(() => { const a = document.querySelector('#library .lib-foot a.credit'); return a ? { href: a.href, target: a.target, rel: a.rel, texto: a.textContent.trim() } : null; })()`);
-  if (!link) return check(false, null, '#library .lib-foot a.credit não existe');
+  // desde a Fase D o crédito fica na ponta direita da barra de status (#statusbar a.credit)
+  const CREDITO = '#statusbar a.credit';
+  const link = await app.js(`(() => { const a = document.querySelector('${CREDITO}'); return a ? { href: a.href, target: a.target, rel: a.rel, texto: a.textContent.trim() } : null; })()`);
+  if (!link) return check(false, null, `${CREDITO} não existe`);
   await app.js('(window.__semRecarga = true), true');
   const before = await app.pageTargets();
   const created = [];
@@ -790,7 +792,7 @@ async function checkCreditLink(app) {
   });
   const url0 = await app.js('location.href');
   const nav0 = app.events.navegacoes;
-  await app.click('#library .lib-foot a.credit'); // clique real
+  await app.click(CREDITO); // clique real
   await wait(1500);
   off();
   await app.cdp.send('Target.setDiscoverTargets', { discover: false }).catch(() => {});

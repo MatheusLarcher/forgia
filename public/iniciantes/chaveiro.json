@@ -1,0 +1,175 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (iniciante)",
+ "projeto": {
+  "name": "Chaveiro com nome",
+  "grid": 1,
+  "workplane": {
+   "w": 255,
+   "l": 255,
+   "h": 255
+  },
+  "objects": [
+   {
+    "id": "ifdcp8fa",
+    "type": "group",
+    "name": "Chaveiro com nome",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [
+     73,
+     4.59999990463257,
+     20
+    ],
+    "pos": [
+     0,
+     2.3,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "flip": [
+     1,
+     1,
+     1
+    ],
+    "children": [
+     {
+      "id": "2otlwpdd",
+      "type": "box",
+      "name": "placa",
+      "color": "#1b8bd2",
+      "hole": false,
+      "params": {
+       "radius": 1.4,
+       "steps": 10
+      },
+      "size": [
+       64,
+       3,
+       20
+      ],
+      "pos": [
+       4.5,
+       -0.8,
+       0
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "yqiflkve",
+      "type": "tube",
+      "name": "argola",
+      "color": "#1b8bd2",
+      "hole": false,
+      "params": {
+       "wall": 3.5,
+       "sides": 24
+      },
+      "size": [
+       14,
+       3,
+       14
+      ],
+      "pos": [
+       -29.5,
+       -0.8,
+       0
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "bvn73zwd",
+      "type": "cylinder",
+      "name": "furo da argola",
+      "color": "#f38a00",
+      "hole": true,
+      "params": {
+       "sides": 20,
+       "bevel": 0
+      },
+      "size": [
+       7,
+       3,
+       7
+      ],
+      "pos": [
+       -29.5,
+       -0.8,
+       0
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "bz1fwz0h",
+      "type": "text",
+      "name": "nome",
+      "color": "#ffffff",
+      "hole": false,
+      "params": {
+       "text": "FORGIA"
+      },
+      "size": [
+       53.58,
+       1.6,
+       11
+      ],
+      "pos": [
+       8.5,
+       1.5,
+       0
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "malhas": {}
+}

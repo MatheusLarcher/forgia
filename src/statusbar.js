@@ -1,9 +1,13 @@
+import * as THREE from 'three';
 import { t } from './textos/index.js';
 import { fmt } from './editor.js';
+
+const r2 = (v) => Math.round(v * 100) / 100 || 0;
 import { selectionSummary } from './ponte-comandos.js';
 
-// Barra de status mínima (Fase C): X/Y/Z e medidas da seleção no sistema do usuário (o MESMO
-// cálculo do forgia_estado, src/ponte-comandos.js), indicador da IA e botão Conectar IA.
+// Barra de status: X/Y/Z e medidas da seleção no sistema do usuário (o MESMO cálculo do
+// forgia_estado, src/ponte-comandos.js), o rótulo do Plano de trabalho quando ativo, indicador da
+// IA, botão Conectar IA e o crédito LarcherTech na ponta direita (HTML fixo do index.html).
 // Também mostra o aviso da IA no canto da vista ("IA: criou 2, alterou 1 · Desfazer").
 export class StatusBar {
   constructor(editor, ponte, { onConnect }) {
@@ -18,6 +22,10 @@ export class StatusBar {
     const refresh = () => this.refreshCoords();
     editor.addEventListener('change', refresh);
     editor.addEventListener('selection', refresh);
+    // plano de trabalho: X/Y/Z relativos a ele e o rótulo "Plano de trabalho"
+    this.planeEl = document.getElementById('sb-plano');
+    this.planeEl.textContent = t.status.plano;
+    editor.addEventListener('plano', refresh);
     // "Limpar marcações (n)" só aparece com marcações na vista (Marcar parte)
     this.marksBtn = document.getElementById('btn-limpar-marcas');
     this.marksBtn.addEventListener('click', () => editor.clearMarks());
@@ -30,7 +38,19 @@ export class StatusBar {
   }
 
   refreshCoords() {
+    const wp = this.ed.wplane;
+    this.planeEl.hidden = !wp;
     const s = selectionSummary(this.ed);
+    if (s && wp) {
+      // relativo ao plano: centro nos eixos dele (Z = altura pela normal); medidas das peças
+      const sel = this.ed.selected;
+      if (sel.length === 1) s.centro = wp.toUser(new THREE.Vector3().fromArray(sel[0].pos)).map(r2);
+      else {
+        const f = this.ed.getFrame(sel);
+        s.centro = wp.toUser(f.pos).map(r2);
+        s.medidas = [f.size.x, f.size.z, f.size.y].map(r2);
+      }
+    }
     if (!s) {
       this.coordsEl.textContent = t.status.semSelecao;
       this.sizeEl.textContent = '';
@@ -38,7 +58,7 @@ export class StatusBar {
     }
     const [x, y, z] = s.centro.map(fmt);
     this.coordsEl.textContent = t.status.centro(x, y, z);
-    this.sizeEl.textContent = t.status.medidas(...s.medidas.map(fmt));
+    this.sizeEl.textContent = t.status.medidas(...s.medidas.map(fmt)) + (s.n > 1 ? ' · ' + t.status.selecionadas(s.n) : '');
   }
 
   refreshMarks() {

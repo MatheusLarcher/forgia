@@ -80,12 +80,13 @@ async function fetchJson(url, timeout = 30000) {
 }
 
 export class Forgia {
-  static async open(exe, profile, { metrics = { width: 1400, height: 900, deviceScaleFactor: 1.5, mobile: false } } = {}) {
+  // extraArgs: argumentos a mais (ex.: o caminho de um .forgia, como o duplo clique no arquivo)
+  static async open(exe, profile, { metrics = { width: 1400, height: 900, deviceScaleFactor: 1.5, mobile: false }, extraArgs = [], ready = null } = {}) {
     const app = new Forgia();
     app.exe = exe;
     app.profile = profile;
     fs.rmSync(path.join(profile, 'DevToolsActivePort'), { force: true });
-    const args = [`--user-data-dir=${profile}`, '--remote-debugging-port=0', '--disable-renderer-backgrounding', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows'];
+    const args = [`--user-data-dir=${profile}`, '--remote-debugging-port=0', '--disable-renderer-backgrounding', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', ...extraArgs];
     const child = spawn(exe, args, { stdio: 'ignore' });
     app.pid = child.pid;
     app.exited = null;
@@ -121,6 +122,12 @@ export class Forgia {
     await app.send('Runtime.enable');
     await app.send('Page.enable');
     if (metrics) await app.send('Emulation.setDeviceMetricsOverride', metrics);
+    // ready: expressão a esperar no lugar da ponte (ex.: a pergunta de recuperar na abertura, que
+    // segura a ponte até o usuário responder)
+    if (ready) {
+      await app.waitFor(ready, 45000, ready);
+      return app;
+    }
     await app.waitFor('!!(window.forgia && window.forgia.editor && window.forgia.ponte && window.forgia.ponte.info && window.forgia.ponte.info.porta)', 45000, 'Forgia e ponte prontos');
     app.bridge = await app.waitBridgeFile();
     return app;
@@ -183,13 +190,80 @@ export class Forgia {
     return /True/i.test(r.stdout || '');
   }
 
-  async close() {
+  // Fecha como o usuário fecharia. Desde a Fase D, com alteração não salva o Forgia pergunta
+  // "Salvar / Não salvar / Cancelar": aqui a resposta é "Não salvar" (escolha = 'nao'), que num
+  // projeto sem arquivo mantém a cópia de segurança (ele volta ao abrir, como antes).
+  async close({ escolha = 'nao' } = {}) {
     if (this.exited) return;
-    await this.cdp.send('Browser.close').catch(() => {});
-    const r = await Promise.race([this.exitPromise, wait(15000).then(() => null)]);
+    this.cdp.send('Browser.close').catch(() => {});
+    const t0 = Date.now();
+    while (!this.exited && Date.now() - t0 < 15000) {
+      try {
+        await Promise.race([this.js(`(() => { const b = document.querySelector('.modal [data-escolha="${escolha}"]'); if (b) b.click(); return !!b; })()`), wait(1000)]);
+      } catch {}
+      await Promise.race([this.exitPromise, wait(200)]);
+    }
     this.cdp.close();
-    if (!r) spawnSync('taskkill', ['/PID', String(this.pid), '/T', '/F'], { stdio: 'ignore' });
+    if (!this.exited) spawnSync('taskkill', ['/PID', String(this.pid), '/T', '/F'], { stdio: 'ignore' });
   }
+
+  // encerra o processo à força (queda, "matar o processo no meio"): nada de pergunta nem de flush
+  async kill() {
+    spawnSync('taskkill', ['/PID', String(this.pid), '/T', '/F'], { stdio: 'ignore' });
+    await Promise.race([this.exitPromise, wait(10000)]);
+    this.cdp.close();
+  }
+
+  // pede para fechar a janela como o X da barra de título (WM_CLOSE na janela deste processo)
+  windowClose() {
+    const ps = `Add-Type -Name W -Namespace F -MemberDefinition '[DllImport("user32.dll")] public static extern bool PostMessage(System.IntPtr h, uint m, System.IntPtr w, System.IntPtr l);'; $h = (Get-Process -Id ${this.pid}).MainWindowHandle; [F.W]::PostMessage($h, 0x10, [System.IntPtr]::Zero, [System.IntPtr]::Zero)`;
+    const r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { encoding: 'utf8', windowsHide: true });
+    return /True/i.test(r.stdout || '');
+  }
+}
+
+// Preenche o diálogo de arquivo do Windows (Salvar/Abrir do Electron) aberto pelo processo pid:
+// acha a janela de diálogo (#32770) do processo pela UI Automation, põe o caminho no campo do nome
+// (AutomationId 1001 no Salvar, 1148 no Abrir) e aciona o botão principal (AutomationId 1).
+// Não depende de foco nem de teclado. Devolve true se achou e acionou.
+export function fileDialog(pid, filePath, { timeout = 15000 } = {}) {
+  const lit = (s) => "'" + String(s).replace(/'/g, "''") + "'";
+  const ps = `
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+$A = [System.Windows.Automation.AutomationElement]
+$root = $A::RootElement
+$cond = New-Object System.Windows.Automation.PropertyCondition($A::ProcessIdProperty, ${pid})
+$cls = New-Object System.Windows.Automation.PropertyCondition($A::ClassNameProperty, '#32770')
+$deadline = (Get-Date).AddMilliseconds(${timeout})
+$dlg = $null
+# o diálogo é "dono" da janela do Forgia: aparece como descendente dela na árvore da UI Automation
+while (-not $dlg -and (Get-Date) -lt $deadline) {
+  foreach ($w in $root.FindAll([System.Windows.Automation.TreeScope]::Children, $cond)) {
+    if ($w.Current.ClassName -eq '#32770') { $dlg = $w; break }
+    $d = $w.FindFirst([System.Windows.Automation.TreeScope]::Children, $cls)
+    if ($d) { $dlg = $d; break }
+  }
+  if (-not $dlg) { Start-Sleep -Milliseconds 200 }
+}
+if (-not $dlg) { 'sem-dialogo'; exit }
+# campo do nome: Edit 1001 (Salvar) ou o Edit dentro do combo 1148 (Abrir); o texto entra por
+# WM_SETTEXT e o botão principal (id 1) por BM_CLICK, direto nas janelas Win32 do diálogo
+Add-Type -Name U -Namespace F -MemberDefinition '[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern System.IntPtr SendMessage(System.IntPtr h, uint m, System.IntPtr w, string l); [DllImport("user32.dll")] public static extern System.IntPtr PostMessage(System.IntPtr h, uint m, System.IntPtr w, System.IntPtr l);'
+$edit = $null
+foreach ($e in $dlg.FindAll([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition($A::ClassNameProperty, 'Edit')))) {
+  $id = $e.Current.AutomationId
+  $parent = [System.Windows.Automation.TreeWalker]::RawViewWalker.GetParent($e)
+  if ($id -eq '1001' -or $id -eq '1148' -or ($parent -and $parent.Current.AutomationId -eq '1148')) { $edit = $e; break }
+}
+if (-not $edit) { 'sem-campo'; exit }
+[void][F.U]::SendMessage([System.IntPtr]$edit.Current.NativeWindowHandle, 0x000C, [System.IntPtr]::Zero, ${lit(filePath)})
+Start-Sleep -Milliseconds 150
+$btn = $dlg.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.AndCondition((New-Object System.Windows.Automation.PropertyCondition($A::AutomationIdProperty, '1')), (New-Object System.Windows.Automation.PropertyCondition($A::ClassNameProperty, 'Button')))))
+if (-not $btn) { 'sem-botao'; exit }
+[void][F.U]::PostMessage([System.IntPtr]$btn.Current.NativeWindowHandle, 0x00F5, [System.IntPtr]::Zero, [System.IntPtr]::Zero)
+'ok'`;
+  const r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-STA', '-Command', ps], { encoding: 'utf8', windowsHide: true, timeout: timeout + 15000 });
+  return (r.stdout || '').trim() + (r.stderr ? ' ' + r.stderr.trim().slice(0, 300) : '');
 }
 
 // pedido HTTP cru à ponte (headers livres para os testes de segurança)

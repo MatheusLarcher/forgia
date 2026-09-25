@@ -6,14 +6,14 @@ Este guia mostra o fluxo completo: da primeira forma na mesa até o arquivo pron
 
 | Área | Para que serve |
 |---|---|
-| **Barra superior** | Novo projeto, nome do projeto, **Importar**, **Exportar**, **Atalhos** e o botão **sol/lua** do tema |
-| **Barra de ferramentas** | Copiar, colar, duplicar, excluir, desfazer/refazer, mostrar tudo, agrupar, desagrupar, alinhar, espelhar e as ferramentas **Desenhar**, **Cruzeiro**, **Medir** e **Marcar parte** |
+| **Barra superior** | Novo projeto, nome do projeto (e, ao lado, o arquivo `.forgia` com "•" se houver alteração não salva), **Arquivo** (abrir, salvar, recentes), **Importar**, **Exportar**, **Atalhos** e o botão **sol/lua** do tema |
+| **Barra de ferramentas** | Copiar, colar, duplicar, excluir, desfazer/refazer, mostrar tudo, agrupar, desagrupar, alinhar, espelhar, **Criar encaixe** e as ferramentas **Desenhar**, **Cruzeiro**, **Medir**, **Marcar parte** e **Plano de trabalho** |
 | **Mesa (plano de trabalho)** | Onde o projeto é montado. Tem o tamanho da mesa da sua impressora |
 | **Cubo de navegação** (canto superior esquerdo) | Clique numa face, aresta ou vértice para girar a vista até ela |
-| **Biblioteca** (direita) | Formas prontas, em duas categorias: *Formas básicas* e *Letras e números* |
+| **Painel lateral** (direita) | Duas abas: **Biblioteca** (formas prontas para arrastar) e **Objetos** (a lista de tudo o que está no projeto) |
 | **Inspetor** | Aparece ao selecionar algo: cor, sólido/furo e os parâmetros da forma |
 | **Canto inferior direito** | Configurações (aparência, IA e plano de trabalho), tamanho da mesa e ajuste de grade |
-| **Barra de status** (rodapé) | X, Y e Z do centro da seleção e as medidas dela, o estado da IA e o botão **Conectar IA** |
+| **Barra de status** (rodapé) | X, Y e Z do centro da seleção e as medidas dela, o estado da IA, o botão **Conectar IA** e, na ponta direita, o crédito da LarcherTech |
 
 ## Dicas nos botões
 
@@ -59,6 +59,61 @@ aperte `H` ou clique em **Furo** no inspetor. `Shift+S` volta a forma para sóli
 
 O resultado de um grupo é calculado como **união dos sólidos menos a união dos furos**, gerando
 uma malha fechada — o que o fatiador precisa para imprimir sem erro.
+
+## Biblioteca
+
+No topo da aba **Biblioteca** fica o seletor de categoria (com o ícone de cada uma, desenhado pelo
+próprio Forgia). Clique nele e escolha:
+
+| Categoria | O que tem |
+|---|---|
+| **Suas criações** | Peças suas, salvas para usar de novo em qualquer projeto |
+| **Favoritos** | As formas que você marcou com a estrela, de todas as categorias |
+| **Formas básicas** | Caixa, cilindro, esfera, telhado, cone, texto, cunha, pirâmide e as demais |
+| **Letras e números** | A–Z e 0–9, prontos para arrastar |
+| **Iniciantes do projeto** | Projetos prontos para abrir e mudar: chaveiro com nome, suporte de celular, caixa com tampa, boneco de neve e foguete |
+| **Hardware** | Porca sextavada, parafuso, furo para parafuso e porca, furo para inserto a quente |
+| **Geradores de forma** | Engrenagem, grade (colmeia ou quadrada), mola, dobradiça, texto curvo e caixa com tampa |
+
+A caixa **Pesquisar** filtra a categoria aberta pelo nome.
+
+- **Favoritos**: pare o mouse sobre uma forma e clique na **estrela** do canto. Ela passa a
+  aparecer também em *Favoritos*; clique de novo para tirar. A escolha fica salva.
+- **Suas criações**: selecione uma peça (ou várias) e, na categoria *Suas criações*, clique em
+  **Salvar seleção como criação** e dê um nome. A seleção vira uma forma da biblioteca, guardada
+  neste computador (várias peças vão juntas, num grupo). Arraste para usar; o **lápis** do bloco
+  renomeia e a **lixeira** exclui (as peças já usadas nos projetos continuam lá).
+- **Iniciantes**: arraste para a mesa. Cada um chega como um grupo: desagrupe (`Ctrl+Shift+G`)
+  ou abra na aba **Objetos** para mudar as partes, o texto do chaveiro, as cores.
+
+### Hardware
+
+As medidas seguem a rosca métrica (M2 a M8, na lista **Medida (M)** do inspetor); trocar a medida
+refaz a peça no tamanho certo. **Rosca** *Real* modela os filetes; *Lisa* deixa o furo ou o corpo
+liso (para parafuso autoatarraxante). **Folga** abre a rosca por peça (0 = a folga automática,
+que já deixa porca e parafuso do Forgia rosquearem entre si).
+
+- **Porca** e **parafuso** do mesmo M encaixam; a porca casa com a rosca do parafuso quando a base
+  dela fica numa altura múltipla do passo (M3: 0,5 mm) acima da base do parafuso.
+- **Furo para parafuso e porca** e **Furo para inserto a quente** nascem como **furo**: posicione
+  na peça e agrupe. O primeiro traz o rebaixo da cabeça (cilíndrica, sextavada ou sem rebaixo) e,
+  se quiser, o bolsão da porca.
+- Rosca real abaixo de M4 imprime mal em FDM: o inspetor avisa (em destaque) e sugere inserto a
+  quente ou rosca lisa.
+
+### Geradores de forma
+
+Cada gerador tem os seus parâmetros no inspetor; as medidas da peça acompanham os parâmetros.
+
+- **Engrenagem**: duas engrenagens do mesmo **módulo** engrenam com os centros a
+  m × (z1 + z2) / 2 (m 1,5 com 20 e 12 dentes: 24 mm). Se a segunda tiver número par de dentes,
+  gire-a meio dente (180° / z2) em Z para o dente entrar no vão.
+- **Grade**: placa com colmeia ou quadrados, para tampas, ventilação e bases leves.
+- **Mola**: imprima em pé, com suporte; fio de pelo menos 1,2 mm.
+- **Dobradiça**: sai montada, deitada na mesa; folga de pelo menos 0,4 mm.
+- **Texto curvo**: o texto num arco; o raio abre o arco e o ângulo espalha as letras.
+- **Caixa com tampa**: caixa e tampa lado a lado, prontas para imprimir; a aba da tampa entra na
+  caixa com a folga por lado. Em **Peças** dá para gerar só a caixa ou só a tampa.
 
 ## Desenhar uma forma
 
@@ -127,6 +182,46 @@ ou o botão de novo encerram a régua.
 mesa**, com a origem no **centro da mesa**. É o mesmo sistema do `.STL` exportado (o fatiador só
 recentraliza a peça).
 
+## Plano de trabalho: uma face vira o chão
+
+O botão **Plano de trabalho** (grade, na ponta da barra de ferramentas) ou a tecla `P` servem para
+trabalhar sobre uma face de uma peça, até uma face inclinada, como se ela fosse a mesa.
+
+1. Aperte `P` e **clique na face**: ela ganha uma grade laranja, com a origem no ponto clicado e
+   os eixos alinhados à aresta da face mais perto do clique. A barra de status mostra
+   **Plano de trabalho**.
+2. Enquanto o plano está ativo:
+   - uma **forma nova** arrastada da biblioteca nasce **alinhada ao plano**, apoiada nele e na grade
+     dele;
+   - **arrastar** uma peça anda paralelo ao plano, na grade dele; as **setas** andam nos eixos do
+     plano e `Ctrl+↑`/`Ctrl+↓` sobem e descem pela normal;
+   - o **cone de elevar** sobe pela normal do plano, `Shift+D` solta a peça no plano, e a **cota de
+     elevação** mede a altura sobre ele; com várias peças, as **alças** seguem o plano;
+   - o **X, Y e Z** da barra de status passam a ser **relativos ao plano** (Z = altura sobre ele). As
+     medidas das peças continuam as delas.
+3. `P` de novo (ou o botão) **volta para a mesa**. Clicar na mesa durante a escolha também volta.
+
+O plano é **temporário**: não fica salvo no projeto, e o Forgia sempre abre na mesa. `Esc` cancela
+a escolha da face.
+
+## Criar encaixe: o negativo de uma peça
+
+Para imprimir um soquete, um suporte ou uma caixinha onde uma peça entra, selecione a peça e
+clique em **Criar encaixe** (quebra-cabeça, na barra de ferramentas). No diálogo, escolha a
+**folga** (0 a 1 mm; o padrão, 0,25 mm, costuma entrar sem apertar) e a **parede do bloco** (padrão
+3 mm) e clique em *Criar encaixe*.
+
+- Ao lado da peça aparece um **grupo** com um bloco e, dentro dele, uma cópia da peça como **furo**,
+  já com a folga. O bloco é **aberto em cima** (a peça entra por cima) e fica apoiado na mesa.
+- É um grupo como os outros: dá para desagrupar, mudar a parede, a cor ou a cópia. Um `Ctrl+Z`
+  desfaz tudo. A folga e a parede escolhidas ficam para a próxima vez.
+- A folga é **exata** em caixa (inclusive arredondada), cilindro, polígono, esfera, cone,
+  pirâmide, cunha, telhado, tubo e toroide: cada face da cópia fica afastada da folga pedida. Em
+  grupos, as partes sólidas crescem e os furos encolhem.
+- Em **malha importada**, contorno (desenho, estrela, coração), texto e formas curvas sem conta
+  exata, a cópia cresce a folga em cada eixo e o Forgia avisa **"folga aproximada"**: confira com
+  **Medir**.
+
 ## Marcar parte: pedir à IA uma mudança só "aqui"
 
 O botão **Marcar parte** (alfinete, na barra de ferramentas) ou a tecla `N` servem para mostrar
@@ -153,8 +248,24 @@ na barra de status) ou até a IA limpá-las, e somem sozinhas se a parte marcada
 No rodapé da janela, com uma peça selecionada, aparecem o **X, Y e Z do centro** dela e as
 **medidas** (X × Y × Z, em mm), no mesmo sistema da régua e do `.STL`: Z para cima, X para a
 direita, Y para o fundo, origem no centro da mesa. Com várias peças, valem o centro e o tamanho da
-caixa que envolve todas. São os mesmos números que a IA lê do Forgia: "sobe 5 mm no Z" quer dizer
-a mesma coisa para você e para ela.
+caixa que envolve todas, e a barra diz quantas estão selecionadas. São os mesmos números que a IA
+lê do Forgia: "sobe 5 mm no Z" quer dizer a mesma coisa para você e para ela. Na ponta direita
+fica o crédito **por LarcherTech**, que abre o site no navegador.
+
+## Lista de objetos
+
+A aba **Objetos**, ao lado da **Biblioteca** no painel da direita, mostra tudo o que está no
+projeto, com o número de peças ao lado do nome da aba. Grupos aparecem com uma setinha: clique
+nela para ver as partes. Peças ocultas ficam esmaecidas e continuam na lista; o que a IA cria
+aparece ali como o resto.
+
+- **Clique** numa linha para selecionar a peça (`Shift` ou `Ctrl` somam à seleção). Numa parte de
+  grupo, o clique seleciona o grupo inteiro.
+- **Olho**: oculta ou mostra. Numa parte de grupo, esconde só aquela parte (e ela sai do recorte).
+- **Cadeado**: bloqueia ou desbloqueia (peça bloqueada não se move, nem pela IA).
+- **Duplo clique no nome**: renomeia (`Enter` confirma, `Esc` cancela).
+
+Cada ação é um passo de desfazer (`Ctrl+Z`).
 
 ## IA no Forgia
 
@@ -173,6 +284,11 @@ pedidos da rede nem de páginas abertas no navegador.
 - **Manual da IA**: vem dentro do Forgia. O agente lê sozinho, antes de modelar, como o Forgia
   mede as formas, como montar a peça num passo só e as regras de impressão (paredes, folgas,
   furos para parafuso).
+- **O que a IA sabe fazer**, além das formas básicas: usar o **Hardware** e os **Geradores de
+  forma** da biblioteca (porca, parafuso, furo para parafuso e porca, engrenagens que engrenam,
+  caixa com tampa…), **Criar encaixe** de uma peça e **exportar em 3MF** para o fatiador, num
+  arquivo que você indicar. Peça, por exemplo, "faça uma engrenagem de 20 dentes encaixando
+  noutra" ou "exporte em 3MF para C:\Users\voce\pecas.3mf".
 - **Indicador** na barra de status: *IA conectada* (um agente usou o Forgia há pouco), *IA pronta*
   (esperando), *IA desligada* ou *IA indisponível*.
 - **O que a IA fez**: a cada pedido aparece um aviso no canto da vista, como "IA: criou 2,
@@ -205,6 +321,8 @@ pedidos da rede nem de páginas abertas no navegador.
 
 | Atalho | Ação |
 |---|---|
+| Ctrl+S / Ctrl+Shift+S | Salvar / salvar como (`.forgia`) |
+| Ctrl+O | Abrir um projeto `.forgia` |
 | Arrastar forma da biblioteca | Criar forma na mesa |
 | Clique / Shift+clique | Selecionar / somar à seleção |
 | Arrastar no vazio | Seleção por área |
@@ -223,6 +341,7 @@ pedidos da rede nem de páginas abertas no navegador.
 | C | Cruzeiro: deslizar a peça pela superfície das outras (`Shift` afunda) |
 | R | Medir: distância e X/Y/Z entre dois pontos (clique no valor para mover a peça) |
 | N | Marcar parte: alfinete num ponto e pedido só daquela parte para a IA (`Enter` copia) |
+| P | Plano de trabalho: clique numa face para ela virar o chão (`P` de novo volta à mesa) |
 | F | Ajustar a vista à tela |
 | W / A / S / D | Andar com a vista |
 | Ctrl+L / Ctrl+H | Bloquear / ocultar |
@@ -242,19 +361,33 @@ Formatos: `.STL`, `.OBJ` e `.3MF` — incluindo projetos salvos pelo Bambu Studi
 | Formato | Quando usar |
 |---|---|
 | `.STL` | Padrão para fatiadores. Exportado em binário, com Z para cima e medidas em mm |
+| `.3MF (cores e peças separadas)` | Impressão em várias cores (AMS) no Bambu Studio ou no OrcaSlicer: cada peça do projeto vai separada e com a sua cor; os grupos já saem recortados. As cores seguem a ordem do projeto, e o fatiador liga cada cor a um filamento nessa ordem |
 | `.OBJ` | Outros programas 3D |
 | `.GLB` | Visualizadores e web (Y para cima, como o formato exige) |
 
-## Onde o projeto fica salvo
+## Salvar e abrir projetos (.forgia)
 
-O projeto é salvo **automaticamente no próprio computador** a cada alteração e volta quando você
-abre o Forgia de novo. Ele fica na pasta de dados do Forgia no seu usuário do Windows
-(`%APPDATA%\Forgia`). Nada é enviado para a internet.
+O projeto vive num arquivo **`.forgia`**, como um documento do Word. O arquivo leva tudo: as
+peças, os grupos, as malhas importadas (mesmo as grandes) e uma miniatura.
 
-- Existe um projeto salvo por vez: **Novo projeto** começa do zero e apaga o atual deste
-  computador. Para não perder uma peça, exporte-a antes.
-- Modelos importados muito grandes podem não caber nesse armazenamento; o app avisa quando isso
-  acontece. Nesse caso, exporte o projeto antes de fechar.
+- **Salvar**: `Ctrl+S` ou *Arquivo > Salvar*. Na primeira vez, o Windows pergunta onde gravar.
+  **Salvar como** (`Ctrl+Shift+S`) grava uma cópia com outro nome.
+- **Abrir**: `Ctrl+O`, *Arquivo > Abrir…*, um dos **Recentes** (os últimos 5, no mesmo menu) ou um
+  duplo clique no arquivo `.forgia` no Explorador de Arquivos.
+- O **arquivo só muda quando você salva**. Enquanto houver alteração não salva, o título da
+  janela e o nome ao lado do projeto mostram um **"•"**. Ao fechar, abrir outro projeto ou começar
+  um novo com alterações não salvas, o Forgia pergunta: *Salvar*, *Não salvar* ou *Cancelar*.
+- **Cópia de segurança**: a cada alteração o Forgia grava sozinho uma cópia na pasta de dados dele
+  (`%APPDATA%\Forgia\recuperacao`). Se o computador travar ou o Forgia fechar sem salvar, na próxima
+  abertura ele pergunta: "Há alterações não salvas de *projeto* (*data e hora*). Recuperar?".
+- **Projeto que nunca foi salvo** continua voltando sozinho quando você abre o Forgia, como antes
+  (pela cópia de segurança). Para guardar de vez ou levar para outro computador, salve num
+  `.forgia`. *Não salvar* num projeto assim não apaga nada: ele volta na próxima abertura; *Novo
+  projeto* é que o descarta (depois de perguntar).
+- Quem vinha de uma versão anterior do Forgia não perde nada: na primeira abertura o projeto
+  antigo, com os modelos importados, vira o projeto atual.
+
+Nada é enviado para a internet.
 
 ## Dicas para impressão
 

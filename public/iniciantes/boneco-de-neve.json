@@ -1,0 +1,457 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (iniciante)",
+ "projeto": {
+  "name": "Boneco de neve",
+  "grid": 1,
+  "workplane": {
+   "w": 255,
+   "l": 255,
+   "h": 255
+  },
+  "objects": [
+   {
+    "id": "z4xj693h",
+    "type": "group",
+    "name": "Boneco de neve",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [
+     36,
+     84,
+     37.04999923706055
+    ],
+    "pos": [
+     0,
+     42,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "flip": [
+     1,
+     1,
+     1
+    ],
+    "children": [
+     {
+      "id": "qilbrrhv",
+      "type": "sphere",
+      "name": "corpo de baixo",
+      "color": "#ffffff",
+      "hole": false,
+      "params": {
+       "steps": 40
+      },
+      "size": [
+       36,
+       36,
+       36
+      ],
+      "pos": [
+       0,
+       -26,
+       -0.525
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "pjpumlbr",
+      "type": "sphere",
+      "name": "corpo do meio",
+      "color": "#ffffff",
+      "hole": false,
+      "params": {
+       "steps": 40
+      },
+      "size": [
+       28,
+       28,
+       28
+      ],
+      "pos": [
+       0,
+       0,
+       -0.525
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "bucbgw2q",
+      "type": "sphere",
+      "name": "cabeça",
+      "color": "#ffffff",
+      "hole": false,
+      "params": {
+       "steps": 40
+      },
+      "size": [
+       20,
+       20,
+       20
+      ],
+      "pos": [
+       0,
+       20,
+       -0.525
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "lj63zcds",
+      "type": "box",
+      "name": "base reta",
+      "color": "#e3302d",
+      "hole": true,
+      "params": {
+       "radius": 0,
+       "steps": 10
+      },
+      "size": [
+       40,
+       2,
+       40
+      ],
+      "pos": [
+       0,
+       -43,
+       -0.525
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "kmgsyjdu",
+      "type": "sphere",
+      "name": "olho",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {
+       "steps": 24
+      },
+      "size": [
+       3,
+       3,
+       3
+      ],
+      "pos": [
+       -3.5,
+       23,
+       8.075
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "hoqu8p3q",
+      "type": "sphere",
+      "name": "olho",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {
+       "steps": 24
+      },
+      "size": [
+       3,
+       3,
+       3
+      ],
+      "pos": [
+       3.5,
+       23,
+       8.075
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "rqv9pgxl",
+      "type": "cone",
+      "name": "nariz",
+      "color": "#f38a00",
+      "hole": false,
+      "params": {
+       "top": 0,
+       "sides": 20
+      },
+      "size": [
+       4,
+       10,
+       4
+      ],
+      "pos": [
+       0,
+       20,
+       12.475
+      ],
+      "quat": [
+       0.7071067811865475,
+       0,
+       0,
+       0.7071067811865476
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "42k2r7t5",
+      "type": "sphere",
+      "name": "botão",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {
+       "steps": 24
+      },
+      "size": [
+       3.5,
+       3.5,
+       3.5
+      ],
+      "pos": [
+       0,
+       4,
+       12.975
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "cb1fpqtc",
+      "type": "sphere",
+      "name": "botão",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {
+       "steps": 24
+      },
+      "size": [
+       3.5,
+       3.5,
+       3.5
+      ],
+      "pos": [
+       0,
+       -2,
+       13.275
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "oo6b1rjf",
+      "type": "sphere",
+      "name": "botão",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {
+       "steps": 24
+      },
+      "size": [
+       3.5,
+       3.5,
+       3.5
+      ],
+      "pos": [
+       0,
+       -20,
+       16.775
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "f3b736og",
+      "type": "torus",
+      "name": "cachecol",
+      "color": "#e3302d",
+      "hole": false,
+      "params": {
+       "tube": 5,
+       "sides": 24,
+       "steps": 16
+      },
+      "size": [
+       22,
+       5,
+       22
+      ],
+      "pos": [
+       0,
+       11,
+       -0.525
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "3mc5fpbe",
+      "type": "cylinder",
+      "name": "aba do chapéu",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {
+       "sides": 48,
+       "bevel": 0
+      },
+      "size": [
+       22,
+       2,
+       22
+      ],
+      "pos": [
+       0,
+       29,
+       -0.525
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "medesac0",
+      "type": "cylinder",
+      "name": "copa do chapéu",
+      "color": "#1d1f22",
+      "hole": false,
+      "params": {
+       "sides": 48,
+       "bevel": 0
+      },
+      "size": [
+       14,
+       12,
+       14
+      ],
+      "pos": [
+       0,
+       36,
+       -0.525
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "malhas": {}
+}

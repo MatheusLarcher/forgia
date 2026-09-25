@@ -63,17 +63,30 @@ test('regra do código livre em destaque, com o que não justifica e a fachada',
 test('exemplos de lote do manual são JSON válido e só usam comandos de lote', () => {
   const found = [...lotes(GUIA), ...lotes(SECTIONS.receitas)];
   assert.ok(found.length >= 3, `${found.length} exemplos`);
-  const ok = new Set(['criar', 'alterar', 'excluir', 'agrupar', 'desagrupar', 'alinhar', 'espelhar', 'soltar_na_mesa', 'selecionar', 'duplicar', 'importar']);
+  const ok = new Set(['criar', 'alterar', 'excluir', 'agrupar', 'desagrupar', 'alinhar', 'espelhar', 'soltar_na_mesa', 'selecionar', 'duplicar', 'importar', 'criar_encaixe']);
   for (const src of found) {
     const lote = JSON.parse(src);
     for (const c of lote.comandos) assert.ok(ok.has(c.cmd), c.cmd);
   }
 });
 
-test('ferramentas: 22 forgia_*, cada uma com descrição e inputSchema de objeto', () => {
-  assert.equal(TOOLS.length, 22);
+test('Fase D: hardware, geradores, encaixe e 3MF no manual e nas ferramentas', () => {
+  assert.match(INSTRUCTIONS, /forgia_criar_encaixe/);
+  assert.match(INSTRUCTIONS, /forgia_exportar_3mf/);
+  assert.match(INSTRUCTIONS, /omita medidas/);
+  for (const tipo of ['porca', 'parafuso', 'furo_parafuso', 'furo_inserto', 'engrenagem', 'caixa_com_tampa']) assert.ok(GUIA.includes(tipo), tipo);
+  for (const r of ['Furo para parafuso M3 com porca numa parede lateral', 'Par de engrenagens', 'Encaixe (soquete)', 'caixa_com_tampa', 'forgia_exportar_3mf']) assert.ok(SECTIONS.receitas.includes(r), r);
+  const byName = Object.fromEntries(TOOLS.map((t) => [t.name, t]));
+  assert.deepEqual(byName.forgia_exportar_3mf.inputSchema.required, ['caminho']);
+  assert.deepEqual(byName.forgia_criar_encaixe.inputSchema.required, ['id']);
+  assert.match(byName.forgia_lote.description, /criar_encaixe/);
+  assert.match(byName.forgia_criar.inputSchema.properties.tipo.description, /engrenagem/);
+});
+
+test('ferramentas: 24 forgia_*, cada uma com descrição e inputSchema de objeto', () => {
+  assert.equal(TOOLS.length, 24);
   for (const t of TOOLS) {
-    assert.match(t.name, /^forgia_[a-z_]+$/);
+    assert.match(t.name, /^forgia_[a-z0-9_]+$/);
     assert.ok(t.description && t.description.length >= 20, t.name);
     assert.equal(t.inputSchema.type, 'object', t.name);
   }

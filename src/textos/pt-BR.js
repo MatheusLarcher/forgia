@@ -6,11 +6,14 @@ export default {
   app: {
     nome: 'Forgia',
     titulo: 'Forgia — Editor 3D para impressão',
+    // título da janela: nome do arquivo (ou do projeto ainda sem arquivo) e "•" com alteração não salva
+    tituloJanela: (nome, sujo) => `${nome}${sujo ? ' •' : ''} — Forgia`,
   },
 
   // barra superior e controles do canto inferior direito
   barra: {
     novo: 'Novo projeto',
+    arquivo: 'Arquivo',
     importar: 'Importar',
     exportar: 'Exportar',
     atalhos: 'Atalhos',
@@ -50,6 +53,23 @@ export default {
     cruise: 'Cruzeiro (C)',
     measure: 'Medir (R)',
     mark: 'Marcar parte (N)',
+    encaixe: 'Criar encaixe',
+    workplane: 'Plano de trabalho (P)',
+  },
+
+  // Criar encaixe (src/encaixe.js): diálogo, nomes do resultado e aviso
+  encaixe: {
+    titulo: 'Criar encaixe',
+    explica: 'Cria, ao lado da peça, um bloco com o negativo dela, aberto em cima, para imprimir um soquete ou suporte onde ela entra. O resultado é um grupo editável.',
+    folga: 'Folga (mm)',
+    folgaAjuda: 'Espaço entre a peça e o encaixe, em cada lado. 0,25 mm costuma entrar sem apertar.',
+    margem: 'Parede do bloco (mm)',
+    criar: 'Criar encaixe',
+    grupo: (nome) => `Encaixe de ${nome}`,
+    bloco: 'Bloco',
+    copia: (nome) => `${nome} (folga)`,
+    feito: (folga) => `Encaixe criado com folga de ${folga} mm.`,
+    aproximada: 'Encaixe criado, mas a folga é aproximada nesta peça (faces curvas ou em contorno, texto ou malha importada): confira com Medir.',
   },
 
   // coluna de navegação (aria-label; chave = data-view) e faces do cubo
@@ -69,8 +89,105 @@ export default {
     letras: 'Letras e números',
     pesquisar: 'Pesquisar',
     nenhuma: 'Nenhuma forma encontrada',
-    credito: 'por LarcherTech',
-    creditoAria: 'LarcherTech — abre o site no navegador',
+    // categorias (chave = src/biblioteca.js CATEGORY_ORDER)
+    categorias: {
+      criacoes: 'Suas criações',
+      favoritos: 'Favoritos',
+      basic: 'Formas básicas',
+      letters: 'Letras e números',
+      iniciantes: 'Iniciantes do projeto',
+      hardware: 'Hardware',
+      geradores: 'Geradores de forma',
+    },
+    iniciantes: {
+      chaveiro: 'Chaveiro com nome',
+      suporteCelular: 'Suporte de celular',
+      caixaComTampa: 'Caixa com tampa',
+      bonecoDeNeve: 'Boneco de neve',
+      foguete: 'Foguete',
+    },
+    favoritar: 'Marcar como favorito',
+    desfavoritar: 'Tirar dos favoritos',
+    semFavoritos: 'Nenhum favorito ainda. Passe o mouse sobre uma forma e clique na estrela.',
+    semCriacoes: 'Nenhuma criação ainda. Selecione uma peça sua e clique em "Salvar seleção como criação".',
+    salvarCriacao: 'Salvar seleção como criação',
+    salvarCriacaoExplica: 'A seleção vira uma forma da biblioteca, em Suas criações, para usar de novo em qualquer projeto. Fica guardada neste computador.',
+    nomeCriacao: 'Nome',
+    criacaoPadrao: 'Minha criação',
+    salvar: 'Salvar',
+    criacaoSalva: (nome) => `"${nome}" está em Suas criações.`,
+    criacaoNaoSalva: 'Não foi possível salvar a criação.',
+    renomearCriacao: 'Renomear criação',
+    renomear: 'Renomear',
+    excluirCriacao: 'Excluir criação',
+    excluirCriacaoTexto: (nome) => `Excluir "${nome}" de Suas criações? As peças já usadas nos projetos continuam lá.`,
+    excluir: 'Excluir',
+  },
+
+  // painel lateral: abas Biblioteca | Objetos
+  painel: {
+    rotulo: 'Painel lateral',
+    biblioteca: 'Biblioteca',
+    objetos: 'Objetos',
+  },
+
+  // lista de objetos (src/lista.js): árvore do projeto, com grupos, ocultos e bloqueados
+  lista: {
+    vazia: 'Nenhum objeto ainda. Arraste uma forma da biblioteca para a mesa.',
+    ocultar: 'Ocultar',
+    mostrar: 'Mostrar',
+    bloquear: 'Bloquear',
+    desbloquear: 'Desbloquear',
+    abrirGrupo: 'Mostrar as partes',
+    fecharGrupo: 'Esconder as partes',
+    renomear: 'Nome do objeto',
+    furo: 'furo',
+    partes: (n) => `${n} ${n === 1 ? 'parte' : 'partes'}`,
+    ultimaParte: 'Essa é a última parte visível do grupo: oculte o grupo inteiro.',
+  },
+
+  // projeto em arquivo (.forgia, src/arquivo.js): menu Arquivo, diálogos e perguntas
+  arquivo: {
+    abrir: 'Abrir…',
+    salvar: 'Salvar',
+    salvarComo: 'Salvar como…',
+    recentes: 'Recentes',
+    semRecentes: 'Nenhum projeto recente',
+    naoEncontrado: 'não encontrado',
+    dialogoSalvar: 'Salvar projeto do Forgia',
+    dialogoAbrir: 'Abrir projeto do Forgia',
+    filtro: 'Projeto do Forgia (.forgia)',
+    // ao lado do nome do projeto: arquivo e "•" com alteração não salva
+    semArquivo: 'não salvo em arquivo',
+    salvo: (nome) => `Salvo em ${nome}`,
+    naoSalvou: (nome, motivo) => `Não foi possível salvar ${nome}${motivo ? ': ' + motivo : ''}`,
+    naoAbriu: (nome, motivo) => `Não foi possível abrir ${nome}${motivo ? ': ' + motivo : ''}`,
+    malhasFaltando: (n) => `${n} ${n === 1 ? 'malha importada não estava' : 'malhas importadas não estavam'} no arquivo e ${n === 1 ? 'aparece' : 'aparecem'} como caixa.`,
+    motivos: {
+      zip: 'o arquivo está danificado',
+      formato: 'não é um projeto do Forgia',
+      versao: 'foi salvo por uma versão mais nova do Forgia; atualize o programa',
+      dados: 'o projeto dentro do arquivo está incompleto',
+      naoEncontrado: 'o arquivo não foi encontrado',
+      grande: 'o arquivo passa de 1 GB',
+      gravar: 'sem permissão para gravar nessa pasta',
+    },
+    pergunta: {
+      titulo: 'Salvar as alterações?',
+      arquivo: (nome) => `Há alterações não salvas em ${nome}. Salvar antes de continuar?`,
+      trocarNovo: (nome) => `O projeto "${nome}" ainda não foi salvo em arquivo. Salvar antes de continuar? Se não salvar, ele será apagado deste computador.`,
+      fecharNovo: (nome) => `O projeto "${nome}" ainda não foi salvo em arquivo. Salvar agora? Se não salvar, ele continua aqui na próxima vez que você abrir o Forgia.`,
+      salvar: 'Salvar',
+      naoSalvar: 'Não salvar',
+      cancelar: 'Cancelar',
+    },
+    recuperar: {
+      titulo: 'Recuperar alterações?',
+      texto: (nome, quando) => `Há alterações não salvas de ${nome}${quando ? ` (${quando})` : ''}. Recuperar?`,
+      recuperar: 'Recuperar',
+      descartar: 'Descartar',
+      abrirOutro: (nome) => `Descartar e abrir ${nome}`,
+    },
   },
 
   formas: {
@@ -95,6 +212,17 @@ export default {
       icosahedron: 'Icosaedro',
       mesh: 'Importado',
       desenho: 'Desenho',
+      // Hardware e Geradores de forma (src/geradores/)
+      nut: 'Porca sextavada',
+      bolt: 'Parafuso',
+      boltHole: 'Furo para parafuso e porca',
+      insertHole: 'Furo para inserto a quente',
+      gear: 'Engrenagem',
+      grid: 'Grade',
+      spring: 'Mola',
+      hinge: 'Dobradiça',
+      curvedText: 'Texto curvo',
+      lidBox: 'Caixa com tampa',
     },
     // rótulos dos parâmetros no inspetor (chave = parâmetro)
     params: {
@@ -109,6 +237,63 @@ export default {
       points: 'Pontas',
       ratio: 'Raio interno',
       detail: 'Detalhe',
+      // Hardware e Geradores
+      m: 'Medida (M)',
+      thread: 'Rosca',
+      clearance: 'Folga',
+      segments: 'Segmentos por volta',
+      length: 'Comprimento',
+      head: 'Cabeça',
+      nut: 'Bolsão da porca',
+      diameter: 'Diâmetro',
+      depth: 'Profundidade',
+      chamfer: 'Chanfro de entrada',
+      module: 'Módulo',
+      teeth: 'Dentes',
+      thickness: 'Espessura',
+      bore: 'Furo central',
+      backlash: 'Folga entre dentes',
+      resolution: 'Resolução do perfil',
+      width: 'Largura',
+      cell: 'Célula',
+      border: 'Moldura',
+      pattern: 'Padrão',
+      wire: 'Diâmetro do fio',
+      pitch: 'Passo',
+      coils: 'Espiras',
+      knuckles: 'Juntas',
+      pin: 'Diâmetro do pino',
+      arcRadius: 'Raio do arco',
+      angle: 'Ângulo do arco',
+      letterSize: 'Altura das letras',
+      relief: 'Relevo',
+      height: 'Altura (fechada)',
+      floor: 'Fundo',
+      lid: 'Espessura da tampa',
+      lip: 'Altura da aba',
+      part: 'Peças',
+    },
+    // rótulos das opções dos parâmetros de lista (chave = optionsKey do gerador; valor = número)
+    opcoes: {
+      m: { 2: 'M2', 2.5: 'M2.5', 3: 'M3', 4: 'M4', 5: 'M5', 6: 'M6', 8: 'M8' },
+      thread: { 0: 'Lisa', 1: 'Real' },
+      head: { 0: 'Cilíndrica (allen)', 1: 'Sextavada', 2: 'Sem rebaixo' },
+      nut: { 0: 'Sem bolsão', 1: 'Com bolsão' },
+      pattern: { 0: 'Colmeia', 1: 'Quadrado' },
+      part: { 0: 'Caixa e tampa', 1: 'Só a caixa', 2: 'Só a tampa' },
+    },
+    // dica da peça no inspetor (Hardware e Geradores)
+    dicas: {
+      nut: 'Rosca real abaixo de M4 imprime mal em FDM: prefira inserto a quente ou rosca lisa com parafuso autoatarraxante.',
+      bolt: 'Imprima em pé, com a cabeça na mesa. Rosca real abaixo de M4 imprime mal em FDM: prefira inserto a quente ou rosca lisa com parafuso autoatarraxante.',
+      boltHole: 'Nasce como furo: agrupe com a peça. Deixe-o um pouco mais comprido que a peça para cortar limpo.',
+      insertHole: 'Nasce como furo. Encoste o inserto com o ferro de solda e empurre reto; deixe parede em volta (M2 1,3; M3 1,6; M4 2,1 mm).',
+      gear: 'Duas engrenagens do mesmo módulo engrenam com os centros a m × (z1 + z2) / 2.',
+      grid: 'Colmeia leve e rígida para tampas, grades de ventilação e bases.',
+      spring: 'Em FDM, imprima em pé com suporte; fio de pelo menos 1,2 mm.',
+      hinge: 'Imprime já montada, deitada na mesa. Não use folga menor que 0,4 mm.',
+      curvedText: 'Aumente o raio para um arco mais aberto; o ângulo espalha as letras pelo arco.',
+      lidBox: 'Caixa e tampa saem lado a lado, prontas para imprimir; a aba entra com a folga por lado.',
     },
     // texto da forma Texto recém-criada (e quando o texto fica vazio)
     textoPadrao: 'TEXTO',
@@ -141,6 +326,7 @@ export default {
     cruzeiro: 'Arraste a bolinha verde para a peça deslizar pela superfície das outras. Shift afunda na face — Esc sai',
     marcar: 'Clique num ponto da peça para pôr um alfinete e escrever o pedido só daquela parte — Esc sai',
     marcarChat: 'Escreva o pedido e aperte Enter para copiá-lo com a imagem — Esc fecha',
+    plano: 'Clique numa face para ela virar o plano de trabalho, ou na mesa para voltar a ela — Esc cancela',
     // régua Medir, por etapa: nenhum ponto, só o inicial, os dois
     medir: {
       inicio: 'Clique no ponto inicial: ele gruda em vértice, meio de aresta, centro de furo, face e grade — Esc sai',
@@ -172,11 +358,6 @@ export default {
     // botão X (aria-label) e botão redondo do vídeo do cartão de dica
     fechar: 'Fechar',
     video: { pausar: 'Pausar vídeo', tocar: 'Tocar vídeo' },
-    novo: {
-      titulo: 'Novo projeto',
-      texto: 'Começar um projeto vazio? O projeto atual será apagado deste computador.',
-      ok: 'Novo projeto',
-    },
     exportar: {
       titulo: 'Exportar',
       tudo: 'Tudo no design',
@@ -185,6 +366,8 @@ export default {
       stl: '.STL',
       obj: '.OBJ',
       glb: '.GLB',
+      tresmf: '.3MF (cores e peças separadas)',
+      nota3mf: 'O .3MF leva cada peça separada e com a sua cor, pronta para imprimir em várias cores no Bambu Studio ou no OrcaSlicer.',
       nota: 'Furos não são exportados sozinhos: agrupe-os com um sólido para recortar.',
       // nome do arquivo quando o projeto não tem nome
       arquivo: 'projeto',
@@ -214,6 +397,8 @@ export default {
     atalhos: {
       titulo: 'Atalhos e controles',
       linhas: [
+        ['Ctrl+S / Ctrl+Shift+S', 'Salvar / salvar como (.forgia)'],
+        ['Ctrl+O', 'Abrir projeto (.forgia)'],
         ['Arrastar forma da biblioteca', 'Criar forma no plano'],
         ['Clique / Shift+clique', 'Selecionar / somar à seleção'],
         ['Arrastar no vazio', 'Seleção por área'],
@@ -237,6 +422,7 @@ export default {
         ['C', 'Cruzeiro: deslizar a peça pela superfície (Shift afunda)'],
         ['R', 'Medir: distância e X/Y/Z entre dois pontos'],
         ['N', 'Marcar parte: alfinete num ponto e pedido só daquela parte para a IA'],
+        ['P', 'Plano de trabalho: uma face vira o chão (P de novo volta à mesa)'],
         ['F', 'Ajustar à tela'],
         ['Ctrl+L / Ctrl+H', 'Bloquear / ocultar'],
         ['Delete', 'Excluir'],
@@ -251,8 +437,14 @@ export default {
     semSelecao: 'Nada selecionado',
     centro: (x, y, z) => `X ${x}   Y ${y}   Z ${z}`,
     medidas: (x, y, z) => `${x} × ${y} × ${z} mm`,
+    selecionadas: (n) => `${n} selecionadas`,
     rotuloCentro: 'Centro da seleção (mm)',
     conectar: 'Conectar IA',
+    // com o plano de trabalho ativo, X/Y/Z e a elevação são relativos a ele
+    plano: 'Plano de trabalho',
+    // crédito na ponta direita (também no Sobre, no diálogo Atalhos)
+    credito: 'por LarcherTech',
+    creditoAria: 'LarcherTech — abre o site no navegador',
   },
 
   // ponte da IA: indicador, aviso do que a IA fez e Configurações
@@ -430,7 +622,17 @@ export default {
     in: { titulo: 'Aproximar', texto: 'Aproxima a vista. A roda do mouse também aproxima, na direção do cursor.' },
     out: { titulo: 'Afastar', texto: 'Afasta a vista. A roda do mouse também afasta.' },
     ortho: { titulo: 'Perspectiva ou ortográfica', texto: 'Alterna entre a vista em perspectiva e a ortográfica, sem distorção de profundidade: boa para alinhar e conferir medidas.' },
-    novo: { titulo: 'Novo projeto', texto: 'Começa um projeto vazio. O projeto atual é apagado deste computador.' },
+    novo: { titulo: 'Novo projeto', texto: 'Começa um projeto vazio. Se o atual tiver alterações não salvas, o Forgia pergunta antes se você quer salvá-las.' },
+    arquivo: { titulo: 'Arquivo', atalho: 'Ctrl+S', texto: 'Salvar o projeto num arquivo .forgia (Ctrl+S; Ctrl+Shift+S para salvar como), abrir outro (Ctrl+O) e os 5 recentes. O arquivo só muda quando você salva; a cópia de segurança é automática.' },
+    abaBiblioteca: { titulo: 'Biblioteca', texto: 'As formas para arrastar até a mesa.' },
+    abaObjetos: { titulo: 'Objetos', texto: 'A lista de tudo o que está no projeto, com os grupos e suas partes, inclusive o que está oculto ou bloqueado. Clique para selecionar, use o olho e o cadeado, e dê duplo clique no nome para renomear.' },
+    workplane: { titulo: 'Plano de trabalho', atalho: 'P', texto: 'Clique numa face de uma peça, até inclinada: ela vira o chão, com a grade nela. Formas novas, arraste, setas e alças seguem esse plano, e a barra de status mede a partir dele. P de novo volta para a mesa. Não fica salvo no projeto.' },
+    encaixe: { titulo: 'Criar encaixe', texto: 'Com uma peça selecionada, cria ao lado dela um bloco com o negativo da peça, aberto em cima e com folga (0,25 mm por padrão), para imprimir um soquete ou suporte. O resultado é um grupo editável e um Ctrl+Z desfaz.' },
+    categoria: { titulo: 'Categoria da biblioteca', texto: 'Suas criações, Favoritos, Formas básicas, Letras e números, Iniciantes do projeto (peças prontas para editar), Hardware (porcas, parafusos, furos para parafuso e inserto) e Geradores de forma (engrenagem, grade, mola, dobradiça, texto curvo, caixa com tampa).' },
+    salvarCriacao: { titulo: 'Salvar seleção como criação', texto: 'Guarda as peças selecionadas como uma forma sua, para arrastar de novo em qualquer projeto. Passe o mouse sobre ela na biblioteca para renomear ou excluir.' },
+    listaOcultar: { titulo: 'Ocultar ou mostrar', texto: 'Esconde a peça da vista e da exportação, ou mostra de novo. Numa parte de grupo, esconde só aquela parte. Ctrl+Z desfaz.' },
+    listaBloquear: { titulo: 'Bloquear ou desbloquear', texto: 'Trava a peça: ela não se move nem muda de tamanho, nem pela IA, até ser desbloqueada.' },
+    credito: { titulo: 'LarcherTech', texto: 'O Forgia é feito pela LarcherTech, no Brasil. Abre o site no navegador.' },
     temaEscuro: { titulo: 'Tema escuro', texto: 'Muda a interface e a mesa para o tema escuro. A escolha fica salva.' },
     temaClaro: { titulo: 'Tema claro', texto: 'Muda a interface e a mesa para o tema claro. A escolha fica salva.' },
     bloquear: { titulo: 'Bloquear', atalho: 'Ctrl+L', texto: 'Trava a forma: ela não se move nem muda de tamanho até ser desbloqueada.' },

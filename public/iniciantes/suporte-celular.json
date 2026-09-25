@@ -1,0 +1,205 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (iniciante)",
+ "projeto": {
+  "name": "Suporte de celular",
+  "grid": 1,
+  "workplane": {
+   "w": 255,
+   "l": 255,
+   "h": 255
+  },
+  "objects": [
+   {
+    "id": "8we2c7ke",
+    "type": "group",
+    "name": "Suporte de celular",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [
+     70,
+     76.25076293945312,
+     80
+    ],
+    "pos": [
+     0,
+     38.125,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "flip": [
+     1,
+     1,
+     1
+    ],
+    "children": [
+     {
+      "id": "yp6u5h7q",
+      "type": "box",
+      "name": "base",
+      "color": "#f38a00",
+      "hole": false,
+      "params": {
+       "radius": 1.5,
+       "steps": 10
+      },
+      "size": [
+       70,
+       5,
+       80
+      ],
+      "pos": [
+       0,
+       -35.625,
+       0
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "n6hwbhmk",
+      "type": "box",
+      "name": "encosto",
+      "color": "#f38a00",
+      "hole": false,
+      "params": {
+       "radius": 1.5,
+       "steps": 10
+      },
+      "size": [
+       70,
+       78,
+       6
+      ],
+      "pos": [
+       0,
+       0.875,
+       -13
+      ],
+      "quat": [
+       -0.17364817766693036,
+       0,
+       0,
+       0.9848077530122079
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "2cogeqa4",
+      "type": "box",
+      "name": "apoio da frente",
+      "color": "#f38a00",
+      "hole": false,
+      "params": {
+       "radius": 1.5,
+       "steps": 10
+      },
+      "size": [
+       70,
+       14,
+       8
+      ],
+      "pos": [
+       0,
+       -31.125,
+       28
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "flcw5d50",
+      "type": "wedge",
+      "name": "reforço",
+      "color": "#f38a00",
+      "hole": false,
+      "params": {},
+      "size": [
+       60,
+       22,
+       30
+      ],
+      "pos": [
+       0,
+       -27.125,
+       -20
+      ],
+      "quat": [
+       0,
+       1,
+       0,
+       6.123233995736766e-17
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "sjcenxka",
+      "type": "box",
+      "name": "passagem do cabo",
+      "color": "#e3302d",
+      "hole": true,
+      "params": {
+       "radius": 0,
+       "steps": 10
+      },
+      "size": [
+       20,
+       20,
+       16
+      ],
+      "pos": [
+       0,
+       -25.125,
+       28
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "malhas": {}
+}

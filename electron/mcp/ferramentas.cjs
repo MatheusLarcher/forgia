@@ -18,6 +18,8 @@ const ids = (description = 'ids dos objetos (no lote, "$ref" também vale)') => 
 const obj = (properties, required = []) => ({ type: 'object', properties, ...(required.length ? { required } : {}), additionalProperties: false });
 
 const TIPOS = 'caixa, cilindro, esfera, telhado, cone, telhado_redondo, texto, cunha, piramide, meia_esfera, poligono, paraboloide, toroide, tubo, estrela, coracao, icosaedro, desenho';
+// Hardware e Geradores (src/geradores/): as medidas saem dos params (M, dentes, módulo…)
+const GERADORES = 'porca, parafuso, furo_parafuso, furo_inserto, engrenagem, grade, mola, dobradica, texto_curvo, caixa_com_tampa';
 
 // âncoras de posição comuns a criar, alterar e importar
 const PLACE = {
@@ -45,13 +47,13 @@ const TOOLS = [
   },
   {
     name: 'forgia_formas',
-    description: `Catálogo dos tipos (${TIPOS}): o que são as medidas, parâmetros com unidade, limites e padrão. Sem tipo = todos numa chamada (o guia do forgia_manual já resume as medidas).`,
+    description: `Catálogo dos tipos (${TIPOS}; hardware e geradores: ${GERADORES}): o que são as medidas, parâmetros com unidade, limites, opções e padrão. Sem tipo = todos numa chamada (o guia do forgia_manual já resume as medidas).`,
     inputSchema: obj({ tipo: str('um tipo só (opcional)') }),
   },
   {
     name: 'forgia_criar',
-    description: 'Cria uma forma. Sem posição: centro da mesa, apoiada nela. Devolve o id e a caixa final. Ex.: {"tipo":"cilindro","medidas":[8,8,20],"centro":[0,0,null],"furo":true}',
-    inputSchema: obj({ tipo: str(`um de: ${TIPOS}`), ...SHAPE, ...PLACE, ref: str('apelido para usar como "$ref" no mesmo lote') }, ['tipo']),
+    description: 'Cria uma forma. Sem posição: centro da mesa, apoiada nela. Devolve o id e a caixa final. Hardware e geradores: omita medidas (saem dos params). Ex.: {"tipo":"cilindro","medidas":[8,8,20],"centro":[0,0,null],"furo":true}; {"tipo":"porca","params":{"m":3}}',
+    inputSchema: obj({ tipo: str(`um de: ${TIPOS}; ${GERADORES}`), ...SHAPE, ...PLACE, ref: str('apelido para usar como "$ref" no mesmo lote') }, ['tipo']),
   },
   {
     name: 'forgia_alterar',
@@ -108,7 +110,7 @@ const TOOLS = [
   },
   {
     name: 'forgia_lote',
-    description: 'Vários comandos como UM passo de desfazer; se um falha, nada fica. Itens {"cmd":"criar", ...args}; "ref" em criar/agrupar/duplicar/importar e "$ref" nos ids seguintes. Comandos: criar, alterar, excluir, agrupar, desagrupar, alinhar, espelhar, soltar_na_mesa, selecionar, duplicar, importar.',
+    description: 'Vários comandos como UM passo de desfazer; se um falha, nada fica. Itens {"cmd":"criar", ...args}; "ref" em criar/agrupar/duplicar/importar e "$ref" nos ids seguintes. Comandos: criar, alterar, excluir, agrupar, desagrupar, alinhar, espelhar, soltar_na_mesa, selecionar, duplicar, importar, criar_encaixe.',
     inputSchema: obj({ comandos: { type: 'array', items: { type: 'object' }, description: 'ex.: [{"cmd":"criar","ref":"base","tipo":"caixa","medidas":[80,60,5]},{"cmd":"criar","ref":"f","tipo":"cilindro","medidas":[8,8,5],"furo":true},{"cmd":"agrupar","ids":["$base","$f"]}]' } }, ['comandos']),
   },
   {
@@ -130,6 +132,16 @@ const TOOLS = [
     name: 'forgia_exportar_stl',
     description: 'Grava um STL binário (Z para cima, mm) num caminho absoluto .stl. Furos soltos não saem.',
     inputSchema: obj({ caminho: str('ex.: C:\\\\Users\\\\voce\\\\peca.stl'), ids: ids('só estes (padrão: tudo)') }, ['caminho']),
+  },
+  {
+    name: 'forgia_exportar_3mf',
+    description: 'Grava um .3mf num caminho absoluto: uma peça por objeto do topo, com a cor dela (o fatiador atribui um filamento por cor). mm, Z para cima. Furos soltos não saem.',
+    inputSchema: obj({ caminho: str('ex.: C:\\\\Users\\\\voce\\\\pecas.3mf'), ids: ids('só estes objetos do topo (padrão: tudo)') }, ['caminho']),
+  },
+  {
+    name: 'forgia_criar_encaixe',
+    description: 'Negativo de uma peça, para imprimir o soquete/suporte onde ela entra: ao lado dela (+X), um grupo com um bloco aberto em cima e a cópia da peça como furo, com a folga por lado. A peça não muda. Devolve o grupo, o bloco e a cópia com medidas e caixa; avisos diz se a folga é aproximada. Ex.: {"id":"a1b2","folga":0.25}',
+    inputSchema: obj({ id: str('peça (objeto do topo; no lote, "$ref")'), folga: num('mm por lado, 0–1 (padrão 0,25)'), margem: num('parede do bloco nos lados e embaixo, mm (padrão 3)'), nome: str('nome do grupo'), ref: str('apelido do grupo no lote') }, ['id']),
   },
   {
     name: 'forgia_importar',

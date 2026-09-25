@@ -1,6 +1,6 @@
 import { t } from './textos/index.js';
 import { capture, VIEW_NAMES } from './captura.js';
-import { state, catalog, mutate, applyQueued, medir, stl, marksOut, BridgeError, validateProject } from './ponte-comandos.js';
+import { state, catalog, mutate, applyQueued, medir, stl, tresMF, marksOut, BridgeError, validateProject } from './ponte-comandos.js';
 
 // Lado da página da ponte da IA. Os pedidos chegam do processo main pelo preload
 // (window.forgiaPonte, electron/preload.cjs), um de cada vez por ordem de chegada:
@@ -14,7 +14,7 @@ import { state, catalog, mutate, applyQueued, medir, stl, marksOut, BridgeError,
 // repassadas ao main, que recusa antes de chegar aqui.
 
 const STORAGE = 'forgia.ia';
-const MUTATING = new Set(['criar', 'alterar', 'excluir', 'agrupar', 'desagrupar', 'alinhar', 'espelhar', 'soltar_na_mesa', 'duplicar', 'lote', 'importar', 'desfazer', 'refazer', 'executar_codigo']);
+const MUTATING = new Set(['criar', 'alterar', 'excluir', 'agrupar', 'desagrupar', 'alinhar', 'espelhar', 'soltar_na_mesa', 'duplicar', 'lote', 'importar', 'criar_encaixe', 'desfazer', 'refazer', 'executar_codigo']);
 const CODE_TIMEOUT = 10000;
 const CONNECTED_MS = 10 * 60 * 1000; // "IA conectada" até 10 min depois do último pedido
 const NOTICE_MS = 6000;
@@ -29,7 +29,8 @@ export function loadIaConfig() {
 }
 
 export class Ponte extends EventTarget {
-  constructor(editor) {
+  // ready: promessa de que o projeto já chegou (src/arquivo.js); até lá o main responde "abrindo"
+  constructor(editor, ready = null) {
     super();
     this.ed = editor;
     this.api = window.forgiaPonte || null; // sem Electron (npm run dev): sem ponte
@@ -42,7 +43,7 @@ export class Ponte extends EventTarget {
       this.queue = this.queue.then(() => this.handle(msg));
     });
     this.api.aoEstado((info) => this.setInfo(info));
-    this.api.configurar(this.config).then((info) => this.setInfo(info));
+    Promise.resolve(ready).then(() => this.api.configurar(this.config).then((info) => this.setInfo(info)));
     setInterval(() => this.emitState(), 30000);
   }
 
@@ -113,6 +114,8 @@ export class Ponte extends EventTarget {
         return this.capture(args);
       case 'exportar_stl':
         return stl(ed, args);
+      case 'exportar_3mf':
+        return tresMF(ed, args);
       case 'desfazer':
       case 'refazer': {
         const before = ed.historyIndex;

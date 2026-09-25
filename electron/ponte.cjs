@@ -5,8 +5,9 @@
 //   { porta, token, pid, versao } em <userData>/ponte.json (%APPDATA%\Forgia no instalado). O token
 //   é novo a cada abertura; ao fechar, o arquivo é apagado (se ainda for o desta execução).
 // - Cada pedido vai ao renderer pelo IPC ('ponte:pedido') e volta por 'ponte:resposta'. O renderer
-//   não ganha acesso a disco: importar e exportar_stl leem/gravam aqui, só no caminho que o agente
-//   (dono do token) mandou, e só .stl/.obj/.3mf.
+//   não ganha acesso a disco: importar, exportar_stl e exportar_3mf leem/gravam aqui, só no caminho
+//   que o agente (dono do token) mandou, e só .stl/.obj/.3mf (gravação: .stl ou .3mf, conforme o
+//   comando).
 // - O renderer diz aqui se a IA e o código livre estão permitidos (Configurações), e até ele dizer,
 //   a ponte responde "abrindo".
 // - A sessão do navegador fica sem rede (http/https/ws cancelados): o Forgia é offline e o código
@@ -18,7 +19,9 @@ const { createBridgeServer, newToken, DEFAULT_PORT } = require('./ponte-servidor
 
 const MODEL_EXT = new Set(['.stl', '.obj', '.3mf']);
 const MAX_MODEL = 200 * 1024 * 1024;
-const TIMEOUTS = { importar: 90000, exportar_stl: 90000, executar_codigo: 30000, lote: 60000 };
+const TIMEOUTS = { importar: 90000, exportar_stl: 90000, exportar_3mf: 90000, executar_codigo: 30000, lote: 60000 };
+// comandos que gravam arquivo: extensão exigida e campo da resposta do renderer com os bytes
+const EXPORTS = { exportar_stl: { ext: '.stl', campo: 'stl' }, exportar_3mf: { ext: '.3mf', campo: 'tresmf' } };
 
 function startBridge(win) {
   const log = (...a) => console.log('[ponte]', ...a);
@@ -95,16 +98,17 @@ function startBridge(win) {
     return true;
   });
 
-  const checkModelPath = (p, forWrite) => {
+  // writeExt: extensão exigida na gravação ('.stl' ou '.3mf'); sem ela, leitura
+  const checkModelPath = (p, writeExt = null) => {
     if (typeof p !== 'string' || !p.trim()) return 'Informe "caminho": caminho absoluto do arquivo.';
-    if (!path.isAbsolute(p)) return `O caminho precisa ser absoluto (ex.: C:\\\\pasta\\\\peca${forWrite ? '.stl' : '.stl'}). Recebido: ${p}`;
+    if (!path.isAbsolute(p)) return `O caminho precisa ser absoluto (ex.: C:\\\\pasta\\\\peca${writeExt || '.stl'}). Recebido: ${p}`;
     const ext = path.extname(p).toLowerCase();
-    if (forWrite ? ext !== '.stl' : !MODEL_EXT.has(ext)) return forWrite ? 'O arquivo precisa terminar em .stl.' : 'Formato não suportado: use .stl, .obj ou .3mf.';
+    if (writeExt ? ext !== writeExt : !MODEL_EXT.has(ext)) return writeExt ? `O arquivo precisa terminar em ${writeExt}.` : 'Formato não suportado: use .stl, .obj ou .3mf.';
     return null;
   };
 
   function readModel(p) {
-    const bad = checkModelPath(p, false);
+    const bad = checkModelPath(p);
     if (bad) return { erro: bad };
     let st;
     try {
@@ -128,16 +132,18 @@ function startBridge(win) {
       arquivos[i] = r;
     }
     let target = null;
-    if (cmd === 'exportar_stl') {
-      const bad = checkModelPath(args.caminho, true);
+    const exp = EXPORTS[cmd];
+    if (exp) {
+      const bad = checkModelPath(args.caminho, exp.ext);
       if (bad) return { ok: false, erro: bad };
       target = args.caminho;
       if (!fs.existsSync(path.dirname(target))) return { ok: false, erro: `A pasta não existe: ${path.dirname(target)}` };
     }
     const res = await toRenderer(cmd, args, arquivos);
     if (target && res.ok) {
-      const data = res.stl;
-      delete res.stl;
+      const data = res[exp.campo];
+      delete res[exp.campo];
+      if (!data || typeof data.byteLength !== 'number') return { ok: false, erro: 'O editor não devolveu o arquivo.' };
       try {
         fs.writeFileSync(target, Buffer.from(data));
       } catch (err) {

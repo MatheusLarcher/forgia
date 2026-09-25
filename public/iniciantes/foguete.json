@@ -1,0 +1,294 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (iniciante)",
+ "projeto": {
+  "name": "Foguete",
+  "grid": 1,
+  "workplane": {
+   "w": 255,
+   "l": 255,
+   "h": 255
+  },
+  "objects": [
+   {
+    "id": "12y6lfc4",
+    "type": "group",
+    "name": "Foguete",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [
+     46.532405853271484,
+     78,
+     40.29903793334961
+    ],
+    "pos": [
+     0,
+     39,
+     0
+    ],
+    "quat": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "flip": [
+     1,
+     1,
+     1
+    ],
+    "children": [
+     {
+      "id": "hwk08n46",
+      "type": "cone",
+      "name": "motor",
+      "color": "#4a4f55",
+      "hole": false,
+      "params": {
+       "top": 4,
+       "sides": 40
+      },
+      "size": [
+       14,
+       7,
+       14
+      ],
+      "pos": [
+       0,
+       -35.5,
+       5.85
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "pmsbdh67",
+      "type": "cylinder",
+      "name": "corpo",
+      "color": "#c8ccd0",
+      "hole": false,
+      "params": {
+       "sides": 48,
+       "bevel": 0
+      },
+      "size": [
+       20,
+       50,
+       20
+      ],
+      "pos": [
+       0,
+       -8,
+       5.85
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "ctany1jr",
+      "type": "paraboloid",
+      "name": "bico",
+      "color": "#e3302d",
+      "hole": false,
+      "params": {
+       "sides": 48
+      },
+      "size": [
+       20,
+       22,
+       20
+      ],
+      "pos": [
+       0,
+       28,
+       5.85
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "f5xztod6",
+      "type": "cylinder",
+      "name": "janela",
+      "color": "#4fb3e8",
+      "hole": false,
+      "params": {
+       "sides": 32,
+       "bevel": 0
+      },
+      "size": [
+       9,
+       2,
+       9
+      ],
+      "pos": [
+       0,
+       1,
+       15.85
+      ],
+      "quat": [
+       0.7071067811865475,
+       0,
+       0,
+       0.7071067811865476
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "80rq69dw",
+      "type": "cylinder",
+      "name": "faixa",
+      "color": "#e3302d",
+      "hole": false,
+      "params": {
+       "sides": 48,
+       "bevel": 0
+      },
+      "size": [
+       21,
+       3,
+       21
+      ],
+      "pos": [
+       0,
+       -13.5,
+       5.85
+      ],
+      "quat": [
+       0,
+       0,
+       0,
+       1
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "tppo98oi",
+      "type": "wedge",
+      "name": "aleta 1",
+      "color": "#e3302d",
+      "hole": false,
+      "params": {},
+      "size": [
+       3,
+       22,
+       16
+      ],
+      "pos": [
+       0,
+       -28,
+       -12.15
+      ],
+      "quat": [
+       0,
+       1,
+       0,
+       6.123233995736766e-17
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "2bmbd7ys",
+      "type": "wedge",
+      "name": "aleta 2",
+      "color": "#e3302d",
+      "hole": false,
+      "params": {},
+      "size": [
+       3,
+       22,
+       16
+      ],
+      "pos": [
+       -15.588,
+       -28,
+       14.85
+      ],
+      "quat": [
+       0,
+       -0.5,
+       0,
+       0.8660254037844385
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "id": "igaob2do",
+      "type": "wedge",
+      "name": "aleta 3",
+      "color": "#e3302d",
+      "hole": false,
+      "params": {},
+      "size": [
+       3,
+       22,
+       16
+      ],
+      "pos": [
+       15.588,
+       -28,
+       14.85
+      ],
+      "quat": [
+       0,
+       0.5000000000000001,
+       0,
+       0.8660254037844385
+      ],
+      "flip": [
+       1,
+       1,
+       1
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "malhas": {}
+}

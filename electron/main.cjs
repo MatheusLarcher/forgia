@@ -3,6 +3,8 @@ const { app, BrowserWindow, Menu, shell, nativeTheme } = require('electron');
 const path = require('path');
 // ponte local com a IA (HTTP em 127.0.0.1 + IPC com a página); o MCP fica em electron/mcp/
 const { startBridge } = require('./ponte.cjs');
+// projeto em arquivo (.forgia), Recentes, cópia de segurança e a pergunta ao fechar
+const { startProject, fileFromArgv } = require('./projeto.cjs');
 
 // GPU: usa a placa dedicada quando houver mais de uma; se não houver GPU utilizável,
 // mantém o WebGL por software (SwiftShader) como fallback. Só carregamos arquivos locais.
@@ -35,6 +37,7 @@ if (app.isPackaged && process.platform === 'win32') {
 if (!app.requestSingleInstanceLock()) app.quit();
 
 let win;
+let projeto = null;
 
 function createWindow() {
   win = new BrowserWindow({
@@ -64,10 +67,14 @@ function createWindow() {
     return { action: 'deny' };
   });
   startBridge(win);
+  // .forgia pedido pelo Windows ao abrir (duplo clique no arquivo)
+  projeto = startProject(win, { arquivoInicial: fileFromArgv(process.argv) });
 }
 
-app.on('second-instance', () => {
+app.on('second-instance', (_e, argv) => {
   if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
+  const file = fileFromArgv(argv);
+  if (file && projeto) projeto.abrirDoSistema(file);
 });
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => app.quit());

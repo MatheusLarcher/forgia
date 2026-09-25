@@ -25,7 +25,8 @@ const CWD = args.pasta || 'C:\\GitHub\\teste';
 const scenario = SCENARIOS[args.pedido];
 if (!scenario) throw new Error(`--pedido precisa ser um de: ${Object.keys(SCENARIOS).join(', ')}`);
 const label = args.rotulo || 'teste';
-const OUT = path.join(ROOT, 'docs', 'fase-c-evidence', 'agente', label);
+// --evidencias=fase-d-evidence grava as evidências da Fase D (padrão: as da Fase C)
+const OUT = path.join(ROOT, 'docs', args.evidencias || 'fase-c-evidence', 'agente', label);
 fs.mkdirSync(OUT, { recursive: true });
 
 const profile = tempProfile('forgia-agente-');
@@ -35,7 +36,7 @@ let summary;
 try {
   // o Marcar parte copia para a área de transferência: a do usuário volta logo depois
   const saved = scenario.setup ? readClipboardText() : '';
-  const setup = scenario.setup ? await scenario.setup({ app, api }) : null;
+  const setup = scenario.setup ? await scenario.setup({ app, api, out: OUT }) : null;
   if (scenario.setup) writeClipboardText(saved);
   const cfgFile = path.join(OUT, `mcp-config-${args.pedido}.json`);
   fs.writeFileSync(cfgFile, JSON.stringify({ mcpServers: { forgia: { type: 'stdio', command: EXE, args: [scriptPath(EXE)], env: { ELECTRON_RUN_AS_NODE: '1', FORGIA_DADOS: profile } } } }, null, 2));
@@ -102,7 +103,8 @@ try {
   const shot = await api('captura', { vista: 'iso', largura: 800, altura: 600 });
   if (shot && shot.imagem) fs.writeFileSync(path.join(OUT, `${args.pedido}-iso.png`), Buffer.from(shot.imagem.split(',')[1], 'base64'));
   await app.screenshot(path.join(OUT, `${args.pedido}-tela.png`));
-  const check = scenario.check(final, setup);
+  // a conferência pode usar o exe (volumes pela malha da cena) e desfaz o que mexer
+  const check = await scenario.check(final, setup, { app, api });
   const text = events.filter((e) => e.type === 'assistant').flatMap((e) => (e.message.content || []).filter((c) => c.type === 'text').map((c) => c.text)).join('\n').slice(-1500);
   summary = {
     pedido: args.pedido,
