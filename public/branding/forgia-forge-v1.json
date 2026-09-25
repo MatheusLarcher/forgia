@@ -1,0 +1,19 @@
+{
+  "source": "forgia-forge-v1.svg",
+  "renderer": "Electron 33.4.11 / Chromium 130.0.6723.191",
+  "pngSize": 1024,
+  "icoSizes": [
+    16,
+    24,
+    32,
+    48,
+    64,
+    128,
+    256
+  ],
+  "sha256": {
+    "svg": "af8fbcbfaa099df05b0f829be8353e401f0a0e1fc4f154695aec139e3c721f65",
+    "png": "8e7393ab2b64b4a5f16b73e90fda9911ad2434eaec33a343af37ffddbaa36e52",
+    "ico": "cf7d917e20024c3ba8048c423c7ddd756db9c293e17c6cbe2caca0df5980c6f2"
+  }
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- Teste manual: o Forgia num navegador SEM WebGL. Abra pelo dev server (npm run dev) em
+     /tests/no-webgl.html. Bloqueia webgl/webgl2 ANTES do app carregar e reaproveita o
+     markup do index.html (scripts do DOMParser não executam), depois importa o app. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Forgia — teste sem WebGL</title>
+    <script>
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+        return /webgl/i.test(type) ? null : original.call(this, type, ...rest);
+      };
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      const html = await (await fetch('/index.html')).text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      document.body.replaceWith(document.adoptNode(doc.body));
+      await import('/src/main.js');
+    </script>
+  </body>
+</html>

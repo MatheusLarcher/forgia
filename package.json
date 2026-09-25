@@ -1,0 +1,52 @@
+{
+  "name": "forgia",
+  "productName": "Forgia",
+  "description": "Editor 3D para criar peças e projetos para impressão 3D",
+  "author": "2D Consultores",
+  "license": "MIT",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "desktop": "vite build && electron .",
+    "dist:win": "vite build && electron-builder --win nsis --x64",
+    "dist:win:branding": "vite build && electron-builder --win nsis --x64 -c.directories.output=release/branding",
+    "branding:generate": "electron scripts/generate-branding.cjs",
+    "test:branding": "node --test tests/branding.test.mjs"
+  },
+  "dependencies": {
+    "three": "^0.170.0",
+    "three-bvh-csg": "^0.0.17",
+    "three-mesh-bvh": "^0.8.3"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "vite": "^6.0.0"
+  },
+  "build": {
+    "appId": "br.com.2dconsultores.forgia",
+    "productName": "Forgia",
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "electron/**/*", "package.json"],
+    "asar": true,
+    "win": { "target": "nsis", "artifactName": "Forgia-Setup-${version}.exe", "icon": "public/branding/forgia-forge-v1.ico" },
+    "nsis": {
+      "installerIcon": "public/branding/forgia-forge-v1.ico",
+      "uninstallerIcon": "public/branding/forgia-forge-v1.ico",
+      "installerHeaderIcon": "public/branding/forgia-forge-v1.ico",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Forgia",
+      "language": "1046",
+      "include": "build/installer.nsh"
+    }
+  }
+}

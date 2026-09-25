@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Forgia — Editor 3D para impressão</title>
+    <meta name="description" content="Forgia: editor 3D no navegador para criar peças e projetos para impressão 3D." />
+    <link rel="icon" type="image/x-icon" href="./branding/forgia-forge-v1.ico" sizes="16x16 24x24 32x32 48x48 64x64 128x128 256x256" />
+    <link rel="icon" type="image/svg+xml" href="./branding/forgia-forge-v1.svg" sizes="any" />
+  </head>
+  <body>
+    <div id="app">
+      <header id="topbar">
+        <a class="logo" href="#" title="Forgia" aria-label="Forgia">
+          <img class="logo-symbol" src="./branding/forgia-forge-v1.svg" width="36" height="36" alt="" />
+          <span class="logo-wordmark">Forgia</span>
+        </a>
+        <button class="icon-btn grid-btn" id="btn-new" title="Novo projeto"></button>
+        <input id="design-name" class="design-name" spellcheck="false" />
+        <div class="spacer"></div>
+        <button class="text-btn" id="btn-import">Importar</button>
+        <button class="text-btn" id="btn-export">Exportar</button>
+        <button class="text-btn" id="btn-help">Atalhos</button>
+      </header>
+
+      <div id="toolbar">
+        <div class="tb-group">
+          <button class="icon-btn" data-cmd="copy" title="Copiar (Ctrl+C)"></button>
+          <button class="icon-btn" data-cmd="paste" title="Colar (Ctrl+V)"></button>
+          <button class="icon-btn" data-cmd="duplicate" title="Duplicar e repetir (Ctrl+D)"></button>
+          <button class="icon-btn" data-cmd="delete" title="Excluir (Delete)"></button>
+          <span class="tb-sep"></span>
+          <button class="icon-btn" data-cmd="undo" title="Desfazer (Ctrl+Z)"></button>
+          <button class="icon-btn" data-cmd="redo" title="Refazer (Ctrl+Y)"></button>
+        </div>
+        <div class="tb-group">
+          <button class="icon-btn" data-cmd="showAll" title="Mostrar tudo (Ctrl+Shift+H)"></button>
+          <span class="tb-sep"></span>
+          <button class="icon-btn" data-cmd="group" title="Agrupar (Ctrl+G)"></button>
+          <button class="icon-btn" data-cmd="ungroup" title="Desagrupar (Ctrl+Shift+G)"></button>
+          <button class="icon-btn" data-cmd="align" title="Alinhar (L)"></button>
+          <button class="icon-btn" data-cmd="mirror" title="Espelhar (M)"></button>
+        </div>
+      </div>
+
+      <main id="main">
+        <section id="viewport">
+          <div class="overlay"></div>
+          <div class="nav">
+            <div class="viewcube"></div>
+            <div class="view-btns">
+              <button class="round-btn" data-view="home" title="Vista inicial"></button>
+              <button class="round-btn" data-view="fit" title="Ajustar à tela (F)"></button>
+              <button class="round-btn" data-view="in" title="Aproximar"></button>
+              <button class="round-btn" data-view="out" title="Afastar"></button>
+              <button class="round-btn" data-view="ortho" title="Vista ortográfica / perspectiva"></button>
+            </div>
+          </div>
+
+          <div id="inspector" class="inspector hidden"></div>
+
+          <div class="bottom-right">
+            <button class="text-btn small" id="btn-settings">Configurações</button>
+            <label class="snap">Área
+              <select id="area-select"></select>
+            </label>
+            <label class="snap">Ajustar grade
+              <select id="snap-select">
+                <option value="0">Desligado</option>
+                <option value="0.1">0,1 mm</option>
+                <option value="0.25">0,25 mm</option>
+                <option value="0.5">0,5 mm</option>
+                <option value="1">1,0 mm</option>
+                <option value="2">2,0 mm</option>
+                <option value="5">5,0 mm</option>
+                <option value="10">10,0 mm</option>
+              </select>
+            </label>
+          </div>
+          <div class="hint" id="hint"></div>
+        </section>
+
+        <aside id="library">
+          <div class="lib-head">
+            <div class="lib-title">Shapes Library</div>
+            <div class="lib-controls">
+              <select id="lib-category">
+                <option value="basic">Formas básicas</option>
+                <option value="letters">Letras e números</option>
+              </select>
+              <div class="lib-search">
+                <span class="search-ico"></span>
+                <input id="lib-search" placeholder="Pesquisar" />
+              </div>
+            </div>
+          </div>
+          <div class="lib-grid" id="lib-grid"></div>
+        </aside>
+      </main>
+    </div>
+
+    <div id="modal-root"></div>
+    <input type="file" id="file-input" accept=".stl,.obj,.3mf" hidden />
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
