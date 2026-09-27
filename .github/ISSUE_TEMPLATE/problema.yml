@@ -1,0 +1,55 @@
+name: Relatar um problema
+description: Algo no Forgia não funcionou como deveria.
+title: "[Problema] "
+labels: ["problema"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por avisar! Quanto mais detalhe, mais rápido dá para achar o erro.
+        Não precisa saber programação: conte do seu jeito.
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do Forgia
+      description: Aparece no fim da janela Configurações (canto de baixo da tela), como "Forgia v0.1.1".
+      placeholder: "Forgia v0.1.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Versão do Windows
+      options:
+        - Windows 11
+        - Windows 10
+        - Outra / não sei
+    validations:
+      required: true
+  - type: textarea
+    id: fez
+    attributes:
+      label: O que você fez
+      description: 'Os passos, na ordem. Ex.: "Arrastei um cilindro, cliquei em Criar encaixe…"'
+    validations:
+      required: true
+  - type: textarea
+    id: esperava
+    attributes:
+      label: O que você esperava que acontecesse
+    validations:
+      required: true
+  - type: textarea
+    id: aconteceu
+    attributes:
+      label: O que aconteceu
+      description: Se apareceu alguma mensagem, copie o texto dela aqui.
+    validations:
+      required: true
+  - type: textarea
+    id: anexos
+    attributes:
+      label: Print da tela ou o projeto (.forgia)
+      description: Arraste para cá uma imagem da tela ou o arquivo .forgia com o problema (se puder compartilhar).
+    validations:
+      required: false

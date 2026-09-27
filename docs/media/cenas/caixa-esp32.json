@@ -1,0 +1,398 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (cena do README)",
+ "nome": "Caixa para ESP32",
+ "descricao": "Caixa de eletrônica (carcaça, postes com furo de parafuso e ventilação), para o GIF do Marcar parte com a IA. Montada pela ponte: node scripts/gravar-dicas.mjs --cena=docs/media/cenas/caixa-esp32.json --so-cenas",
+ "montagem": {
+  "comandos": [
+   {
+    "cmd": "criar",
+    "ref": "corpo",
+    "tipo": "caixa",
+    "nome": "corpo",
+    "medidas": [90,62,32],
+    "params": {"raio":4},
+    "centro": [0,0,null],
+    "base_z": 0,
+    "cor": "#c8d0da"
+   },
+   {
+    "cmd": "criar",
+    "ref": "vao",
+    "tipo": "caixa",
+    "nome": "vão",
+    "medidas": [85,57,31],
+    "params": {"raio":2},
+    "centro": [0,0,null],
+    "base_z": 2.5,
+    "furo": true
+   },
+   {"cmd":"agrupar","ref":"carcaca","ids":["$corpo","$vao"],"nome":"carcaça"},
+   {
+    "cmd": "criar",
+    "ref": "p1",
+    "tipo": "cilindro",
+    "nome": "poste",
+    "medidas": [7,7,6],
+    "params": {"lados":40},
+    "centro": [-35,-21,null],
+    "base_z": 2.5,
+    "cor": "#c8d0da"
+   },
+   {
+    "cmd": "criar",
+    "ref": "p2",
+    "tipo": "cilindro",
+    "nome": "poste",
+    "medidas": [7,7,6],
+    "params": {"lados":40},
+    "centro": [35,-21,null],
+    "base_z": 2.5,
+    "cor": "#c8d0da"
+   },
+   {
+    "cmd": "criar",
+    "ref": "p3",
+    "tipo": "cilindro",
+    "nome": "poste",
+    "medidas": [7,7,6],
+    "params": {"lados":40},
+    "centro": [-35,21,null],
+    "base_z": 2.5,
+    "cor": "#c8d0da"
+   },
+   {
+    "cmd": "criar",
+    "ref": "p4",
+    "tipo": "cilindro",
+    "nome": "poste",
+    "medidas": [7,7,6],
+    "params": {"lados":40},
+    "centro": [35,21,null],
+    "base_z": 2.5,
+    "cor": "#c8d0da"
+   },
+   {
+    "cmd": "criar",
+    "ref": "f1",
+    "tipo": "cilindro",
+    "nome": "furo M2,5",
+    "medidas": [2.5,2.5,6],
+    "params": {"lados":24},
+    "centro": [-35,-21,null],
+    "base_z": 2.6,
+    "furo": true
+   },
+   {
+    "cmd": "criar",
+    "ref": "f2",
+    "tipo": "cilindro",
+    "nome": "furo M2,5",
+    "medidas": [2.5,2.5,6],
+    "params": {"lados":24},
+    "centro": [35,-21,null],
+    "base_z": 2.6,
+    "furo": true
+   },
+   {
+    "cmd": "criar",
+    "ref": "f3",
+    "tipo": "cilindro",
+    "nome": "furo M2,5",
+    "medidas": [2.5,2.5,6],
+    "params": {"lados":24},
+    "centro": [-35,21,null],
+    "base_z": 2.6,
+    "furo": true
+   },
+   {
+    "cmd": "criar",
+    "ref": "f4",
+    "tipo": "cilindro",
+    "nome": "furo M2,5",
+    "medidas": [2.5,2.5,6],
+    "params": {"lados":24},
+    "centro": [35,21,null],
+    "base_z": 2.6,
+    "furo": true
+   },
+   {
+    "cmd": "criar",
+    "ref": "v1",
+    "tipo": "caixa",
+    "nome": "ventilação",
+    "medidas": [8,2.5,16],
+    "params": {"raio":1.2},
+    "centro": [45,-12,null],
+    "base_z": 10,
+    "furo": true
+   },
+   {
+    "cmd": "criar",
+    "ref": "v2",
+    "tipo": "caixa",
+    "nome": "ventilação",
+    "medidas": [8,2.5,16],
+    "params": {"raio":1.2},
+    "centro": [45,-6,null],
+    "base_z": 10,
+    "furo": true
+   },
+   {
+    "cmd": "criar",
+    "ref": "v3",
+    "tipo": "caixa",
+    "nome": "ventilação",
+    "medidas": [8,2.5,16],
+    "params": {"raio":1.2},
+    "centro": [45,0,null],
+    "base_z": 10,
+    "furo": true
+   },
+   {
+    "cmd": "criar",
+    "ref": "v4",
+    "tipo": "caixa",
+    "nome": "ventilação",
+    "medidas": [8,2.5,16],
+    "params": {"raio":1.2},
+    "centro": [45,6,null],
+    "base_z": 10,
+    "furo": true
+   },
+   {
+    "cmd": "criar",
+    "ref": "v5",
+    "tipo": "caixa",
+    "nome": "ventilação",
+    "medidas": [8,2.5,16],
+    "params": {"raio":1.2},
+    "centro": [45,12,null],
+    "base_z": 10,
+    "furo": true
+   },
+   {
+    "cmd": "agrupar",
+    "ids": ["$carcaca","$p1","$p2","$p3","$p4","$f1","$f2","$f3","$f4","$v1","$v2","$v3","$v4","$v5"],
+    "nome": "Caixa para ESP32"
+   }
+  ]
+ },
+ "projeto": {
+  "name": "Caixa para ESP32",
+  "grid": 1,
+  "workplane": {"w":255,"l":255,"h":255},
+  "objects": [
+   {
+    "id": "0yeez89e",
+    "type": "group",
+    "name": "Caixa para ESP32",
+    "color": null,
+    "hole": false,
+    "params": {},
+    "size": [90,31.775148391723633,62],
+    "pos": [0,15.887574195861816,0],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1],
+    "children": [
+     {
+      "id": "hnazhsik",
+      "type": "group",
+      "name": "carcaça",
+      "color": null,
+      "hole": false,
+      "params": {},
+      "size": [90,31.775148391723633,62],
+      "pos": [0,0,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1],
+      "children": [
+       {
+        "id": "621o2p86",
+        "type": "box",
+        "name": "corpo",
+        "color": "#c8d0da",
+        "hole": false,
+        "params": {"radius":4,"steps":10},
+        "size": [90,32,62],
+        "pos": [0,0.112,0],
+        "quat": [0,0,0,1],
+        "flip": [1,1,1]
+       },
+       {
+        "id": "1k3pm8sp",
+        "type": "box",
+        "name": "vão",
+        "color": "#e3302d",
+        "hole": true,
+        "params": {"radius":2,"steps":10},
+        "size": [85,31,57],
+        "pos": [0,2.112,0],
+        "quat": [0,0,0,1],
+        "flip": [1,1,1]
+       }
+      ]
+     },
+     {
+      "id": "a1m041os",
+      "type": "cylinder",
+      "name": "poste",
+      "color": "#c8d0da",
+      "hole": false,
+      "params": {"sides":40,"bevel":0},
+      "size": [7,6,7],
+      "pos": [-35,-10.388,21],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "jl1mclh1",
+      "type": "cylinder",
+      "name": "poste",
+      "color": "#c8d0da",
+      "hole": false,
+      "params": {"sides":40,"bevel":0},
+      "size": [7,6,7],
+      "pos": [35,-10.388,21],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "3kq84a87",
+      "type": "cylinder",
+      "name": "poste",
+      "color": "#c8d0da",
+      "hole": false,
+      "params": {"sides":40,"bevel":0},
+      "size": [7,6,7],
+      "pos": [-35,-10.388,-21],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "7h79mp54",
+      "type": "cylinder",
+      "name": "poste",
+      "color": "#c8d0da",
+      "hole": false,
+      "params": {"sides":40,"bevel":0},
+      "size": [7,6,7],
+      "pos": [35,-10.388,-21],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "59mx05nj",
+      "type": "cylinder",
+      "name": "furo M2,5",
+      "color": "#f38a00",
+      "hole": true,
+      "params": {"sides":24,"bevel":0},
+      "size": [2.5,6,2.5],
+      "pos": [-35,-10.288,21],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "an7z7xzv",
+      "type": "cylinder",
+      "name": "furo M2,5",
+      "color": "#f38a00",
+      "hole": true,
+      "params": {"sides":24,"bevel":0},
+      "size": [2.5,6,2.5],
+      "pos": [35,-10.288,21],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "ev8z9w8s",
+      "type": "cylinder",
+      "name": "furo M2,5",
+      "color": "#f38a00",
+      "hole": true,
+      "params": {"sides":24,"bevel":0},
+      "size": [2.5,6,2.5],
+      "pos": [-35,-10.288,-21],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "3pdheg56",
+      "type": "cylinder",
+      "name": "furo M2,5",
+      "color": "#f38a00",
+      "hole": true,
+      "params": {"sides":24,"bevel":0},
+      "size": [2.5,6,2.5],
+      "pos": [35,-10.288,-21],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "91yspqh7",
+      "type": "box",
+      "name": "ventilação",
+      "color": "#e3302d",
+      "hole": true,
+      "params": {"radius":1.2,"steps":10},
+      "size": [8,16,2.5],
+      "pos": [45,2.112,12],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "ltg0b497",
+      "type": "box",
+      "name": "ventilação",
+      "color": "#e3302d",
+      "hole": true,
+      "params": {"radius":1.2,"steps":10},
+      "size": [8,16,2.5],
+      "pos": [45,2.112,6],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "rzmtghxl",
+      "type": "box",
+      "name": "ventilação",
+      "color": "#e3302d",
+      "hole": true,
+      "params": {"radius":1.2,"steps":10},
+      "size": [8,16,2.5],
+      "pos": [45,2.112,0],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "dpg5xpjg",
+      "type": "box",
+      "name": "ventilação",
+      "color": "#e3302d",
+      "hole": true,
+      "params": {"radius":1.2,"steps":10},
+      "size": [8,16,2.5],
+      "pos": [45,2.112,-6],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     },
+     {
+      "id": "xte25tdv",
+      "type": "box",
+      "name": "ventilação",
+      "color": "#e3302d",
+      "hole": true,
+      "params": {"radius":1.2,"steps":10},
+      "size": [8,16,2.5],
+      "pos": [45,2.112,-12],
+      "quat": [0,0,0,1],
+      "flip": [1,1,1]
+     }
+    ]
+   }
+  ]
+ },
+ "malhas": {}
+}

@@ -130,6 +130,42 @@ function crossingPoint(a, b, c, d) {
   return [a[0] + u * rx, a[1] + u * rz];
 }
 
+// Traço em andamento que não pode cruzar a si mesmo: o trecho novo, do último ponto de path até p,
+// cruza um trecho anterior (o vizinho não conta)? Devolve o ponto do primeiro cruzamento, recuado
+// `recuo` mm para trás (a linha encosta na outra e para ali), ou null se não cruza. O ponto leva
+// .trecho: o índice i do trecho path[i] → path[i + 1] em que encostou.
+export function firstCrossing(path, p, recuo = 0) {
+  const n = path.length;
+  if (n < 3) return null;
+  const a = path[n - 1];
+  const len = Math.hypot(p[0] - a[0], p[1] - a[1]);
+  if (len < 1e-9) return null;
+  // u: onde, no trecho novo (0 = a, 1 = p); v: onde, no trecho antigo. As pontas do trecho antigo
+  // contam (passar bem por cima de um vértice também é cruzar)
+  const rx = p[0] - a[0];
+  const rz = p[1] - a[1];
+  let best = Infinity;
+  let trecho = -1;
+  for (let i = 0; i < n - 2; i++) {
+    const c = path[i];
+    const sx = path[i + 1][0] - c[0];
+    const sz = path[i + 1][1] - c[1];
+    const den = rx * sz - rz * sx;
+    if (Math.abs(den) < 1e-12) continue;
+    const u = ((c[0] - a[0]) * sz - (c[1] - a[1]) * sx) / den;
+    const v = ((c[0] - a[0]) * rz - (c[1] - a[1]) * rx) / den;
+    if (u > 1e-9 && u <= 1 && v >= 0 && v <= 1 && u * len < best) {
+      best = u * len;
+      trecho = i;
+    }
+  }
+  if (best === Infinity) return null;
+  const k = Math.max(0, best - recuo) / len;
+  const out = [a[0] + rx * k, a[1] + rz * k];
+  out.trecho = trecho;
+  return out;
+}
+
 // Traço à mão livre que passou do ponto de partida ao fechar: tira a sobra na emenda (só no
 // primeiro e no último quinto do traço), em vez de recusar o contorno inteiro.
 // 1) o fim cruzou o começo: corta no cruzamento;

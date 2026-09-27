@@ -13,12 +13,19 @@
 //   os passos; no fim congela a imagem, volta a cena à pose inicial por baixo e dissolve nela: o
 //   vídeo termina onde começou e o loop não pula. Grava public/ajuda/<dica>-<tema>.webm.
 // - --cenas: remonta as cenas a partir da "montagem" de cada arquivo (Iniciantes + lote da ponte).
-const { app, BrowserWindow, desktopCapturer, session, screen } = require('electron');
+const { app, BrowserWindow, desktopCapturer, session, screen, clipboard } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
+const { pathToFileURL } = require('node:url');
 const { startBridge } = require('../../electron/ponte.cjs');
 const { startProject } = require('../../electron/projeto.cjs');
+// a gravação nunca fala com o Agent Code de verdade (aberto na faixa real): faixa só dela, onde
+// fica o Agent Code falso dos roteiros com "agentCode". Exceção: --agentcode-real, para os roteiros
+// com "agentCode": { "real": true } (a mídia do README com a IA de verdade)
+const AGENTCODE_REAL = process.argv.includes('--agentcode-real');
+if (!AGENTCODE_REAL) process.env.FORGIA_AGENTCODE_PORTAS = process.env.FORGIA_AGENTCODE_PORTAS || '47450-47489';
+const { startAgentCode } = require('../../electron/agentcode.cjs');
 const webm = require('./webm.cjs');
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -153,6 +160,7 @@ class Sessao {
     }));
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     startBridge(win);
+    startAgentCode(win); // opção Agent Code do Conectar IA (sem Agent Code aberto: "não encontrado")
     startProject(win, { arquivoInicial: null });
     const shown = new Promise((r) => win.once('ready-to-show', r));
     win.loadFile(path.join(ROOT, 'dist', 'index.html'));
@@ -261,6 +269,32 @@ class Sessao {
     }
   }
 
+  // arquivo { caminho (a partir da raiz), para, de?, rotulo? }: cartão com o nome segue o cursor
+  // de "de" até "para" e o arquivo é solto ali (a página recebe o drop com o File de verdade)
+  async arquivo(a, ms, st) {
+    const file = path.resolve(ROOT, a.caminho);
+    if (!fs.existsSync(file)) throw new Error(`arquivo do roteiro não existe: ${a.caminho}`);
+    const nome = JSON.stringify(a.rotulo || path.basename(file));
+    await this.js(`(() => {
+      const c = document.createElement('div');
+      c.id = '__gravacao-arquivo';
+      c.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f58220" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+      c.append(document.createTextNode(${nome}));
+      Object.assign(c.style, { position: 'fixed', left: '0', top: '0', zIndex: '2147483646', pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '7px', background: '#ffffff', color: '#1e2226', border: '1px solid #c9ced3', boxShadow: '0 6px 18px rgba(0,0,0,.22)', font: '600 14px "Segoe UI", sans-serif', transform: 'translate(-999px, -999px)' });
+      document.body.append(c);
+      window.__gravacaoArquivo = (e) => (c.style.transform = 'translate(' + (e.clientX + 16) + 'px, ' + (e.clientY + 22) + 'px)');
+      window.addEventListener('pointermove', window.__gravacaoArquivo, true);
+      return true;
+    })()`);
+    if (a.de) await this.send('mouseMoved', await this.target(a.de));
+    const p = await this.target(a.para);
+    await this.moveTo(p, ms, st);
+    await wait(st.pausa ?? 120);
+    const data = { items: [], files: [file], dragOperationsMask: 1 };
+    for (const type of ['dragEnter', 'dragOver', 'drop']) await this.cdp('Input.dispatchDragEvent', { type, x: p.x, y: p.y, data });
+    await this.js(`(() => { window.removeEventListener('pointermove', window.__gravacaoArquivo, true); const c = document.getElementById('__gravacao-arquivo'); if (c) c.remove(); return true; })()`);
+  }
+
   // ---------- alvos ----------
   async target(spec) {
     if (spec.recorte) return { x: this.crop.x + this.crop.w * spec.recorte[0], y: this.crop.y + this.crop.h * spec.recorte[1] };
@@ -281,7 +315,9 @@ class Sessao {
     const setup = { tema, projeto: cena.projeto, camera: rot.camera, selecionar: rot.selecionar || [], estilo };
     const ok = await this.js(`__gravacao.preparar(${JSON.stringify(setup)})`);
     if (!ok) throw new Error(`${rot.dica}: seleção inicial não encontrada (${(rot.selecionar || []).join(', ')})`);
-    await this.js('__gravacao.semSelo(); __gravacao.legenda({ visivel: false })');
+    await this.js('__gravacao.semSelo(); __gravacao.semSeta(); __gravacao.legenda({ visivel: false })');
+    // o convite "Peça para a IA" (primeira abertura) não entra nas gravações
+    await this.js("localStorage.setItem('forgia.iaConviteVisto', '1'), document.querySelectorAll('.ia-convite').forEach((e) => e.remove()), true");
     await this.frames(3);
     await wait(rot.esperaCena || 250); // booleanas (CSG) e miniaturas da cena
     const vp = await this.js('__gravacao.vista()');
@@ -338,6 +374,9 @@ class Sessao {
     }
     if (st.soltar) await this.release(st.modifiers);
     if (st.digitar) await this.type(st.digitar, st.ms || 1000);
+    // arquivo arrastado do Explorador para a janela: o cursor leva um cartão com o nome do arquivo
+    // e solta de verdade (Input.dispatchDragEvent com o arquivo: o mesmo drop de um arrasto do Windows)
+    if (st.arquivo) await this.arquivo(st.arquivo, st.ms || 900, st);
     // comando pela ponte da IA (HTTP local com o token), o mesmo caminho de um agente pelo MCP
     if (st.ponte) {
       const r = await this.ponte(st.ponte.cmd, st.ponte.args || {});
@@ -349,7 +388,70 @@ class Sessao {
       const canto = l.recorte ? { x: this.crop.x + this.crop.w * l.recorte[0], y: this.crop.y + this.crop.h * l.recorte[1] } : undefined;
       await this.js(`__gravacao.legenda(${JSON.stringify({ html: l.html, canto, visivel: l.visivel !== false })})`);
     }
+    // seta de um alvo a outro (ex.: da peça ao encaixe que ela gerou)
+    if (st.seta) {
+      const { de, para, ms, curva } = st.seta;
+      await this.js(`__gravacao.seta(${JSON.stringify({ de: await this.target(de), para: await this.target(para), ms, curva })})`);
+    }
+    // espera a página chegar a um estado (ex.: a tarefa da IA terminar), até ms
+    if (st.esperarQue) await this.waitFor(st.esperarQue, st.ms || 20000);
     if (st.esperar) await wait(st.esperar);
+    // tempo do vídeo: 4 = o que vem depois passa 4x mais rápido (a espera da IA de verdade); 1 volta
+    if (st.velocidade) await this.rjs(`gravador.velocidade(${Number(st.velocidade)})`);
+  }
+
+  // Agent Code falso (tests/agentcode-falso.mjs, o do teste da integração) na faixa real, para a
+  // mídia do README mostrar o pedido indo à IA e a peça mudando: o "agente" do falso sobe o
+  // servidor MCP que o Forgia mandou em mcp_servers.forgia e faz as chamadas forgia_* do roteiro,
+  // pelo mesmo caminho da IA de verdade. O Agent Code de verdade ainda não tem esse servidor.
+  // cfg: { porta?, pensarMs?, chamadas: [{ ferramenta, args }], resposta }; nos args, "$peca",
+  // "$parte", "$lado" e "$ponto" viram a peça, a parte, o lado e o ponto da 1ª marcação
+  // (forgia_marcacoes). Outros "$nome" ficam como estão (as refs de um forgia_lote).
+  async agenteFalso(cfg) {
+    // "real": o Agent Code de verdade, aberto nesta máquina (faixa do contrato, sem falso); a IA
+    // faz o pedido de verdade. Só com --agentcode-real (senão o main olharia a faixa de teste)
+    if (cfg.real) {
+      if (!AGENTCODE_REAL) throw new Error('roteiro com Agent Code real: rode com --agentcode-real');
+      if (cfg.integrar === false) return;
+      const estado = await this.js('forgia.agentCode.integrar().then((s) => s && s.estado)');
+      if (estado !== 'integrado') throw new Error(`Agent Code real: estado ${estado} (ele está aberto e com conta?)`);
+      return;
+    }
+    const { fakeAgentCode, mcpStdio } = await import(pathToFileURL(path.join(ROOT, 'tests', 'agentcode-falso.mjs')).href);
+    const troca = (v, m) => {
+      const valor = { peca: m.peca && m.peca.id, parte: m.parte && m.parte.id, lado: m.lado_da_parte, ponto: m.ponto };
+      return JSON.parse(JSON.stringify(v).replace(/"\$(peca|parte|lado|ponto)"/g, (_s, k) => JSON.stringify(valor[k])));
+    };
+    const executor = async (a) => {
+      const f = mcpStdio(a.mcp_servers.forgia);
+      await f.init();
+      try {
+        await wait(cfg.pensarMs ?? 1500);
+        const r = await f.call('forgia_marcacoes', {});
+        const m = (r.marcacoes || r)[0];
+        // pedido feito pela conversa (sem alfinete): as chamadas não usam "$peca" etc.
+        if (!m && /"\$(peca|parte|lado|ponto)"/.test(JSON.stringify(cfg.chamadas || []))) throw new Error('nenhuma marcação');
+        for (const c of cfg.chamadas || []) await f.call(c.ferramenta, m ? troca(c.args, m) : c.args);
+        return cfg.resposta;
+      } finally {
+        f.close();
+      }
+    };
+    this.falso = await fakeAgentCode({ porta: cfg.porta || 47489, executor });
+    // integrar: false = o próprio roteiro clica em Integrar (a mídia mostra a integração)
+    if (cfg.integrar === false) return;
+    const estado = await this.js('forgia.agentCode.integrar().then((s) => s && s.estado)');
+    if (estado !== 'integrado') throw new Error(`Agent Code falso: estado ${estado}`);
+  }
+
+  // tira o balão do alfinete e o aviso da IA (a pose inicial não tem) e desliga a integração
+  async semAgenteFalso({ desligar = false } = {}) {
+    await this.js("forgia.agentCode.fechar(), forgia.editor.tools.mark.hideBalloon(), document.querySelectorAll('#viewport .ia-aviso').forEach((e) => e.remove()), document.querySelectorAll('.ia-chat').forEach((e) => (e.hidden = true)), document.querySelectorAll('#sb-pedir').forEach((e) => e.setAttribute('aria-expanded', 'false')), forgia.editor.tool && forgia.editor.setTool(null), true");
+    if (!desligar) return;
+    await this.js('forgia.agentCode.desligar().then(() => true)');
+    if (!this.falso) return;
+    await this.falso.close();
+    this.falso = null;
   }
 
   // grava um roteiro num tema; devolve o resumo
@@ -357,6 +459,19 @@ class Sessao {
     // cena: nome em ajuda/cenas, ou caminho a partir da raiz (ex.: public/iniciantes/foguete)
     const cenaFile = rot.cena.includes('/') ? path.join(ROOT, rot.cena + '.json') : path.join(CENAS, rot.cena + '.json');
     const cena = JSON.parse(fs.readFileSync(cenaFile, 'utf8'));
+    // o roteiro pode clicar em Copiar: a área de transferência do usuário volta como estava
+    const area = { texto: clipboard.readText(), imagem: clipboard.readImage() };
+    if (rot.agentCode) await this.agenteFalso(rot.agentCode);
+    try {
+      return await this.gravarCena(rot, tema, saida, fotos, cena);
+    } finally {
+      if (rot.agentCode) await this.semAgenteFalso({ desligar: true });
+      if (area.imagem.isEmpty()) clipboard.writeText(area.texto);
+      else clipboard.write({ text: area.texto, image: area.imagem });
+    }
+  }
+
+  async gravarCena(rot, tema, saida, fotos, cena) {
     await this.preparar(rot, tema, cena);
     const video = { ...VIDEO, ...(rot.video || {}) };
     await this.rjs(`gravador.iniciar(${JSON.stringify({ recorte: this.crop, saida: { w: video.w, h: video.h }, fps: video.fps, bitrate: video.bitrate })})`);
@@ -385,6 +500,11 @@ class Sessao {
     const acao = await this.rjs('gravador.amostra()'); // o resultado: tem que diferir do início
     // fim: congela, volta à pose inicial por baixo e dissolve nela
     await this.rjs('gravador.congelar()');
+    if (rot.agentCode) await this.semAgenteFalso();
+    // o aviso "IA: criou…" (de qualquer pedido pela ponte) não existe na pose inicial
+    await this.js("document.querySelectorAll('#viewport .ia-aviso').forEach((e) => e.remove()), true");
+    // o aviso "IA: criou…" (de um agente ou de um comando da ponte) não faz parte da pose inicial
+    await this.js("document.querySelectorAll('#viewport .ia-aviso').forEach((e) => e.remove()), true");
     await this.preparar(rot, tema, cena);
     const depois = await this.rjs('gravador.amostra()');
     await this.rjs(`gravador.dissolver(${rot.dissolver || 420})`);
@@ -456,6 +576,13 @@ async function main() {
       for (const f of fs.readdirSync(CENAS).filter((f) => f.endsWith('.json'))) {
         if (only && !only.has(path.basename(f, '.json'))) continue;
         const n = await s.montarCena(path.join(CENAS, f));
+        log('cena', f, n == null ? '(sem montagem)' : `${n} objeto(s) no topo`);
+      }
+    }
+    // --cena=<arquivo>[,<arquivo>]: remonta cenas fora de ajuda/cenas (ex.: docs/media/cenas/*.json)
+    if (args.cena) {
+      for (const f of String(args.cena).split(',')) {
+        const n = await s.montarCena(path.resolve(ROOT, f));
         log('cena', f, n == null ? '(sem montagem)' : `${n} objeto(s) no topo`);
       }
     }

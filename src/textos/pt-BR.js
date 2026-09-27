@@ -79,6 +79,12 @@ export default {
     in: 'Aproximar',
     out: 'Afastar',
     ortho: 'Vista ortográfica / perspectiva',
+    // gabarito discreto com a vista afastada (src/gabarito.js): [teclas ('+' é só o sinal), ação]
+    gabarito: [
+      [['Botão direito', '+', 'arrastar'], 'Girar a vista'],
+      [['W', 'A', 'S', 'D'], 'Andar pela mesa'],
+      [['Roda do mouse'], 'Aproximar / afastar'],
+    ],
     // ordem dos materiais da BoxGeometry: +X, −X, +Y, −Y, +Z, −Z
     cubo: ['DIREITA', 'ESQUERDA', 'SUPERIOR', 'INFERIOR', 'FRENTE', 'TRÁS'],
   },
@@ -327,6 +333,7 @@ export default {
     cruzeiro: 'Arraste a bolinha verde para a peça deslizar pela superfície das outras. Shift afunda na face — Esc sai',
     marcar: 'Clique num ponto da peça para pôr um alfinete e escrever o pedido só daquela parte — Esc sai',
     marcarChat: 'Escreva o pedido e aperte Enter para copiá-lo com a imagem — Esc fecha',
+    marcarChatEnviar: 'Escreva o pedido e aperte Enter para enviá-lo à IA — Esc fecha',
     plano: 'Clique numa face para ela virar o plano de trabalho, ou na mesa para voltar a ela — Esc cancela',
     // régua Medir, por etapa: nenhum ponto, só o inicial, os dois
     medir: {
@@ -346,6 +353,11 @@ export default {
     // title da bolinha de arraste do Cruzeiro
     cruzeiro: 'Arraste para deslizar pela superfície',
     // régua Medir: rótulo da distância, diferenças por eixo (sistema Z para cima) e onde o ponto gruda
+    // régua da mesa (src/regua.js): total na ponta e largura da faixa da seleção
+    regua: {
+      total: (v) => `${v} mm`,
+      largura: (v) => `${v} mm`,
+    },
     medir: {
       editar: 'Clique para digitar a distância',
       total: (v) => `${v} mm`,
@@ -387,6 +399,7 @@ export default {
       permitirIA: 'Permitir IA (o agente de IA controla o Forgia pela ponte local)',
       permitirCodigo: 'Permitir código livre da IA (só quando nenhum comando pronto resolve)',
       conectar: 'Conectar IA…',
+      versao: (v) => `Forgia v${v}`,
     },
     // Conectar IA: gera o texto para colar no agente (Fase C)
     conectar: {
@@ -406,6 +419,7 @@ export default {
         ['Botão direito + arrastar', 'Girar a vista'],
         ['Botão do meio / Shift+direito', 'Mover a vista'],
         ['Roda do mouse', 'Zoom'],
+        ['W A S D', 'Andar pela mesa'],
         ['Alt + arrastar forma', 'Duplicar arrastando'],
         ['Shift nas alças', 'Manter proporção / girar de 45°'],
         ['Alt nas alças', 'Redimensionar a partir do centro'],
@@ -470,10 +484,21 @@ export default {
   marcar: {
     titulo: (n) => `Marcação ${n}`,
     placeholder: 'O que mudar nesta parte? Enter copia o pedido',
+    // com a integração com o Agent Code ligada, Enter envia em vez de copiar
+    placeholderEnviar: 'O que mudar nesta parte? Enter envia à IA',
+    enviar: 'Enviar à IA',
     copiar: 'Copiar',
-    limpar: 'Limpar marcações',
+    excluir: 'Excluir marcador',
     limparN: (n) => `Limpar marcações (${n})`,
     copiado: 'Copiado. Cole no seu agente.',
+    // balão que sai do alfinete
+    balao: {
+      copiado: 'Pedido copiado! Cole numa conversa com a sua IA (Claude, Codex…) para ela fazer.',
+      trabalhando: 'A IA está trabalhando neste pedido…',
+      terminou: (r) => (r ? `A IA terminou: ${r}` : 'A IA terminou de criar.'),
+      erro: (e) => `A IA não conseguiu: ${e}`,
+      cancelado: 'Pedido cancelado.',
+    },
     naoCopiou: 'Não foi possível copiar para a área de transferência.',
     inclinada: (normal) => `inclinada (${normal})`,
     // "Marcação 1: Caixa 'aba' (parte de 'suporte'), ponto (12; −4; 30) mm, face virada para +X"
@@ -492,18 +517,79 @@ export default {
       ].join('\n'),
   },
 
+  // integração com o Agent Code (src/agentcode.js, src/pedido-ia.js e a opção Agent Code do
+  // Conectar IA, src/conectar.js)
+  agentcode: {
+    nome: 'Agent Code',
+    oQueE: 'é um app para Windows, em português, que roda o Claude sem terminal. É da LarcherTech, a mesma do Forgia.',
+    vantagem: 'Depois de integrar, é só escrever o que você quer em "Pedir à IA", na barra de baixo, ou clicar em Marcar, na conversa, marcar uma parte da peça e dizer o que mudar. A IA faz a peça aqui mesmo no Forgia: sem copiar e colar, sem trocar de janela.',
+    exige: 'Você precisa do Agent Code aberto e de uma conta Claude com plano pago (Pro ou Max).',
+    verPlanos: 'Ver os planos',
+    baixar: 'Baixar o Agent Code (GitHub)',
+    integrar: 'Integrar',
+    desligar: 'Desligar integração',
+    procurando: 'Procurando o Agent Code…',
+    estados: {
+      ausente: 'Agent Code não encontrado. Abra o Agent Code (ou baixe e instale) e clique em Integrar.',
+      login: 'Abra o Agent Code e entre na sua conta Claude.',
+      indisponivel: 'O Agent Code está aberto, mas ainda não está pronto. Tente de novo em instantes.',
+      pronto: 'Agent Code encontrado. Clique em Integrar.',
+      integrado: (v) => `Integrado${v ? ` (Agent Code ${v})` : ''}. Clique em "Pedir à IA", na barra de baixo, para conversar com a IA.`,
+      integradoAusente: 'Integrado, mas o Agent Code não está aberto agora. Abra o Agent Code para pedir.',
+      desligado: 'Integração desligada.',
+    },
+    erros: {
+      ausente: 'Agent Code não encontrado: abra o Agent Code e tente de novo.',
+      login: 'Abra o Agent Code e entre na sua conta Claude.',
+      indisponivel: 'O Agent Code está aberto, mas ainda não está pronto. Tente de novo em instantes.',
+      recusado: 'O Agent Code recusou o Forgia: atualize os dois apps.',
+      rede: 'O Agent Code não respondeu. Tente de novo.',
+      // o pedido pode ter chegado: o Forgia não reenvia para não fazer a peça duas vezes
+      incerto: 'O Agent Code não confirmou o pedido. Veja no Agent Code se ele está sendo feito antes de pedir de novo.',
+      erro: (m) => m || 'O Agent Code não conseguiu fazer o pedido.',
+    },
+    // botão "Pedir à IA" na barra de status e a conversa que sobe dele (src/pedido-ia.js)
+    rotulo: 'Pedir à IA',
+    rotuloTrabalhando: 'IA trabalhando…',
+    conversa: 'Conversa com a IA',
+    placeholder: 'Descreva a peça ou a mudança… Enter envia',
+    enviarBtn: 'Enviar',
+    vazio: 'Escreva o que quer (ex.: "faça um chaveiro com o nome ANA") ou use o Marcar, aqui em cima: clique nele e depois na parte da peça que a IA deve mudar.',
+    vazioSemIntegracao: 'Use o Marcar, aqui em cima: clique nele, depois na parte da peça, escreva o pedido e copie para a sua IA.',
+    marcarBtn: 'Marcar',
+    convite: 'Peça para a IA: ela cria e muda as peças aqui no Forgia. Clique para começar.',
+    semIntegracao: 'Para a IA fazer a peça aqui mesmo, sem copiar e colar, integre o Agent Code.',
+    conectarBtn: 'Conectar IA',
+    voce: 'Você',
+    ia: 'IA',
+    marcacao: (n) => `Marcação ${n}`,
+    ocupado: 'A IA ainda está no pedido anterior. Espere ou cancele.',
+    // painel da tarefa, no canto da vista
+    status: { enviando: 'Enviando ao Agent Code…', na_fila: 'Na fila do Agent Code…', rodando: 'A IA está trabalhando…', concluida: 'Pronto', erro: 'Não deu certo', cancelada: 'Cancelado' },
+    cancelando: 'Cancelando…',
+    canceladoProjeto: 'Outro projeto foi aberto.',
+    naoCancelou: 'Não deu para cancelar agora. Tente de novo ou cancele no Agent Code.',
+    semResposta: 'O Agent Code não está respondendo; tentando de novo…',
+    cancelar: 'Cancelar',
+    fechar: 'Fechar',
+  },
+
   // diálogo Conectar IA (src/conectar.js): um texto para colar no agente escolhido. Os pedaços
   // técnicos (comandos, JSON, TOML, com os caminhos desta instalação) vêm prontos de conectar.js
   conectar: {
-    explica: 'Escolha o seu agente de IA, copie o texto e cole numa conversa com ele. O agente instala o servidor MCP do Forgia, que roda pelo próprio Forgia.exe (não precisa instalar mais nada), e libera as ferramentas dele. Depois de atualizar o Forgia, faça de novo.',
+    // dois parágrafos: o que fazer e o que o usuário precisa saber
+    explica: [
+      'Escolha o seu agente de IA, copie o texto e cole numa conversa com ele. O agente instala o servidor MCP do Forgia e, a partir daí, cria e muda as peças aqui mesmo.',
+      'Você não instala mais nada: o servidor já vem com o Forgia. Atualizou o Forgia? Cole o texto de novo.',
+    ],
     agente: 'Agente',
-    agentes: { agentcode: 'Agent Code / Claude Code', codex: 'Codex', cursor: 'Cursor', generico: 'Outro' },
+    agentes: { agentcode: 'Agent Code', claudecode: 'Claude', codex: 'Codex', cursor: 'Cursor', generico: 'Outro' },
     semPonte: 'A ponte da IA só existe no programa instalado (Forgia.exe).',
     ponteAtiva: (porta) => `Ponte ligada em 127.0.0.1:${porta}.`,
     ponteInativa: (erro) => `A ponte não está ligada${erro ? ': ' + erro : ''}.`,
     // p = { exe, script, env, claudeAdd, claudeJson, codexToml, cursorJson, genericoJson } (conectar.js)
     prompts: {
-      agentcode: (p) =>
+      claudecode: (p) =>
         [
           'Instale o servidor MCP do Forgia (o editor 3D aberto neste computador) e libere as ferramentas dele. Faça nesta ordem:',
           '',
@@ -560,8 +646,9 @@ export default {
   sobre: {
     titulo: 'Sobre o Forgia',
     versao: (v) => `versão ${v}`,
-    feito: 'Feito no Brasil, por um carioca — ',
+    feito: 'Feito por um carioca — ',
     empresa: 'LarcherTech',
+    empresaDe: ', empresa brasileira',
     licenca: 'Licença MIT',
     icones: 'Ícones: Lucide (licença ISC)',
   },
@@ -633,7 +720,7 @@ export default {
     salvarCriacao: { titulo: 'Salvar seleção como criação', texto: 'Guarda as peças selecionadas como uma forma sua, para arrastar de novo em qualquer projeto. Passe o mouse sobre ela na biblioteca para renomear ou excluir.' },
     listaOcultar: { titulo: 'Ocultar ou mostrar', texto: 'Esconde a peça da vista e da exportação, ou mostra de novo. Numa parte de grupo, esconde só aquela parte. Ctrl+Z desfaz.' },
     listaBloquear: { titulo: 'Bloquear ou desbloquear', texto: 'Trava a peça: ela não se move nem muda de tamanho, nem pela IA, até ser desbloqueada.' },
-    credito: { titulo: 'LarcherTech', texto: 'O Forgia é feito pela LarcherTech, no Brasil. Abre o site no navegador.' },
+    credito: { titulo: 'LarcherTech', texto: 'O Forgia é feito pela LarcherTech, empresa brasileira. Abre o site no navegador.' },
     temaEscuro: { titulo: 'Tema escuro', texto: 'Muda a interface e a mesa para o tema escuro. A escolha fica salva.' },
     temaClaro: { titulo: 'Tema claro', texto: 'Muda a interface e a mesa para o tema claro. A escolha fica salva.' },
     bloquear: { titulo: 'Bloquear', atalho: 'Ctrl+L', texto: 'Trava a forma: ela não se move nem muda de tamanho até ser desbloqueada.' },
@@ -644,8 +731,9 @@ export default {
     expandir: { titulo: 'Expandir', texto: 'Abre o painel com material e parâmetros.' },
     mark: { titulo: 'Marcar parte', atalho: 'N', texto: 'Clique num ponto da peça para pôr um alfinete numerado. Escreva o que mudar ali e aperte Enter: o pedido, só daquela parte (mesmo dentro de um grupo), é copiado com a imagem para você colar no seu agente de IA.', video: 'mark' },
     limparMarcas: { titulo: 'Limpar marcações', texto: 'Tira todos os alfinetes da vista. As marcações não entram no projeto nem no desfazer.' },
-    conectarIA: { titulo: 'Conectar IA', texto: 'Gera o texto para colar no seu agente de IA (Agent Code, Claude Code, Codex, Cursor…). Ele instala a ponte do Forgia e passa a criar e alterar peças aqui, sem pedir permissão a cada comando.' },
+    conectarIA: { titulo: 'Conectar IA', texto: 'Liga um agente de IA ao Forgia. Com o Agent Code integrado, você pede aqui mesmo, em "Pedir à IA". Para Claude, Codex, Cursor e outros, gera o texto para colar no agente: ele instala a ponte do Forgia e passa a criar e alterar peças aqui.' },
     ia_conectada: { titulo: 'IA conectada', texto: 'Um agente de IA usou o Forgia há pouco. Tudo o que ele faz vira um passo de desfazer, e o aviso no canto mostra o que mudou.' },
+    pedir: { titulo: 'Pedir à IA', texto: 'Abre a conversa com a IA: escreva o que quer ("faça um chaveiro com o nome ANA") e aperte Enter, e a IA faz a peça aqui no Forgia. No alto da conversa ficam o Marcar, para apontar a parte que vai mudar, e o Conectar IA.', video: 'pedir' },
     ia_pronta: { titulo: 'IA pronta', texto: 'A ponte local está ligada e esperando um agente. Clique para ver como conectar.' },
     ia_desligada: { titulo: 'IA desligada', texto: 'A ponte recusa os pedidos do agente. Ligue em Configurações > IA.' },
     ia_indisponivel: { titulo: 'IA indisponível', texto: 'A ponte local não está disponível neste Forgia. Clique para ver os detalhes.' },

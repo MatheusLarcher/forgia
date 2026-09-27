@@ -13,6 +13,7 @@ export const PALETTES = {
     gridMajor: '#7f97b0', gridMajorOpacity: 0.9, // a cada 10 mm
     border: '#56708a', volume: '#56708a', volumeOpacity: 0.3,
     groundLight: '#9aa3ad', shadowOpacity: 0.22,
+    rulerOpacity: 0.85, rulerBandOpacity: 0.6, // régua da mesa: tracinhos (cor da borda) e faixa da seleção (cor do contorno)
     outline: '#f58220', outlineHover: '#ff9b37',
     hole: '#aab2ba', holeOpacity: 0.55, holeThumb: '#b3bac1',
     handleCorner: { fill: '#ffffff', stroke: '#2b2b2b' },
@@ -30,6 +31,7 @@ export const PALETTES = {
     gridMajor: '#52606f', gridMajorOpacity: 0.9,
     border: '#7d8b9a', volume: '#7d8b9a', volumeOpacity: 0.25,
     groundLight: '#8a939d', shadowOpacity: 0.42,
+    rulerOpacity: 0.8, rulerBandOpacity: 0.6,
     outline: '#f58220', outlineHover: '#ff9b37',
     hole: '#c3cad2', holeOpacity: 0.5, holeThumb: '#b3bac1',
     handleCorner: { fill: '#ffffff', stroke: '#16181b' },

@@ -43,8 +43,16 @@ export class Ponte extends EventTarget {
       this.queue = this.queue.then(() => this.handle(msg));
     });
     this.api.aoEstado((info) => this.setInfo(info));
-    Promise.resolve(ready).then(() => this.api.configurar(this.config).then((info) => this.setInfo(info)));
+    Promise.resolve(ready).then(() => {
+      this.configurar();
+      // de tempos em tempos repete: se o main perdeu o "pronto", ele volta sozinho
+      setInterval(() => this.configurar(), 30000);
+    });
     setInterval(() => this.emitState(), 30000);
+  }
+
+  configurar() {
+    return this.api.configurar(this.config).then((info) => this.setInfo(info));
   }
 
   get available() {
@@ -75,7 +83,7 @@ export class Ponte extends EventTarget {
     } catch {
       /* sem armazenamento: vale até fechar */
     }
-    if (this.api) this.api.configurar(this.config).then((info) => this.setInfo(info));
+    if (this.api) this.configurar();
     else this.emitState();
   }
 

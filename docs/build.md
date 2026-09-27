@@ -37,13 +37,17 @@ npm run desktop -- --user-data-dir=<pasta temporária>
 
 Execute **`gerar_setup.bat`** na raiz do projeto. Ele:
 
-1. confere se o Node.js está instalado;
+1. confere se o Node.js está instalado e sobe a versão (veja *Versão*);
 2. roda `npm install`;
-3. apaga o instalador anterior (para não confundir com uma versão antiga);
-4. gera o build e empacota o instalador;
+3. apaga o instalador anterior e as builds antigas de `release/builds/` (as que estiverem em uso
+   ficam para a próxima vez);
+4. gera o build e empacota numa pasta nova, `release/builds/<versão>/`, e copia o instalador para
+   `release/Forgia-Setup.exe`. Pasta nova a cada build porque um `win-unpacked` antigo pode estar
+   travado (um Forgia aberto dali, ou outro programa que leu o `app.asar`), e o empacotamento
+   falharia ao apagá-lo;
 5. mostra o caminho, a **data e o tamanho** do arquivo gerado e abre a pasta `release/`.
 
-Se algo falhar, a janela fica aberta mostrando o erro.
+Se algo falhar, a janela fica aberta mostrando o erro e a versão do `package.json` volta à de antes.
 
 ### Pelo terminal
 
@@ -53,9 +57,12 @@ npm run dist:win
 
 ### Resultado
 
+Pelo `gerar_setup.bat`, `release/Forgia-Setup.exe` e o resto em `release/builds/<versão>/`; pelo
+`npm run dist:win`, tudo direto em `release/`:
+
 ```
 release/
-├── Forgia-Setup-<versão>.exe   # instalador
+├── Forgia-Setup.exe            # instalador
 └── win-unpacked/               # programa já descompactado (útil para testar sem instalar)
     ├── Forgia.exe
     ├── LICENSE.txt             # extraFiles (veja abaixo)
@@ -77,8 +84,21 @@ O instalador:
 
 ### Versão
 
-A versão vem do campo `"version"` do `package.json` e entra no nome do arquivo
-(`Forgia-Setup-0.1.0.exe`). Atualize-a antes de gerar uma nova release.
+A versão vem do campo `"version"` do `package.json` e aparece no rodapé do instalador
+("Forgia 0.1.1"), em Configurações ("Forgia v0.1.1") e em Atalhos > Sobre o Forgia ("versão
+0.1.1"), pelo `__APP_VERSION__` do `vite.config.js`.
+
+O `gerar_setup.bat` sobe a versão sozinho: antes do build, ele roda `node scripts/bump-version.mjs`,
+que soma 1 no patch (0.1.0 → 0.1.1), troca só o valor da chave `"version"` (a formatação do
+arquivo fica igual) e imprime a versão nova, que o `.bat` mostra como "Versao desta build". Só o
+`gerar_setup.bat` sobe a versão; `npm run dist:win` e `npm run dist:win:branding` usam a que está no
+`package.json`. Para subir o minor ou o major, edite o `package.json` à mão antes.
+
+O número sobe a cada geração, mesmo se o build falhar ou for só teste, então as versões publicadas
+podem pular números. O `package.json` alterado vai no commit da release.
+
+O nome do instalador é fixo, `Forgia-Setup.exe`, sem a versão: assim o link
+`releases/latest/download/Forgia-Setup.exe` do README baixa sempre o da última release.
 
 ### GUID fixo do instalador (`nsis.guid`)
 
@@ -171,7 +191,7 @@ Para gerar uma validação sem substituir a release anterior na raiz:
 npm run dist:win:branding
 ```
 
-Saída: `release/branding/Forgia-Setup-0.1.0.exe` e `release/branding/win-unpacked/`.
+Saída: `release/branding/Forgia-Setup.exe` e `release/branding/win-unpacked/`.
 Esse comando não instala o programa. Novas execuções substituem apenas essa saída de
 validação. Não use `gerar_setup.bat` para preservar o instalador anterior na raiz.
 
@@ -198,7 +218,8 @@ do Electron do projeto: a captura é `desktopCapturer` + `MediaRecorder` (WebM V
 Leva uns 4 minutos para os 22 vídeos (≈ 4,5 MB no total; o instalador cresce o mesmo tanto).
 
 Opções (depois de `--`): `--dicas=cruise,align` (só alguns roteiros), `--temas=claro`,
-`--cenas` (remonta as cenas pela `montagem` antes: Iniciantes + lote da ponte), `--so-cenas`,
+`--cenas` (remonta as cenas pela `montagem` antes: Iniciantes + lote da ponte), `--cena=<arquivo>`
+(remonta uma cena fora de `ajuda/cenas`, ex.: `docs/media/cenas/caixa-esp32.json`), `--so-cenas`,
 `--previa` (só a foto da pose inicial, para acertar o enquadramento), `--fotos=<pasta>`,
 `--resumo=<arquivo.json>` (tamanho, duração e a diferença início × fim de cada vídeo),
 `--roteiros=<pasta>` e `--saida=<pasta>`. O formato dos roteiros está em
@@ -218,21 +239,53 @@ máquina** (é uma ferramenta do computador, não uma dependência do projeto; n
 ```bash
 npm run gravar-dicas                        # as dicas (se mudaram): public/ajuda
 npm run gravar-dicas -- --roteiros=docs/media/roteiros --temas=claro --saida=docs/fase-e-evidence/readme-video
+npm run gravar-dicas -- --roteiros=docs/media/roteiros --dicas=conectar-agentcode,conectar-claude,conectar-codex,conectar-outro --temas=escuro --saida=docs/fase-e-evidence/readme-video
+npm run gravar-dicas -- --roteiros=docs/media/roteiros --dicas=pedir --temas=claro,escuro   # dica do Pedir à IA: public/ajuda
 FFMPEG=<caminho do ffmpeg.exe> node scripts/gifs-readme.mjs
 ```
 
 A segunda linha grava a janela inteira para as cenas do README (a IA montando o chaveiro,
-arrastar formas, exportar, Conectar IA); a terceira converte essas gravações e cinco dicas em GIF
-(paleta própria, até ~8 MB cada) e gera `docs/media/forgia-apresentacao.webm`. As gravações
+arrastar formas, abrir um modelo baixado, exportar, Conectar IA); a terceira converte essas
+gravações e quatro dicas (desenhar, marcar, encaixe, cruzeiro + medir) em GIF e gera
+`docs/media/forgia-apresentacao.webm`. Ela também gera os vídeos das abas do Conectar IA dentro do app
+(`public/ajuda/conectar-<agente>-<tema>.webm`, VP9 800 px) a partir das gravações `conectar-*` nos
+dois temas (por isso a linha com `--temas=escuro`); `--so=conectar-app` refaz só esses. Os GIFs
+passam por um filtro de ruído só no tempo (`hqdn3d=0:0:4:4`, nada borra), que tira o chiado da
+compressão da gravação e deixa cada GIF com cerca de metade do tamanho. `--so=encaixe,importar` refaz só esses. As gravações
 intermediárias ficam em `docs/fase-e-evidence/` (fora do Git). A pré-visualização local do README
 (conversor mínimo, não é o GitHub) é `npx electron scripts/previa-readme.cjs`.
 
+**Regra dos GIFs: não perder qualidade.** Todo texto dentro deles (legenda, selo, cota, botão) tem
+que se ler no tamanho exibido no README, no computador e no celular; legibilidade vem antes do
+tamanho. Por isso:
+
+- cada GIF sai na **largura original da gravação** (README 960 px, dicas 640 px; o
+  `cruzeiro-medir.gif` junta duas dicas lado a lado, 1280 px), com a paleta própria de 128 cores
+  e o pontilhado leve de sempre;
+- o tamanho só cai **sem perda**: quadros repetidos (tempo parado) viram um quadro mais longo
+  (`mpdecimate` + tempo variável por quadro) e só o retângulo que muda é regravado;
+- **~3 MB por GIF é referência, não limite**: o script avisa quando passa, para conferir se a
+  nitidez compensa. Não reduza largura, cores nem pontilhado a ponto de borrar texto;
+- não troque GIF por MP4: vídeo no README só toca se for subido num comentário do GitHub, fora do
+  repositório.
+
+O modelo do GIF de importar é o esqueleto de *Triceratops horridus* do Smithsonian (CC0, domínio
+público), convertido do OBJ original para `docs/media/modelos/triceratops.3mf` (150 mm, em mm)
+por `node scripts/modelo-readme.mjs --obj=<arquivo.obj>`. O ZIP de origem fica fora do Git; veja o
+link e a licença no README. O roteiro solta o arquivo na janela com a ação `arquivo` do modo
+gravação (o mesmo drop de um arraste do Explorador).
+
+A imagem de prévia do repositório (Settings → Social preview) sai de
+`npx electron scripts/previa-social.cjs` para `docs/media/previa-social.png` (1280×640, até
+1 MB); os textos da página do GitHub estão em [github-pagina.md](github-pagina.md).
+
 ## Publicando uma release no GitHub
 
-1. Atualize `"version"` no `package.json`.
-2. Gere o instalador (`gerar_setup.bat` ou `npm run dist:win`).
-3. Crie uma tag (`git tag v0.1.0 && git push --tags`).
-4. No GitHub, crie a *Release* a partir da tag e anexe `release/Forgia-Setup-<versão>.exe`.
+1. Gere o instalador com `gerar_setup.bat` (ele sobe a versão; veja *Versão*).
+2. Faça o commit do `package.json` com a versão nova.
+3. Crie uma tag com essa versão (ex.: `git tag v0.1.1 && git push --tags`).
+4. No GitHub, crie a *Release* a partir da tag e anexe `release/Forgia-Setup.exe` com esse nome
+   exato: é ele que o link `releases/latest/download/Forgia-Setup.exe` procura.
 
 A pasta `release/` fica fora do Git (veja `.gitignore`): o instalador é distribuído pelas
 Releases, não pelo repositório.

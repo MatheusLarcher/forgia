@@ -7,13 +7,27 @@ Este guia mostra o fluxo completo: da primeira forma na mesa até o arquivo pron
 | Área | Para que serve |
 |---|---|
 | **Barra superior** | Novo projeto, nome do projeto (e, ao lado, o arquivo `.forgia` com "•" se houver alteração não salva), **Arquivo** (abrir, salvar, recentes), **Importar**, **Exportar**, **Atalhos** e o botão **sol/lua** do tema |
-| **Barra de ferramentas** | Copiar, colar, duplicar, excluir, desfazer/refazer, mostrar tudo, agrupar, desagrupar, alinhar, espelhar, **Criar encaixe** e as ferramentas **Desenhar**, **Cruzeiro**, **Medir**, **Marcar parte** e **Plano de trabalho** |
-| **Mesa (plano de trabalho)** | Onde o projeto é montado. Tem o tamanho da mesa da sua impressora |
+| **Barra de ferramentas** | Copiar, colar, duplicar, excluir, desfazer/refazer, mostrar tudo, agrupar, desagrupar, alinhar, espelhar, **Criar encaixe** e as ferramentas **Desenhar**, **Cruzeiro**, **Medir** e **Plano de trabalho** |
+| **Mesa (plano de trabalho)** | Onde o projeto é montado. Tem o tamanho da mesa da sua impressora, com uma **régua** na borda da frente e na da esquerda (veja abaixo) |
 | **Cubo de navegação** (canto superior esquerdo) | Clique numa face, aresta ou vértice para girar a vista até ela |
 | **Painel lateral** (direita) | Duas abas: **Biblioteca** (formas prontas para arrastar) e **Objetos** (a lista de tudo o que está no projeto) |
 | **Inspetor** | Aparece ao selecionar algo: cor, sólido/furo e os parâmetros da forma |
 | **Canto inferior direito** | Configurações (aparência, IA e plano de trabalho), tamanho da mesa e ajuste de grade |
-| **Barra de status** (rodapé) | X, Y e Z do centro da seleção e as medidas dela, o estado da IA, o botão **Conectar IA** e, na ponta direita, o crédito da LarcherTech |
+| **Barra de status** (rodapé) | X, Y e Z do centro da seleção e as medidas dela, o estado da IA, o botão **Pedir à IA** (a conversa com a IA, com os botões **Marcar** e **Conectar IA**) e, na ponta direita, o crédito da LarcherTech |
+
+### Régua da mesa
+
+Por fora da borda da **frente** (X) e da **esquerda** (Y) da mesa fica uma régua, como a de uma
+impressora de verdade: o **zero** é o canto da frente à esquerda e a ponta mostra o tamanho da mesa
+("220 mm"). Tem um tracinho a cada 10 mm; os números aparecem a cada 10, 50 ou 100 mm, conforme o
+zoom, sem encavalar. Ela acompanha a troca de mesa (*Área* ou *Configurações*) e o tema.
+
+- Com uma peça **selecionada** (ou sendo arrastada), a faixa que ela ocupa acende em laranja nas
+  duas réguas, com a **largura** dela ("40 mm"). É a largura, não a posição: o X/Y da barra de
+  status continua contando do centro da mesa.
+- **Sem seleção**, uma marquinha laranja acompanha o cursor sobre a mesa.
+- Com o **Plano de trabalho** ativo, a régua some e volta quando você sai dele. Ela não vai para o
+  projeto, a exportação nem as capturas.
 
 ## Dicas nos botões
 
@@ -139,8 +153,11 @@ feito com o mouse numa peça.
 
 `Esc` cancela o desenho. Ao sair do modo, a vista volta exatamente para onde estava.
 
-O contorno não pode se cruzar: se ele se cruzar, ou tiver menos de 3 pontos, ou não tiver área,
-o Forgia avisa e não cria a peça. O desenho é uma forma como as outras: salva no projeto, desfaz
+A linha não passa por cima dela mesma: se o traço chega numa parte já desenhada, ele encosta nela
+e para ali (à mão livre, escorrega pela linha até você voltar para dentro); com cliques, o ponto
+fica na linha. Um traço à mão livre que termina encostado fecha ali mesmo, sem a sobra do começo.
+Se o contorno fechado ainda assim se cruzar, ou tiver menos de 3 pontos, ou não tiver área, o
+Forgia avisa e não cria a peça. O desenho é uma forma como as outras: salva no projeto, desfaz
 com um `Ctrl+Z`, vira furo com `H`, recorta dentro de um grupo e sai no `.STL`. Para um furo
 dentro do desenho (como o miolo de um "O"), desenhe o miolo à parte, marque como furo e agrupe.
 
@@ -230,24 +247,31 @@ clique em **Criar encaixe** (quebra-cabeça, na barra de ferramentas). No diálo
 
 ## Marcar parte: pedir à IA uma mudança só "aqui"
 
-O botão **Marcar parte** (alfinete, na barra de ferramentas) ou a tecla `N` servem para mostrar
+O botão **Marcar** (alfinete, no alto da conversa do **Pedir à IA**) ou a tecla `N` servem para mostrar
 à IA exatamente a parte que você quer mudar.
 
-1. Passe o mouse sobre a peça: o contorno laranja mostra a **parte** que vai ser marcada. Numa
+1. Com o Marcar ligado, o mouse **carrega o alfinete** (já com o número que ele vai ter). Passe
+   sobre a peça: o contorno laranja mostra a **parte** que vai ser marcada. Numa
    peça agrupada, é a forma de dentro (a aba, o pino), não a peça inteira; na parede de um furo, é
-   o furo.
+   o furo. Fora da peça, o alfinete fica apagado: clicar ali só desliga o Marcar.
 2. **Clique** no ponto: aparece um **alfinete numerado** (1, 2, 3…) e, ao lado, um mini-chat com
    o texto de referência, como "Marcação 1: Caixa 'aba' (parte de 'suporte'), ponto (12; −4; 30) mm,
    face virada para +X".
 3. Escreva o que mudar ("aumenta essa aba em 2 mm") e aperte **Enter** (ou **Copiar**). O pedido
    completo vai para a área de transferência junto com uma **imagem da vista com os alfinetes**,
-   e aparece "Copiado. Cole no seu agente". Cole na conversa do seu agente de IA: ele lê a
-   marcação no Forgia e altera só aquela parte.
+   e um balão sai do alfinete: "Pedido copiado! Cole numa conversa com a sua IA". Cole na conversa
+   do seu agente de IA: ele lê a marcação no Forgia e altera só aquela parte.
+   Com o **Agent Code integrado** (veja *IA no Forgia*), o **Enter** (ou **Enviar à IA**) manda o
+   pedido direto ao Agent Code, sem copiar: o mini-chat fecha e o balão do alfinete mostra "A IA
+   está trabalhando…" (com **Cancelar**) e, no fim, o que ela fez ("A IA terminou: …").
+   **Copiar** continua lá, para colar noutro agente.
 
-`Shift+Enter` quebra a linha no mini-chat e `Esc` fecha o mini-chat (outro `Esc` sai da
-ferramenta). Clique num alfinete para abrir o mini-chat dele de novo. As marcações não entram no
-projeto nem no desfazer: ficam na vista até você clicar em **Limpar marcações** (no mini-chat ou
-na barra de status) ou até a IA limpá-las, e somem sozinhas se a parte marcada for excluída.
+Com o marcador ligado, clicar fora de uma peça, ou em qualquer lugar com o mini-chat aberto, só
+desliga o marcador: não põe outro alfinete (para marcar de novo, aperte **N** ou o botão).
+`Shift+Enter` quebra a linha no mini-chat e `Esc` fecha o mini-chat. Clique num alfinete para abrir
+o mini-chat dele de novo; **Excluir marcador** tira só aquele alfinete. As marcações não entram no
+projeto nem no desfazer: ficam na vista até você excluí-las, clicar em **Limpar marcações** (na
+barra de status) ou a IA limpá-las, e somem sozinhas se a parte marcada for excluída.
 
 ## Barra de status
 
@@ -275,28 +299,56 @@ Cada ação é um passo de desfazer (`Ctrl+Z`).
 
 ## IA no Forgia
 
-Um agente de IA que roda no seu computador (Agent Code, Claude Code, Codex, Cursor…) pode criar e
+Um agente de IA que roda no seu computador (Agent Code, Claude, Codex, Cursor…) pode criar e
 alterar as peças do Forgia aberto. Não há conta, chave nem custo dentro do Forgia: a conversa
 acontece no agente, e o Forgia só recebe os comandos por uma **ponte local**, que não aceita
 pedidos da rede nem de páginas abertas no navegador.
 
-- **Conectar**: clique em **Conectar IA** (na barra de status ou em *Configurações > IA*),
-  escolha o seu agente (*Agent Code / Claude Code*, *Codex*, *Cursor* ou *Outro*), clique em
-  **Copiar** e cole o texto numa conversa com ele. O agente instala o servidor do Forgia (que roda
+- **Agent Code integrado: pedir daqui**. O [Agent Code](https://github.com/MatheusLarcher/agent-code)
+  é um app para Windows, em português, que roda o Claude sem terminal. Com ele
+  aberto e a sua conta Claude de plano pago (Pro ou Max) conectada,
+  clique em **Pedir à IA** e em **Conectar IA**, fique na opção **Agent Code** e clique em **Integrar**. O Forgia acha o
+  Agent Code sozinho no computador e mostra *Integrado*; se aparecer *Agent Code não encontrado*,
+  abra o Agent Code (ou baixe pelo link) e clique de novo; *Abra o Agent Code e entre na sua conta
+  Claude* quer dizer que falta entrar na conta.
+  - Depois, clique em **Pedir à IA**, na barra de status: sobe a conversa com a IA. Escreva o pedido
+    ("faça um chaveiro com o nome ANA", "aumente o furo para 8 mm") e aperte `Enter`, ou clique em
+    **Marcar** e numa parte da peça para marcar onde mudar (o **Marcar parte** passa a enviar em vez
+    de copiar). Ao abrir o Forgia pela primeira vez, um aviso sobre o **Pedir à IA** mostra onde
+    começar. Clicar fora da conversa fecha ela e desliga o marcador. Você não
+    precisa abrir o Agent Code.
+  - A conversa mostra os seus pedidos (os do alfinete também, resumidos em uma linha com o número da marcação; clique para ver a parte marcada) e as
+    respostas da IA, com o andamento (*Na fila*, *A IA está trabalhando…*) e um botão **Cancelar**;
+    enquanto a IA trabalha, o botão da barra diz *IA trabalhando…*. A peça muda na tela com o
+    aviso de sempre ("IA: criou 1 · Desfazer"). Um pedido de cada vez.
+  - Os pedidos do mesmo projeto são uma conversa só (a IA lembra do pedido anterior); **Novo
+    projeto** ou abrir outro começa uma conversa nova. Se o Agent Code for reaberto, o Forgia o
+    acha de novo sozinho.
+  - O Agent Code trabalha numa pasta vazia só dele (`%APPDATA%\Forgia\agente`), longe dos seus
+    arquivos, e o manual da IA manda usar só as ferramentas do Forgia. **Desligar integração**, no
+    mesmo lugar, volta o Marcar parte a copiar.
+- **Conectar outro agente**: clique em **Conectar IA** (no alto da conversa do **Pedir à IA** ou em *Configurações >
+  IA*), escolha o seu agente (*Claude*, *Codex*, *Cursor* ou *Outro*): cada aba mostra um vídeo
+  curto de como conectar (o Cursor ainda não). Clique em **Copiar** e cole o texto numa conversa com ele. O agente instala o servidor do Forgia (que roda
   pelo próprio Forgia, sem instalar mais nada) e libera as ferramentas dele, para não pedir
   permissão a cada comando; ele vai pedir licença para mudar a configuração dele, o que é
   esperado. Depois, numa conversa nova, peça por exemplo "faça um cubo de 20 mm". Ao atualizar o
   Forgia, faça de novo: o texto sai com os caminhos da versão nova.
 - **Manual da IA**: vem dentro do Forgia. O agente lê sozinho, antes de modelar, como o Forgia
   mede as formas, como montar a peça num passo só e as regras de impressão (paredes, folgas,
-  furos para parafuso).
+  furos para parafuso). Também traz as **regras do agente**, iguais para qualquer um: mexer só no
+  projeto aberto, pelas ferramentas do Forgia; não criar nem apagar arquivos nem rodar programas
+  (exportar, só quando você pedir); um passo de desfazer por pedido; perguntar quando o pedido for
+  ambíguo; responder curto, em português, com as medidas em mm; e recusar o que não for sobre a
+  peça. O manual orienta, não bloqueia.
 - **O que a IA sabe fazer**, além das formas básicas: usar o **Hardware** e os **Geradores de
   forma** da biblioteca (porca, parafuso, furo para parafuso e porca, engrenagens que engrenam,
   caixa com tampa…), **Criar encaixe** de uma peça e **exportar em 3MF** para o fatiador, num
   arquivo que você indicar. Peça, por exemplo, "faça uma engrenagem de 20 dentes encaixando
   noutra" ou "exporte em 3MF para C:\Users\voce\pecas.3mf".
-- **Indicador** na barra de status: *IA conectada* (um agente usou o Forgia há pouco), *IA pronta*
-  (esperando), *IA desligada* ou *IA indisponível*.
+- **Indicador** na barra de status: *IA conectada*, com o ponto verde (um agente usou o Forgia há
+  pouco, ou o Agent Code está integrado), *IA pronta* (esperando), *IA desligada* ou *IA
+  indisponível*. Com o Agent Code integrado, o ponto do **Pedir à IA** também fica verde.
 - **O que a IA fez**: a cada pedido aparece um aviso no canto da vista, como "IA: criou 2,
   alterou 1 · Desfazer", e as peças mexidas piscam o contorno. Tudo o que a IA faz num pedido é
   **um** passo de desfazer: um `Ctrl+Z` (ou o *Desfazer* do aviso) volta tudo. A sua seleção não
@@ -338,6 +390,7 @@ pedidos da rede nem de páginas abertas no navegador.
 | Botão direito + arrastar | Girar a vista |
 | Botão do meio / Shift+direito | Mover a vista |
 | Roda do mouse | Zoom |
+| W A S D | Andar pela mesa (a câmera vai junto) |
 | Setas / Shift+setas | Mover na grade (passo ×10 com Shift) |
 | Ctrl + ↑ / ↓ | Subir / descer |
 | Ctrl+C / Ctrl+V / Ctrl+D | Copiar / colar / duplicar e repetir |
@@ -360,6 +413,10 @@ pedidos da rede nem de páginas abertas no navegador.
 
 A lista também fica no botão **Atalhos** dentro do app. No fim desse diálogo aparecem a placa de
 vídeo em uso e o bloco *Sobre o Forgia* (versão, licença e crédito).
+
+Com a vista afastada (a mesa inteira na tela, como ao abrir), um **gabarito discreto** no canto de
+baixo à esquerda lembra os três atalhos da vista: girar (botão direito + arrastar), andar (W A S D)
+e aproximar (roda do mouse). Ele some quando você aproxima ou liga uma ferramenta.
 
 ## Importar e exportar
 

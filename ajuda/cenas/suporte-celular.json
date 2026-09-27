@@ -3,7 +3,7 @@
  "versao": 1,
  "app": "Forgia (cena de dica)",
  "nome": "Suporte de celular",
- "descricao": "O suporte de celular dos Iniciantes, laranja inteiro (o bloco do encaixe nasce da cor da peça) e deslocado para a esquerda para caber o encaixe ao lado (Criar encaixe e Plano de trabalho).",
+ "descricao": "O suporte de celular dos Iniciantes, laranja inteiro e deslocado para a esquerda (Plano de trabalho).",
  "montagem": {
   "iniciantes": ["suporte-celular"],
   "comandos": [{"cmd":"alterar","id":"8we2c7ke","centro":[-40,0,null],"cor":"#f38a00"}]

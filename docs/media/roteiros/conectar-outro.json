@@ -1,0 +1,133 @@
+{
+ "dica": "conectar-outro",
+ "titulo": "Conectar IA: Outro (qualquer cliente MCP). Copiar de verdade; o texto fica borrado; o cubo chega pela ponte",
+ "cena": "docs/media/cenas/vazia",
+ "recorte": {
+  "janela": true
+ },
+ "video": {
+  "w": 960,
+  "h": 607,
+  "fps": 30,
+  "bitrate": 1600000
+ },
+ "camera": {
+  "alvo": [
+   0,
+   0,
+   6
+  ],
+  "de": [
+   40,
+   -95,
+   80
+  ]
+ },
+ "estilo": ".conectar-tutorial { display: none !important; } .modal.conectar-modal { width: min(640px, 94vw); } .conectar-texto { filter: blur(4px); } .grav-legenda { font-size: 21px; max-width: 700px; padding: 11px 16px; }",
+ "cursor": {
+  "recorte": [
+   0.6,
+   0.72
+  ]
+ },
+ "pausaInicial": 300,
+ "passos": [
+  {
+   "legenda": {
+    "html": "<b>1.</b> Clique em <b>Pedir à IA</b> e em <b>Conectar IA</b>",
+    "recorte": [
+     0.2,
+     0.06
+    ]
+   }
+  },
+  {
+   "esperar": 900
+  },
+  {
+   "clicar": {
+    "seletor": "#sb-pedir"
+   },
+   "ms": 1000
+  },
+  {
+   "esperar": 500
+  },
+  {
+   "clicar": {
+    "seletor": ".ia-chat [data-ia=\"conectar\"]"
+   },
+   "ms": 700
+  },
+  {
+   "esperar": 700
+  },
+  {
+   "legenda": {
+    "html": "<b>2.</b> Escolha <b>Outro</b> e clique em <b>Copiar</b>"
+   }
+  },
+  {
+   "clicar": {
+    "seletor": ".conectar-agentes [data-agente=\"generico\"]"
+   },
+   "ms": 800
+  },
+  {
+   "esperar": 900
+  },
+  {
+   "clicar": {
+    "seletor": "[data-conectar=\"copiar\"]"
+   },
+   "ms": 800
+  },
+  {
+   "esperar": 900
+  },
+  {
+   "legenda": {
+    "html": "<b>3.</b> Cole a configuração no seu programa de IA (servidor MCP <b>forgia</b>)."
+   }
+  },
+  {
+   "esperar": 3200
+  },
+  {
+   "clicar": {
+    "seletor": ".modal .modal-actions .btn"
+   },
+   "ms": 700
+  },
+  {
+   "legenda": {
+    "html": "<b>4.</b> Peça: <b>faça um cubo de 20 mm</b>"
+   }
+  },
+  {
+   "esperar": 1600
+  },
+  {
+   "ponte": {
+    "cmd": "lote",
+    "args": {
+     "comandos": [
+      {
+       "cmd": "criar",
+       "tipo": "caixa",
+       "nome": "cubo",
+       "medidas": [
+        20,
+        20,
+        20
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "esperar": 2800
+  }
+ ]
+}

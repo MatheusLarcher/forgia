@@ -24,14 +24,18 @@ forgia/
 │   ├── cruise.js       # ferramenta Cruzeiro (tecla C)
 │   ├── surface.js      # superfície sob o cursor: raio com BVH, região plana e realce verde
 │   ├── measure.js      # ferramenta Medir (tecla R), a régua
+│   ├── regua.js        # régua da mesa (bordas da frente e da esquerda) e faixa da seleção
+│   ├── gabarito.js     # gabarito discreto dos atalhos da vista (girar, WASD, roda) com a vista afastada
 │   ├── marcar.js       # ferramenta Marcar parte (tecla N): alfinetes e pedido copiado
 │   ├── coords.js       # conversão interno (Y para cima) ↔ usuário/ponte (Z para cima)
 │   ├── ponte.js        # ponte da IA na página: pedidos do main, ocupado, aviso e piscar
 │   ├── ponte-comandos.js # comandos da IA (estado, criar, lote…) no sistema do usuário
 │   ├── ponte-codigo.js # Worker do código livre da IA (fachada forgia.*)
 │   ├── captura.js      # PNG da vista (IA e Marcar parte), com câmera temporária
-│   ├── statusbar.js    # barra de status: X/Y/Z da seleção, plano, IA conectada, Conectar IA, crédito
-│   ├── conectar.js     # diálogo Conectar IA
+│   ├── statusbar.js    # barra de status: X/Y/Z da seleção, plano, IA conectada, Pedir à IA, crédito
+│   ├── conectar.js     # diálogo Conectar IA (Agent Code: a integração; os outros: texto para colar)
+│   ├── agentcode.js    # integração com o Agent Code na página: estado, pedido, acompanhar, cancelar
+│   ├── pedido-ia.js    # botão "Pedir à IA" da barra de status e a conversa com a IA que sobe dele
 │   ├── arquivo.js      # projeto em arquivo: .forgia, "•", Recentes, cópia de segurança, recuperação, migração
 │   ├── projeto.js      # formato .forgia (ZIP: projeto.json com versão + malhas + miniatura)
 │   ├── zip.js          # ZIP escrito à mão (CRC32 + CompressionStream 'deflate-raw') e leitura (fflate do three)
@@ -55,9 +59,11 @@ forgia/
 │   └── style.css       # estilos; toda cor da interface vem de variável do tema
 ├── electron/
 │   ├── main.cjs        # janela do programa desktop
-│   ├── preload.cjs     # preload mínimo: a ponte da IA e o projeto em arquivo (contextBridge)
+│   ├── preload.cjs     # preload mínimo: a ponte da IA, o projeto em arquivo e o Agent Code (contextBridge)
 │   ├── projeto.cjs     # .forgia por diálogo, Recentes, cópia de segurança em pasta fixa, pergunta ao fechar
 │   ├── ponte.cjs       # ponte da IA no processo main (ponte.json, IPC, arquivos)
+│   ├── mcp-servidor.cjs # { command, args, env } do servidor MCP (Conectar IA e Agent Code)
+│   ├── agentcode.cjs   # integração com o Agent Code: descoberta, cliente MCP HTTP, token, IPC
 │   ├── ponte-servidor.cjs # servidor HTTP da ponte (Node puro, testado sem Electron)
 │   └── mcp/            # servidor MCP (vai para resources\mcp, fora do asar)
 │       ├── forgia-mcp.cjs  # JSON-RPC stdio escrito à mão
@@ -218,6 +224,20 @@ somem e o clique esquerdo vai para ela; o botão direito e o do meio continuam m
   peça vai para o lado de dentro (topo rente à face). Soltar faz um `commit` só: um desfazer.
   Clicar no corpo da peça continua sendo o arraste normal.
 
+- **Régua da mesa** (`regua.js`, `editor.ruler`): não é ferramenta, fica sempre na vista. Os
+  tracinhos (a cada 10 mm, maiores a cada 50) e as duas faixas da seleção são objetos da cena
+  dentro do grupo da mesa, refeitos por `initWorkplane` (troca de mesa) e com materiais em
+  `wpMats` (cores de `applyTheme`: `border`/`rulerOpacity` e `outline`/`rulerBandOpacity`). Os
+  números, a largura da faixa e a marquinha do cursor são HTML na sobreposição. Zero no canto da
+  frente à esquerda, não no centro, por isso a faixa mostra a largura, não a coordenada. `update()`
+  roda a cada quadro, mas só reposiciona quando mudam `viewKey()`, a mesa, a caixa da seleção
+  (`selectionBox`) ou o cursor (`trackCursor`, no `onMove`, só sem seleção). O passo dos números
+  (10, 50, 100… mm) é o menor que cabe nas duas pontas da régua; depois, rótulos em ordem de
+  prioridade (faixa, total, zero, centenas, cinquentas, dezenas) entram só se não encostam num já
+  posto, nos controles que flutuam sobre a vista (`#viewport` > `.nav`, `#inspector`,
+  `.bottom-right`…) nem saem da vista. Some com o plano de trabalho; `captura.js` esconde o
+  `root`; fica fora do projeto, do histórico e da exportação. Teste: `tests/regua-exe.test.mjs`.
+
 - **Medir** (`measure.js`): a régua fica só no estado da ferramenta (fora do projeto e do
   histórico) e é desenhada numa camada SVG com um rótulo HTML. O snap usa `editor.surface.hit()`:
   vértices e meios das arestas reais da peça sob o cursor (as do contorno de seleção,
@@ -227,7 +247,9 @@ somem e o clique esquerdo vai para ela; o botão direito e o do meio continuam m
   superfície atingida. Editar o total move a peça do ponto final ao longo da linha num
   `editor.change` (um desfazer). ΔX/ΔY/ΔZ saem de `coords.js`.
 
-- **Marcar parte** (`marcar.js`, tecla `N`): o hover mostra o contorno da **parte** sob o
+- **Marcar parte** (`marcar.js`, tecla `N`): com a ferramenta ligada, o mouse **carrega o alfinete**
+  (`.pin-fantasma`, com o número que ele vai ter; a ponta é o cursor, e o cursor do sistema some
+  sobre a vista); fora de uma peça ele fica apagado, porque ali o clique só desliga. O hover mostra o contorno da **parte** sob o
   cursor (linha sem teste de profundidade, na cor do contorno do tema). Dentro de um grupo, a
   malha na tela é a booleana e o raio acerta o grupo; o ponto é testado contra a forma de cada
   filho já transformada (`groupFrame`, descendo em grupos aninhados; `closestPointToPoint` da BVH)
@@ -422,6 +444,11 @@ agente de IA ──stdio (JSON-RPC)──► Forgia.exe + ELECTRON_RUN_AS_NODE=1
   Fonte: <https://modelcontextprotocol.io/specification/2025-06-18/basic/transports> ("Security").
 - Respostas JSON `{ ok, ... }`: 200 feito; 422 recusado pelo editor (erro que ensina, com
   `validos` e `exemplo`); 409 ocupado; 401/403/404/405/413/503 para o resto.
+- **"Abrindo" (503)** até a página dizer que está pronta (`ponte:config`, depois de o projeto
+  chegar). Volta a "abrindo" só numa recarga de verdade da janela (`did-start-navigation` do
+  documento principal, fora da mesma página) ou se o processo da página cair. Não use
+  `did-start-loading`: ele também dispara em navegação na mesma página (um link `href="#"`) e deixava
+  a ponte em "abrindo" para sempre. Por garantia, a página repete o `ponte:config` a cada 30 s.
 - A página **não ganha disco**: `importar` lê o arquivo no main (`.stl/.obj/.3mf`, até 200 MB) e
   entrega os bytes; `exportar_stl` e `exportar_3mf` recebem os bytes da página e o main grava, só
   em caminho absoluto `.stl`/`.3mf` (conforme o comando, tabela `EXPORTS` de `electron/ponte.cjs`)
@@ -528,8 +555,9 @@ conteúdo `image` (PNG base64).
 
 Não há skill à parte: o manual vive no servidor MCP e acompanha a versão instalada. Três lugares:
 
-1. **`instructions`** do `initialize` (1.619 bytes; o Claude Code corta em ~2 KB e injeta em
-   **toda** conversa, então só o essencial): o que é o Forgia, coordenadas, "monte num
+1. **`instructions`** do `initialize` (1.841 bytes; o Claude Code corta em ~2 KB e injeta em
+   **toda** conversa, então só o essencial): o que é o Forgia, a linha essencial das regras do
+   agente ("só ferramentas forgia_*, sem arquivos nem terminal; na dúvida, pergunte"), coordenadas, "monte num
    `forgia_lote`", "confira pelo retorno, não pela imagem", "leia `forgia_manual` antes da primeira
    modelagem", hardware e geradores como tipos do `forgia_criar` (medidas saem dos params),
    `forgia_criar_encaixe` e `forgia_exportar_3mf`, marcações e a regra do código livre só em
@@ -537,9 +565,14 @@ Não há skill à parte: o manual vive no servidor MCP e acompanha a versão ins
 2. **Descrição de cada ferramenta e parâmetro** (`ferramentas.cjs`), com unidade e exemplo.
 3. **`forgia_manual`**: sem seção, o **guia rápido** (medidas de cada forma, hardware e
    geradores, posição, furos e um exemplo de lote completo, numa chamada só); com seção, o
-   detalhe: `coordenadas`, `receitas` (chaveiro, caixa com tampa pela `caixa_com_tampa`, furo M3
+   detalhe: `regras` (as regras do agente, iguais para Claude Code, Codex, Cursor e Agent Code:
+   só o projeto aberto e só `forgia_*`; sem criar, editar ou apagar arquivos, exceto exportar
+   quando o usuário pedir; sem terminal nem programas; um lote por pedido; perguntar se ambíguo
+   ou se apagaria muita coisa; resposta curta em português, em mm; recusar o que não é sobre a
+   peça; orientam, não bloqueiam), `coordenadas`, `receitas` (chaveiro, caixa com tampa pela `caixa_com_tampa`, furo M3
    com porca numa parede lateral, par de engrenagens, encaixe, porca no parafuso, exportar 3MF,
-   padrão em círculo, furo de lado, peça orgânica por `importar`), `impressao` (paredes, texto,
+   padrão em círculo, furo de lado, peça orgânica com formas e desenho, ou `importar` de um STL do
+   usuário: nada de gerar arquivo por programa), `impressao` (paredes, texto,
    folgas, parafusos, rosca real só de M4 para cima, balanços), `marcacoes`, `codigo_livre` e
    `erros`.
 
@@ -558,15 +591,24 @@ inclusive as engrenagens sem sobreposição) e rodadas com o agente real
 
 ### Conectar IA (`src/conectar.js`)
 
-O botão **Conectar IA** (barra de status e *Configurações > IA*) abre um seletor de agente e um
-texto para colar nele, com os caminhos **reais** desta instalação, que o processo main informa
-(`ponte:info`: `app.getPath('exe')`, `process.resourcesPath\mcp\forgia-mcp.cjs`, pasta de dados).
-`FORGIA_DADOS` só entra quando a pasta de dados não é a padrão (perfil de teste). Clicar de novo
-gera os caminhos da versão instalada, e o texto manda trocar a configuração antiga.
+O botão **Conectar IA** (no alto da conversa do *Pedir à IA* e em *Configurações > IA*) abre um seletor de agente. Na
+opção **Agent Code** (a primeira), a integração: o que é, a vantagem, o que exige, o link de
+download e **Integrar** com o estado (veja *Integração com o Agent Code*). Nas outras, um texto
+para colar no agente, com os caminhos **reais** desta instalação. Cada aba tem, no alto, o vídeo
+tutorial de como conectar (`VIDEOS`: `public/ajuda/conectar-<agente>-<tema>.webm`, em loop, com
+pausar/tocar); o Cursor ainda não tem. O botão **Pedir à IA** tem a dica com vídeo `pedir`
+(roteiro `docs/media/roteiros/pedir.json`, gravado direto em `public/ajuda`), tirada enquanto a conversa está aberta para não cobri-la. A configuração do servidor MCP
+(`{ command, args, env }`) é montada no main, em `electron/mcp-servidor.cjs` (`serverSpec` e
+`forgiaPaths`: `app.getPath('exe')`, `process.resourcesPath\mcp\forgia-mcp.cjs` ou, no dev,
+`electron/mcp/forgia-mcp.cjs`), e chega pronta no `ponte:info` (`servidor`): é a mesma que a
+integração manda ao Agent Code, e a página só formata. `FORGIA_DADOS` só entra quando a pasta de
+dados não é a padrão (perfil de teste). Clicar de novo gera os caminhos da versão instalada, e o
+texto manda trocar a configuração antiga.
 
 | Agente | Servidor | Permissões |
 |---|---|---|
-| Agent Code / Claude Code | `claude mcp remove --scope user forgia` e `claude mcp add --scope user forgia -e "ELECTRON_RUN_AS_NODE=1" -- "<exe>" "<script>"` (sintaxe do `claude mcp add --help` 2.1.x: `-e` aceita vários valores, então vem depois do nome e antes de `--`); sem o comando, a mesma entrada em `mcpServers` do `~/.claude.json`, mesclada | `"mcp__forgia"` em `permissions.allow` do `~/.claude/settings.json`, **mesclando** com o que existe |
+| Agent Code | integração (sem texto): o Forgia manda o pedido e o servidor em `mcp_servers.forgia` | o Agent Code libera as `forgia_*` na tarefa |
+| Claude Code | `claude mcp remove --scope user forgia` e `claude mcp add --scope user forgia -e "ELECTRON_RUN_AS_NODE=1" -- "<exe>" "<script>"` (sintaxe do `claude mcp add --help` 2.1.x: `-e` aceita vários valores, então vem depois do nome e antes de `--`); sem o comando, a mesma entrada em `mcpServers` do `~/.claude.json`, mesclada | `"mcp__forgia"` em `permissions.allow` do `~/.claude/settings.json`, **mesclando** com o que existe |
 | Codex | `[mcp_servers.forgia]` em `~/.codex/config.toml` (strings literais TOML, `env`, `startup_timeout_sec`, `tool_timeout_sec`) | `default_tools_approval_mode = "auto"` na mesma seção |
 | Cursor | `mcpServers.forgia` em `~/.cursor/mcp.json`, mesclado | pela interface do Cursor (Run Mode / lista de permitidas): o texto pede ao agente para orientar o usuário |
 | Outro | comando, argumento, variáveis e o bloco `mcpServers` genérico | liberar as ferramentas `forgia_*` |
@@ -576,13 +618,112 @@ JSON, TOML) e é testado em `tests/conectar.test.mjs`. `tests/conectar-exe.mjs` 
 exe, guarda o texto de cada agente e roda o `claude mcp add` gerado no Git Bash e no PowerShell com
 `CLAUDE_CONFIG_DIR` temporário, conferindo com `claude mcp list` que o servidor conecta.
 
+### Integração com o Agent Code (`electron/agentcode.cjs`, `src/agentcode.js`, `src/pedido-ia.js`)
+
+O usuário escreve o pedido no Forgia; o Forgia manda ao **Agent Code** aberto na mesma máquina,
+que roda o Claude com as ferramentas MCP do próprio Forgia, e a peça muda pela ponte (um passo de
+desfazer e o aviso "IA: criou…", como qualquer pedido de agente). O usuário não abre o Agent Code.
+
+**Contrato do lado do Agent Code** (fixo; ainda não existe no repositório dele):
+- só `127.0.0.1`, na primeira porta livre de **47110–47149**;
+- `GET /agent-code` sem token → `{ app: "agent-code", versao, mcp: "/mcp", pronto, motivo }`
+  (`pronto: false, motivo: "login"` = aberto sem conta Claude);
+- `POST /mcp`: MCP Streamable HTTP `2025-06-18`, `serverInfo.name = "agent-code"`, sessão por
+  `Mcp-Session-Id`, **token fixo** `Authorization: Bearer fgac_…` (sem ele ou errado → `401`),
+  recusa pedido com cabeçalho `Origin`, executa sem aprovação;
+- ferramentas `agent_code_enviar { prompt, cliente: "Forgia", projeto, conversa_id?, mcp_servers? }`
+  → `{ tarefa_id, conversa_id }`; `agent_code_tarefa { tarefa_id }` → `{ status: na_fila | rodando
+  | concluida | erro | cancelada, resposta?, erro? }`; `agent_code_cancelar { tarefa_id }`.
+- **Recursos opcionais** (versões novas): o `GET /agent-code` também traz `recursos`
+  (`["modelo", "imagens"]`), `modelos` e `modelo_padrao`, e o `agent_code_enviar` aceita
+  `modelo` e `imagens: [{ nome, mime, base64 }]` (até 4, 5 MB cada), com a imagem no lugar do
+  marcador `[[imagem:N]]` do prompt. O Forgia só manda cada campo com o recurso anunciado (o
+  Agent Code antigo recusa campo desconhecido): `modelo: "claude-opus-5-5"` se estiver em `modelos`,
+  e a vista como anexo. Sem o recurso, a vista vai como `vista-<hora>.png` na pasta do agente, com o
+  caminho no prompt.
+- **Contexto do pedido** (montado no main): instruções, o estado do projeto (o mesmo do
+  `forgia_estado`, com as marcações), a imagem da vista com os alfinetes e, na primeira mensagem da
+  conversa, o manual e as regras da IA (`electron/mcp/manual.cjs`); o pedido do usuário por último.
+
+**No main** (`electron/agentcode.cjs`, sem dependência nova):
+- **Descoberta**: a porta salva em `<userData>\agent-code.json` (`{ porta, integrado }`, como o
+  `ponte.json`); se não responder, `GET /agent-code` nas 40 portas **em paralelo** (300 ms cada)
+  e vale a primeira com `app === "agent-code"`. Fechado: "não encontrado" em ~0,6 s; aberto mas
+  `pronto: false` sem ser login: tipo `indisponivel` ("ainda não está pronto"). Uma chamada que
+  falha por rede (ou porta que agora é de outro programa) refaz a varredura **uma vez**. O
+  `agent_code_enviar` só é repetido se a falha foi **antes** de o pedido chegar (conexão recusada,
+  `initialize`, 4xx); se a resposta dele não veio (tempo esgotado, conexão caída), o Agent Code
+  pode ter criado a tarefa: não reenvia e devolve o tipo `incerto` ("veja no Agent Code antes de
+  pedir de novo"). Cada chamada abre conexão nova (`agent: false`): sem keep-alive, um Agent Code
+  fechado dá "conexão recusada", e não um reset numa conexão velha.
+- **Cliente MCP** escrito à mão: `initialize` → `notifications/initialized` → `tools/call`, com
+  `Mcp-Session-Id` e `MCP-Protocol-Version`; aceita resposta JSON ou `text/event-stream`; `404`
+  numa chamada = sessão expirada → sessão nova; `401`/`403` → tipo `recusado` ("O Agent Code
+  recusou o Forgia: atualize os dois apps").
+- **Token** numa constante do módulo: nunca vai para o renderer. O Forgia é código aberto, então
+  ele é público: barra chamadas acidentais, não quem ler o código (limite aceito; alternativa mais
+  forte, não escolhida: token por instalação lido de arquivo, como o `ponte.json`).
+- `projeto` = `<userData>\agente` (criada no primeiro pedido): o agente roda sem aprovação e tem
+  ferramentas de arquivo; nem a pasta de dados (`ponte.json`, `recuperacao\`, `criacoes\`) nem a
+  do projeto do usuário ficam ao alcance por acidente.
+- `prompt` = instruções curtas do Forgia (só `forgia_*`, sem arquivos nem terminal, ler
+  `forgia_manual` e a seção `regras`, um lote por pedido, perguntar se ambíguo, português curto)
+  + o texto do usuário. `mcp_servers.forgia` = `serverSpec(forgiaPaths(app))`. Os dois são
+  montados aqui: a página só manda o texto.
+- IPC `agentcode:estado | integrar | desligar | enviar | tarefa | cancelar`, só da janela do Forgia
+  (`e.sender === win.webContents`), exposto pelo preload em `window.forgiaAgentCode`; cada um
+  devolve `{ ok: true, … }` ou `{ ok: false, tipo, erro }`. Só se consulta e cancela tarefa que
+  este Forgia criou. A página nunca vê porta, URL, token nem o servidor MCP, e nenhuma chamada ao
+  Agent Code sai dela (a sessão do renderer ainda corta http/https).
+
+**Na página**: `src/agentcode.js` guarda o estado, faz um pedido por vez e consulta a tarefa a
+cada 1,5 s até `concluida`/`erro`/`cancelada`. Uma consulta que falha não encerra a tarefa (o
+agente continua rodando): o painel avisa "não está respondendo; tentando de novo…" e só desiste
+depois de 6 falhas seguidas (~9 s) ou de um `recusado`; um Cancelar que falha avisa e a tarefa
+segue. O `conversa_id` fica em memória, por projeto aberto: o evento `projeto` do editor (Novo ou
+Abrir) começa conversa nova e **cancela** a tarefa em andamento, que mexeria no projeto novo
+("Outro projeto foi aberto."); se o pedido ainda estava indo, cancela assim que o Agent Code
+devolver a tarefa. `src/pedido-ia.js`: o botão **Pedir à IA** na barra de status (`#sb-pedir`)
+abre a conversa `.ia-chat`, que sobe a partir dele; no alto dela, **Marcar** (`[data-ia="marcar"]`,
+liga o Marcar parte, com a dica animada `mark`) e **Conectar IA** (`[data-ia="conectar"]`). Na
+primeira abertura, o convite `.ia-convite` aponta para o botão até a conversa ser aberta
+(`localStorage forgia.iaConviteVisto`). Na conversa: os pedidos e as
+respostas (`.ia-msg.voce` / `.ia-msg.ia`, com andamento e Cancelar) e o campo do pedido (sem a
+integração, uma explicação e o botão Conectar IA). A conversa é por projeto (o pedido cancelado
+pela troca de projeto fica nela). Clique fora dela fecha e desliga o marcador; no 3D quem decide é
+o marcador (numa parte, põe o alfinete e a conversa fecha; fora, desliga). No **Marcar parte**,
+com a integração ligada, Enter (e o botão *Enviar à IA*) manda o mesmo texto do pedido copiado,
+com `marca` = número da marcação (entra na conversa como "Marcação n", resumida em uma linha; o clique expande e mostra a referência da parte, `detalhe`); o agente lê a marcação pelo
+`forgia_marcacoes`, e a imagem não vai. O andamento e o fim desse pedido aparecem no balão do
+alfinete (`.pin-balao`, em `src/marcar.js`), com a resposta resumida por `resumo()`
+(`src/agentcode.js`: a 1ª frase ou ~140 caracteres, sem markdown); o balão também aparece depois
+de Copiar ("cole na sua IA"). O aviso "IA: criou…" fica em `.ia-canto`.
+
+Testes: `tests/agentcode.test.mjs` (cliente contra o falso numa faixa própria),
+`tests/agentcode-exe.test.mjs` (exe contra o falso na faixa real, com um "agente" que sobe o
+`mcp_servers.forgia` recebido e altera a peça pelas `forgia_*`) e o servidor falso em
+`tests/agentcode-falso.mjs`. **Pendente**: o teste de ponta a ponta com o Agent Code de verdade e o
+Claude, que depende do lado dele. Enquanto isso, a frase da vantagem no Conectar IA é um bloqueio
+de publicação: a release pública só sai com ela se a integração funcionar com o Agent Code
+publicado.
+
 ### Barra de status (`src/statusbar.js`)
 
 X/Y/Z do centro e medidas da seleção (uma peça: o mesmo cálculo do `forgia_estado`; várias: a
 caixa de todas, com "N selecionadas"), o rótulo *Plano de trabalho* quando ele está ativo, o
-indicador da IA (`conectada` até 10 min depois do último pedido, `pronta`, `desligada`,
-`indisponivel`), o botão **Conectar IA** e, na ponta direita, o crédito **por LarcherTech**
+indicador da IA (`conectada` até 10 min depois do último pedido **ou** com a integração do Agent
+Code ligada, `pronta`, `desligada`, `indisponivel`), o botão **Pedir à IA** (o ponto dele fica verde
+com a integração ligada) e, na ponta direita, o crédito **por LarcherTech**
 (`#statusbar a.credit`, HTML fixo; saiu do pé da biblioteca e continua no *Sobre*).
+
+### Gabarito dos atalhos da vista (`src/gabarito.js`)
+
+No canto de baixo à esquerda da vista, em letra pequena e cor apagada: *Botão direito + arrastar*
+(girar), *W A S D* (andar pela mesa) e *Roda do mouse* (aproximar/afastar). Só aparece com a vista
+**afastada**: a altura que a vista mostra no alvo (perspectiva ou ortográfica) é de pelo menos 80%
+da altura da vista inicial. Some ao aproximar, com uma ferramenta ou modo ligado (a dica de modo
+ocupa o rodapé), ao colocar forma da biblioteca e em telas estreitas. `update()` roda a cada quadro
+e só mexe no DOM quando o estado muda.
 
 ## Projeto em arquivo (`.forgia`)
 
@@ -752,6 +893,27 @@ quadro de arraste.
   renomear, excluir), porca M3 no parafuso M3 (volume da união = soma; meio passo fora colide),
   engrenagens z20 × z12 engrenadas (e a contraprova sem o meio dente), 3MF de todos os geradores
   com cada objeto fechado e relido. Evidências em `docs/fase-d-evidence/biblioteca/`.
+- `node --test tests/agentcode.test.mjs`: integração com o Agent Code contra o servidor falso
+  (`tests/agentcode-falso.mjs`, faixa 47410–47449): todas as portas fechadas em < 1 s, porta salva
+  sem varredura, porta salva velha, `motivo: "login"`, `401` sem token, recusa de `Origin` e nada
+  mandado com `Origin`, sessão MCP (JSON e SSE, sessão expirada), tarefa até `concluida` e
+  `cancelada`, conversa repassada, Agent Code reiniciado noutra porta, resposta do envio demorada
+  sem reenvio (`incerto`, uma tarefa só), aberto mas carregando (`indisponivel`), desligar; e que nada da
+  página (`src/`, `index.html`) contém o token, a faixa ou as ferramentas do Agent Code.
+- `FORGIA_EXE=… node --test tests/agentcode-exe.test.mjs`: no exe, contra o falso na faixa de teste
+  47450–47489 (`FORGIA_AGENTCODE_PORTAS`, que o main lê só se válida; roda com o Agent Code de
+  verdade aberto na faixa real, e a gravação das mídias usa a mesma faixa):
+  "não encontrado" em < 1 s com a tela desenhando, texto e links da opção Agent Code, login,
+  Integrar e a porta salva, "Pedir à IA" criando a peça (aviso, um desfazer), Marcar parte
+  enviando e alterando a parte, Agent Code noutra porta, Cancelar, Agent Code sem responder por um
+  tempo (a tarefa segue e avisa; Cancelar que falha), outro projeto aberto com pedido rodando e com
+  pedido ainda indo (cancela), Novo projeto com conversa nova, renderer sem token/porta, reabrir sem varredura e o erro com o Agent Code fechado.
+  Capturas em `%TEMP%\forgia-agentcode-shots`.
+- `FORGIA_EXE=… node --test tests/regua-exe.test.mjs`: régua da mesa (A1 mini termina em 180,
+  Ender 3 redesenha em 220, marquinha do cursor, faixa de 40 mm igual à barra de status ao
+  selecionar e ao arrastar, nenhum número sobreposto em 8 vistas e 4 zooms, tema, some com o plano
+  de trabalho, fora da exportação e do projeto, custo por quadro, fechar e reabrir). Capturas em
+  `%TEMP%\forgia-regua-shots`.
 - `node --test tests/dicas-gravacao.test.mjs`: um roteiro por função com vídeo, cenas válidas só
   com formas do Forgia, `t.dicas` com `video` nas 11 funções, a `Duration` do `webm.cjs` e os 22
   vídeos (640×480, VP9, 4–6 s, até 300 KB).
@@ -803,8 +965,12 @@ remonta). **Roteiro** (`ajuda/roteiros/<dica>.json`): `dica` (nome base do víde
 `estilo` (CSS só deste roteiro) e `passos`, cada um com uma ação: `tecla` (`"Ctrl+D"`,
 `"Shift+ArrowLeft"`; mostra o selo), `mover`, `clicar`, `apertar`/`soltar`, `arrastar`, `caminho`
 (curva suave por vários pontos), `digitar`, `esperar`, `selo` (rótulo, ex.: botão fora do
-recorte), `ponte` (comando pela ponte HTTP, como um agente) e `legenda`; `ms` é a duração do
-gesto e `foto` guarda um PNG (com `--fotos`). Alvos: `{ seletor }`, `{ peca, ancora: [x, y, z] }`
+recorte), `ponte` (comando pela ponte HTTP, como um agente), `legenda` e `esperarQue` (espera uma
+expressão da página ficar verdadeira, até `ms`); `ms` é a duração do gesto e `foto` guarda um PNG
+(com `--fotos`). `agentCode` `{ pensarMs, chamadas: [{ ferramenta, args }], resposta }` sobe o
+Agent Code falso do teste (`tests/agentcode-falso.mjs`) na faixa real e integra: o "agente" dele sobe
+o servidor MCP recebido e faz as `chamadas` `forgia_*` (`"$peca"`, `"$parte"`, `"$lado"` e
+`"$ponto"` viram os da 1ª marcação), para a mídia mostrar um pedido indo à IA e voltando. Alvos: `{ seletor }`, `{ peca, ancora: [x, y, z] }`
 (−1 a 1 na caixa da peça), `{ mundo: [X, Y, Z] }`, `{ alca: 'top' }` ou `{ recorte: [fx, fy] }`.
 
 As mídias do README usam o mesmo mecanismo com os roteiros de `docs/media/roteiros/` (janela

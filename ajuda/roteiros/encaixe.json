@@ -1,17 +1,19 @@
 {
  "dica": "encaixe",
  "titulo": "Criar encaixe",
- "cena": "suporte-celular",
- "camera": {"alvo":[-26,0,22],"de":[30,-235,290]},
- "recorte": {"dx":90},
- "selecionar": ["Suporte de celular"],
+ "cena": "parafuso",
+ "camera": {"alvo":[-4,0,6],"de":[-4,-92,128]},
+ "selecionar": ["Parafuso M8"],
  "cursor": {"recorte":[0.84,0.86]},
+ "esperaCena": 400,
  "passos": [
-  {"clicar":{"seletor":"[data-cmd=\"encaixe\"]"},"ms":700,"selo":"Criar encaixe","seloMs":1300},
-  {"esperar":350},
-  {"clicar":{"seletor":".modal [data-escolha=\"criar-encaixe\"]"},"ms":600},
-  {"esperar":200},
-  {"mover":{"recorte":[0.84,0.86]},"ms":600,"foto":"encaixe"},
-  {"esperar":600}
+  {"clicar":{"seletor":"[data-cmd=\"encaixe\"]"},"ms":650,"selo":"Criar encaixe","seloMs":1200},
+  {"esperar":300},
+  {"clicar":{"seletor":".modal [data-escolha=\"criar-encaixe\"]"},"ms":550},
+  {"esperar":350,"foto":"encaixe"},
+  {"seta":{"de":{"peca":"Parafuso M8","ancora":[0.6,0,1],"dy":-8},"para":{"peca":"Encaixe de Parafuso M8","ancora":[0,0,1],"dy":-2},"ms":600,"curva":0.3}},
+  {"legenda":{"html":"Furo do <b>mesmo tamanho</b> do parafuso M8,<br>com folga para ele entrar","recorte":[0.05,0.83]}},
+  {"mover":{"peca":"Encaixe de Parafuso M8","ancora":[0.6,-0.6,1]},"ms":500,"foto":"seta"},
+  {"esperar":800}
  ]
 }

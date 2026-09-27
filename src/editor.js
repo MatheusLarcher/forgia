@@ -16,8 +16,11 @@ import { MeasureTool } from './measure.js';
 import { MarkTool } from './marcar.js';
 import { Surface } from './surface.js';
 import { WorkplaneTool } from './plano.js';
+import { TableRuler } from './regua.js';
+import { ViewShortcuts } from './gabarito.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const GROUND = new THREE.Plane(V3(0, 1, 0), 0);
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const r3 = (v) => Math.round(v * 1000) / 1000;
@@ -133,6 +136,8 @@ export class Editor extends EventTarget {
       border: new THREE.LineBasicMaterial(),
       volume: new THREE.LineBasicMaterial({ transparent: true, depthWrite: false }),
       shadow: new THREE.ShadowMaterial({ depthWrite: false }),
+      ruler: new THREE.LineBasicMaterial({ transparent: true, depthWrite: false }),
+      rulerBand: new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false }),
     });
     const g = (this.wp = new THREE.Group());
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, l), mats.plate);
@@ -178,6 +183,8 @@ export class Editor extends EventTarget {
     shadow.receiveShadow = true;
     shadow.renderOrder = -1;
     g.add(shadow);
+    // régua da mesa (src/regua.js): tracinhos no grupo da mesa, números na sobreposição HTML
+    (this.ruler ||= new TableRuler(this)).build(g, mats, w, l);
     this.scene.add(g);
     this.applyTheme(theme.colors);
 
@@ -204,6 +211,10 @@ export class Editor extends EventTarget {
     m.volume.color.set(c.volume);
     m.volume.opacity = c.volumeOpacity;
     m.shadow.opacity = c.shadowOpacity;
+    m.ruler.color.set(c.border);
+    m.ruler.opacity = c.rulerOpacity;
+    m.rulerBand.color.set(c.outline);
+    m.rulerBand.opacity = c.rulerBandOpacity;
     this.hemiLight.groundColor.set(c.groundLight);
   }
 
@@ -231,6 +242,7 @@ export class Editor extends EventTarget {
     this.angleEl.className = 'angle-label';
     this.overlay.appendChild(this.angleEl);
     this.modeEls = [];
+    this.gabarito = new ViewShortcuts(this);
   }
 
   resize() {
@@ -1274,7 +1286,10 @@ export class Editor extends EventTarget {
   initEvents() {
     const c = this.renderer.domElement;
     c.addEventListener('pointerdown', (e) => this.onDown(e));
-    window.addEventListener('pointermove', (e) => this.onMove(e));
+    window.addEventListener('pointermove', (e) => {
+      this.lastPointerEvent = e; // ferramenta ligada pelo teclado já sabe onde o mouse está (Marcar)
+      this.onMove(e);
+    });
     window.addEventListener('pointerup', (e) => this.onUp(e));
     c.addEventListener('contextmenu', (e) => e.preventDefault());
     c.addEventListener('dblclick', (e) => {
@@ -1336,6 +1351,7 @@ export class Editor extends EventTarget {
   }
 
   onMove(e) {
+    this.trackCursor(e);
     if (this.placing) {
       this.updatePlacing(e);
       return;
@@ -1440,6 +1456,13 @@ export class Editor extends EventTarget {
     }
     if (d.moved) this.commit();
     this.emit('selection');
+  }
+
+  // régua da mesa: sem seleção, a marquinha segue o ponto da mesa sob o cursor
+  trackCursor(e) {
+    if (this.selection.length || e.target !== this.renderer.domElement) return this.ruler.setCursor(null);
+    this.setRay(e);
+    this.ruler.setCursor(this.raycaster.ray.intersectPlane(GROUND, V3()));
   }
 
   hover(e) {
@@ -1882,6 +1905,8 @@ export class Editor extends EventTarget {
       this.updateModeHandles();
       if (this.tool && this.tool.update) this.tool.update();
       this.tools.mark.updatePins(); // alfinetes ficam na vista mesmo com a ferramenta desligada
+      this.ruler.update();
+      this.gabarito.update();
       this.renderer.render(this.scene, this.camera);
       this.viewCube.update(this.camera, this.controls.target);
     };

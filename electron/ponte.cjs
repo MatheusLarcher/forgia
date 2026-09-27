@@ -16,6 +16,7 @@ const { app, ipcMain, clipboard, nativeImage, session } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createBridgeServer, newToken, DEFAULT_PORT } = require('./ponte-servidor.cjs');
+const { serverSpec, forgiaPaths } = require('./mcp-servidor.cjs');
 
 const MODEL_EXT = new Set(['.stl', '.obj', '.3mf']);
 const MAX_MODEL = 200 * 1024 * 1024;
@@ -44,7 +45,13 @@ function startBridge(win) {
     for (const [, p] of pending) p.resolve({ ok: false, status: 503, erro: 'O Forgia recarregou a janela. Tente de novo.' });
     pending.clear();
   };
-  wc.on('did-start-loading', resetRenderer);
+  // só recarga de verdade (navegação do documento principal): o "did-start-loading" também dispara
+  // em navegação na mesma página (clicar no logo, href="#") e deixava a ponte em "abrindo" para sempre
+  wc.on('did-start-navigation', (e, _url, isInPlace, isMainFrame) => {
+    const same = e && typeof e.isSameDocument === 'boolean' ? e.isSameDocument : isInPlace;
+    const main = e && typeof e.isMainFrame === 'boolean' ? e.isMainFrame : isMainFrame;
+    if (main && !same) resetRenderer();
+  });
   wc.on('render-process-gone', resetRenderer);
 
   function toRenderer(cmd, args, arquivos) {
@@ -68,18 +75,21 @@ function startBridge(win) {
     p.resolve(res && typeof res === 'object' ? res : { ok: false, erro: 'Resposta inválida do editor.' });
   });
 
-  const describe = () => ({
-    porta: info.porta,
-    ativa: !!info.porta,
-    erro: info.erro,
-    exe: app.getPath('exe'),
-    script: app.isPackaged ? path.join(process.resourcesPath, 'mcp', 'forgia-mcp.cjs') : path.join(__dirname, 'mcp', 'forgia-mcp.cjs'),
-    recursos: process.resourcesPath,
-    dados: app.getPath('userData'),
-    dadosPadrao: path.join(app.getPath('appData'), 'Forgia'),
-    empacotado: app.isPackaged,
-    versao: app.getVersion(),
-  });
+  // servidor = { command, args, env } do servidor MCP, o mesmo que a integração com o Agent Code
+  // manda (electron/mcp-servidor.cjs); o Conectar IA só formata
+  const describe = () => {
+    const paths = forgiaPaths(app);
+    return {
+      porta: info.porta,
+      ativa: !!info.porta,
+      erro: info.erro,
+      ...paths,
+      servidor: serverSpec(paths),
+      recursos: process.resourcesPath,
+      empacotado: app.isPackaged,
+      versao: app.getVersion(),
+    };
+  };
 
   ipcMain.handle('ponte:config', (e, cfg) => {
     if (!fromWindow(e)) return null;

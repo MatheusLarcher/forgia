@@ -177,7 +177,132 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .sb-ia[data-estado='desligada'] .sb-ia-ponto { background: transparent; border: 1.5px solid var(--muted); box-shadow: none; }
 .sb-ia[data-estado='indisponivel'] .sb-ia-ponto { background: var(--hot); box-shadow: none; }
 
+/* botão "Pedir à IA" (integração com o Agent Code, src/pedido-ia.js) e a conversa que sobe dele */
+.sb-pedir {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 24px;
+  padding: 0 12px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sb-pedir[hidden] { display: none; }
+.sb-pedir:hover, .sb-pedir[aria-expanded='true'] { background: var(--accent); color: var(--on-accent); }
+.sb-pedir-ponto { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.8; }
+.sb-pedir.trabalhando .sb-pedir-ponto { animation: ia-pulso 1.1s ease-in-out infinite; }
+.sb-pedir.integrado .sb-pedir-ponto { background: var(--cruise); opacity: 1; }
+@keyframes ia-pulso { 50% { opacity: 0.25; } }
+.ia-chat {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  width: min(380px, calc(100vw - 16px));
+  max-height: min(460px, calc(100vh - 120px));
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-2);
+  color: var(--ink);
+  font-size: 13px;
+}
+.ia-chat[hidden] { display: none; }
+.ia-chat-topo { display: flex; align-items: center; justify-content: space-between; padding: 9px 10px 8px 14px; border-bottom: 1px solid var(--line); font-weight: 600; }
+.ia-chat-fechar { font-size: 16px; line-height: 1; }
+.ia-chat-ferramentas { display: flex; align-items: center; gap: 4px; }
+.ia-chat-ferramentas svg { width: 15px; height: 15px; flex: none; }
+.ia-chat-conectar { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; }
+/* Marcar parte dentro da conversa: botão com texto, laranja quando o marcador está ligado */
+.ia-chat-marcar {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 13px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ia-chat-marcar:hover { background: var(--hover); }
+.ia-chat-marcar.ativo { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+/* convite ao abrir o Forgia: balão que sai do botão Pedir à IA */
+.ia-convite {
+  position: fixed;
+  z-index: 39;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 300px;
+  padding: 10px 8px 10px 14px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: var(--shadow-2);
+  cursor: pointer;
+  --ponta: 20px;
+}
+.ia-convite p { margin: 0; }
+.ia-convite .icon-btn { color: inherit; flex: none; }
+.ia-convite::after { content: ''; position: absolute; right: var(--ponta); bottom: -6px; width: 12px; height: 12px; background: var(--accent); transform: rotate(45deg); border-radius: 0 0 3px 0; }
+.ia-chat-lista { flex: 1 1 auto; min-height: 60px; overflow-y: auto; padding: 12px 12px 4px; display: flex; flex-direction: column; gap: 8px; }
+.ia-chat-vazio { margin: 0; color: var(--ink-2); line-height: 1.45; }
+.ia-msg { max-width: 88%; padding: 7px 10px; border-radius: 10px; line-height: 1.4; }
+.ia-msg p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* resposta da IA com markdown simples (src/pedido-ia.js, respostaIA) */
+.ia-msg.ia p + p, .ia-msg.ia p + .ia-lista, .ia-msg.ia .ia-lista + p { margin-top: 6px; }
+.ia-lista { margin: 4px 0 0; padding-left: 18px; }
+.ia-lista li { margin: 2px 0; overflow-wrap: anywhere; }
+.ia-msg code { font-family: ui-monospace, Consolas, monospace; font-size: 0.92em; background: var(--hover); border-radius: 3px; padding: 0 3px; }
+.ia-msg.voce { align-self: flex-end; background: var(--accent-soft); color: var(--ink); border-bottom-right-radius: 3px; }
+.ia-msg.ia { align-self: flex-start; background: var(--field); border: 1px solid var(--line); border-bottom-left-radius: 3px; }
+.ia-msg[data-status='erro'] { border-color: var(--hot); }
+.ia-msg-marca { display: block; margin-bottom: 2px; font-size: 11.5px; font-weight: 600; color: var(--accent-ink); }
+/* pedido do alfinete: resumido em uma linha; o clique mostra a referência da parte */
+.ia-msg.marcacao { cursor: pointer; }
+.ia-msg.marcacao:not(.aberta) .ia-msg-resumo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ia-msg-detalhe { margin-top: 4px !important; font-size: 12px; color: var(--ink-2); }
+.ia-msg-andamento { display: flex; align-items: center; gap: 7px; color: var(--ink-2); }
+.ia-msg-ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: ia-pulso 1.1s ease-in-out infinite; flex: none; }
+.ia-msg-nota { margin-top: 4px !important; font-size: 12px; color: var(--ink-2); }
+.ia-msg .text-btn { margin-top: 4px; padding: 0; color: var(--accent-ink); }
+.ia-chat-campo { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px 6px; border-top: 1px solid var(--line); }
+.ia-chat-campo[hidden] { display: none; }
+.ia-chat-campo textarea {
+  flex: 1;
+  min-height: 38px;
+  max-height: 120px;
+  padding: 7px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+  resize: none;
+}
+.ia-chat-campo textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.ia-chat-sem { padding: 0 14px 14px; }
+.ia-chat-sem[hidden] { display: none; }
+.ia-chat-sem p { margin: 0 0 10px; line-height: 1.45; color: var(--ink-2); }
+
+/* canto inferior esquerdo da vista: o aviso do que a IA fez */
+.ia-canto { position: absolute; left: 12px; bottom: 12px; z-index: 6; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: min(440px, calc(100% - 24px)); pointer-events: none; }
+.ia-canto > * { pointer-events: auto; }
+
 /* aviso do que a IA fez, no canto inferior esquerdo da vista (some em ~6 s) */
+.ia-canto .ia-aviso { position: static; }
 .ia-aviso {
   position: absolute;
   left: 12px;
@@ -325,6 +450,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   pointer-events: none;
 }
 
+/* régua da mesa (src/regua.js): números discretos, faixa da seleção e marquinha do cursor */
+.overlay > .regua-mesa { position: absolute; inset: 0; pointer-events: none; }
+.regua-mesa > div { position: absolute; left: 0; top: 0; white-space: nowrap; line-height: 14px; }
+.regua-num { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.regua-total { font-weight: 600; color: var(--ink); }
+.regua-faixa {
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.regua-cursor { width: 12px; height: 2px; margin-top: -1px; background: var(--accent); transform-origin: 0 50%; border-radius: 1px; }
+
 .dim-label {
   position: absolute;
   left: 0;
@@ -443,6 +584,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   z-index: 2;
 }
 .snap { display: flex; align-items: center; gap: 6px; }
+/* gabarito dos atalhos da vista (src/gabarito.js): discreto, só com a vista afastada */
+.gabarito {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  z-index: 1;
+}
+.gabarito.visivel { opacity: 0.8; }
+.gabarito-linha { display: flex; align-items: center; gap: 8px; }
+.gabarito-teclas { display: inline-flex; align-items: center; gap: 3px; min-width: 150px; }
+.gabarito kbd { font-size: 10.5px; padding: 1px 5px; background: transparent; color: var(--ink-2); }
+@media (max-width: 680px) { .gabarito { display: none; } }
 .snap select {
   height: 26px;
   border: 1px solid var(--line-strong);
@@ -892,6 +1053,32 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px 
   resize: vertical;
 }
 .conectar-agentes { margin: 2px 0 0; }
+/* Conectar IA: texto e botões à esquerda, o vídeo tutorial da aba à direita (embaixo, se estreito) */
+.modal.conectar-modal { width: min(1040px, 94vw); }
+.conectar-corpo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 430px); gap: 20px; align-items: start; }
+.conectar-corpo:has(> .conectar-tutorial[hidden]) { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 900px) { .conectar-corpo { grid-template-columns: minmax(0, 1fr); } }
+.conectar-tutorial { margin: 16px 0 0; }
+.conectar-tutorial .dica-video { margin-top: 0; }
+/* a gravação é da janela inteira (960 × 607), não o recorte 4:3 das dicas */
+.conectar-video video { aspect-ratio: 960 / 607; object-fit: contain; }
+.conectar-explica { margin: 16px 0 12px; }
+.conectar-explica p { margin: 0; line-height: 1.5; color: var(--ink); }
+.conectar-explica p + p { margin-top: 8px; color: var(--ink-2); }
+.conectar-explica + .conectar-texto { margin-top: 0; }
+/* opção Agent Code: a integração */
+.conectar-agentcode { margin-top: 12px; }
+.conectar-agentcode[hidden], .conectar [hidden] { display: none; }
+.conectar-agentcode p { margin: 0 0 8px; line-height: 1.45; color: var(--ink-2); }
+.conectar-agentcode .ac-vantagem { color: var(--ink); }
+.conectar-agentcode a { color: var(--accent-ink); }
+.conectar-agentcode a:hover { color: var(--ink); }
+.ac-acoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
+.ac-acoes .ac-estado { margin: 0; color: var(--ink); }
+.ac-estado[data-estado='integrado'] { color: var(--cruise); font-weight: 600; }
+.ac-estado[data-estado='ausente'], .ac-estado[data-estado='login'] { color: var(--ink); }
+.ac-botoes { display: flex; align-items: center; gap: 8px; flex: none; }
+.ac-baixar { margin: 0 !important; }
 .conectar-acoes { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .conectar-status { margin: 0 !important; }
 
@@ -1166,7 +1353,7 @@ kbd {
 .measure-deltas { margin-top: 1px; font-size: 11px; color: var(--muted); white-space: pre; }
 
 /* Marcar parte (src/marcar.js): alfinetes numerados e o mini-chat de cada um */
-#viewport.marking .main-canvas { cursor: crosshair; }
+#viewport.marking .main-canvas { cursor: none; }
 .pin-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; }
 .pin {
   position: absolute;
@@ -1200,6 +1387,10 @@ kbd {
   box-shadow: 0 0 0 1px var(--dim-bg);
 }
 .pin:hover, .pin.aberto { background: var(--accent-hover); }
+/* alfinete que o mouse carrega com o Marcar ligado (a ponta é o cursor); apagado fora de uma peça */
+.overlay > .pin-fantasma { top: -34px; pointer-events: none; cursor: none; z-index: 4; }
+.pin-fantasma[hidden] { display: none; }
+.pin-fantasma.fora { opacity: 0.45; }
 .pin.aberto { box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-1); }
 .marca-chat {
   position: absolute;
@@ -1230,8 +1421,66 @@ kbd {
 }
 .marca-texto:focus { outline: none; border-color: var(--focus); }
 .marca-acoes { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+/* balão que sai do alfinete: "copiado, cole na sua IA" e o andamento/fim do pedido à IA */
+.pin-balao {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  width: max-content;
+  max-width: 280px;
+  padding: 9px 12px 8px;
+  border-radius: 10px;
+  background: var(--overlay-bg);
+  color: var(--overlay-ink);
+  font-size: 12.5px;
+  line-height: 1.4;
+  box-shadow: var(--shadow-2);
+  --ponta: 12px;
+}
+/* ponta embaixo, apontando para o alfinete */
+.pin-balao::after {
+  content: '';
+  position: absolute;
+  left: var(--ponta);
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: var(--overlay-bg);
+  transform: rotate(45deg);
+  border-radius: 0 0 3px 0;
+}
+.pin-balao-corpo { display: flex; align-items: flex-start; gap: 8px; }
+.pin-balao-corpo p { margin: 0; }
+.pin-balao-ponto { flex: none; width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: var(--accent); animation: ia-pulso 1.1s ease-in-out infinite; }
+.pin-balao[data-status='concluida'] .pin-balao-ponto { background: var(--cruise); animation: none; }
+.pin-balao[data-status='erro'] .pin-balao-ponto { background: var(--hot); animation: none; }
+.pin-balao[data-status='cancelada'] .pin-balao-ponto { background: var(--muted); animation: none; }
+.pin-balao-nota { margin: 4px 0 0 16px; opacity: 0.8; font-size: 12px; }
+.pin-balao-acoes { display: flex; justify-content: flex-end; margin-top: 2px; }
+.pin-balao-acoes .text-btn { color: var(--accent-hover); padding: 0 2px; }
 #statusbar #btn-limpar-marcas { height: 22px; }
 
 .dim-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none !important; overflow: visible; }
 .dim-lines .dl { stroke: var(--dim-line); stroke-width: 1.2; }
 .dim-lines .ext { stroke: var(--dim-line); stroke-width: 1; stroke-dasharray: 3 3; opacity: .7; }
+
+/* ícones da barra de cima e do menu Arquivo (src/icons.js) */
+.text-btn.com-icone { display: inline-flex; align-items: center; gap: 6px; }
+.text-btn.com-icone svg { flex: none; }
+.btn.com-icone { display: inline-flex; align-items: center; gap: 6px; }
+.btn.com-icone svg { flex: none; }
+.com-icone[hidden] { display: none; }
+.menu-icone { display: inline-flex; flex: none; width: 16px; margin-right: -6px; color: var(--ink-2); }
+.menu-item:disabled .menu-icone { color: var(--muted); }
+
+/* ícone de cada agente no seletor do Conectar IA (marcas dos donos; src/assets/ia) */
+.conectar-agentes button { display: inline-flex; align-items: center; gap: 7px; }
+.ag-icone { display: inline-flex; flex: none; width: 16px; height: 16px; background: center / contain no-repeat; }
+.ag-icone[data-ia='agentcode'] { background-image: url('./assets/ia/agentcode.svg'); border-radius: 4px; }
+.ag-icone[data-ia='claudecode'] { background-image: url('./assets/ia/claude.svg'); }
+/* monocromáticos: seguem a cor do texto, nos dois temas */
+.ag-icone[data-ia='codex'], .ag-icone[data-ia='cursor'] { background-color: currentColor; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+.ag-icone[data-ia='codex'] { -webkit-mask-image: url('./assets/ia/codex.png'); mask-image: url('./assets/ia/codex.png'); }
+.ag-icone[data-ia='cursor'] { -webkit-mask-image: url('./assets/ia/cursor.svg'); mask-image: url('./assets/ia/cursor.svg'); }
+.ag-icone svg { width: 16px; height: 16px; }

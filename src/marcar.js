@@ -9,13 +9,19 @@ import { theme } from './theme.js';
 import { capture } from './captura.js';
 import { describeOne, locate, groupFrame, frameQuat, frameOf } from './ponte-comandos.js';
 import { ICONS } from './icons.js';
+import { FINAL, resumo } from './agentcode.js';
 
-// Ferramenta Marcar parte (tecla N). Ao passar o mouse, o contorno da PARTE sob o cursor aparece
-// (dentro de um grupo, a forma de dentro, não o grupo). O clique põe um alfinete numerado num
-// ponto da face e abre o mini-chat: texto de referência ("Marcação 1: Caixa 'aba', ponto
-// (12; −4; 30) mm, face virada para +X"), campo do pedido e Copiar. Enter monta o pedido (texto +
-// bloco JSON estável, formato forgia.pedido/1) e copia para a área de transferência junto com o
-// PNG da vista com os alfinetes. O envio direto para o agente fica para depois das fases.
+// Ferramenta Marcar parte (tecla N, ou o botão Marcar da conversa "Pedir à IA"). Ao passar o
+// mouse, o contorno da PARTE sob o cursor aparece (dentro de um grupo, a forma de dentro, não o
+// grupo). O clique põe um alfinete numerado num ponto da face e abre o mini-chat: texto de
+// referência ("Marcação 1: Caixa 'aba', ponto (12; −4; 30) mm, face virada para +X"), campo do
+// pedido, Excluir marcador (só este) e Copiar. Enter monta o pedido (texto + bloco JSON estável,
+// formato forgia.pedido/1) e copia para a área de transferência junto com o PNG da vista com os
+// alfinetes; com a integração com o Agent Code ligada, Enter envia à IA.
+// - Clicar fora de uma peça, ou em qualquer lugar com o mini-chat aberto, só desliga o marcador
+//   (não põe outro alfinete); para marcar de novo, liga de novo.
+// - Balão que sai do alfinete: depois de copiar ("cole na sua IA") e, num pedido enviado à IA, o
+//   andamento e, no fim, o que ela fez (a resposta resumida).
 //
 // - A parte dentro de grupo: a malha na tela é o resultado da booleana e o raio acerta o grupo;
 //   o ponto é testado contra a forma de cada filho (já transformada, descendo em grupos
@@ -84,20 +90,49 @@ export class MarkTool {
     theme.watch((c) => this.outline.material.color.set(c.outline));
     // parte excluída (pela IA, pelo usuário ou por desfazer): a marcação some
     editor.addEventListener('change', () => this.prune());
+    // outro projeto: o balão era de um ponto do projeto anterior
+    editor.addEventListener('projeto', () => this.hideBalloon());
   }
 
   hint() {
-    return this.open ? t.modos.marcarChat : t.modos.marcar;
+    if (!this.open) return t.modos.marcar;
+    // com a integração com o Agent Code ligada, o Enter envia à IA em vez de copiar
+    const ac = this.ed.agentCode;
+    return ac && ac.integrado ? t.modos.marcarChatEnviar : t.modos.marcarChat;
   }
 
   enter() {
     this.ed.viewport.classList.add('marking');
+    // o alfinete (com o número que ele vai ter) segue o mouse até o clique pôr ele na peça
+    if (!this.ghost) {
+      this.ghost = document.createElement('div');
+      this.ghost.className = 'pin pin-fantasma';
+      this.ghost.setAttribute('aria-hidden', 'true');
+    }
+    this.ed.overlay.append(this.ghost);
+    this.ghost.hidden = true;
+    const e = this.ed.lastPointerEvent;
+    if (e) this.onMove(e);
   }
 
   exit() {
     this.ed.viewport.classList.remove('marking');
     this.setHover(null);
     this.closeChat();
+    if (this.ghost) this.ghost.remove();
+  }
+
+  // alfinete que o mouse carrega: a ponta no cursor; apagado fora de uma peça (lá o clique desliga)
+  moveGhost(e) {
+    const g = this.ghost;
+    if (!g) return;
+    const inside = !this.open && this.ed.insideViewport(e);
+    g.hidden = !inside;
+    if (!inside) return;
+    const r = this.ed.viewport.getBoundingClientRect();
+    g.textContent = this.next;
+    g.classList.toggle('fora', !this.hover);
+    g.style.transform = `translate(${e.clientX - r.left}px, ${e.clientY - r.top}px)`;
   }
 
   // ponto sob o cursor: { top, part, chain, point, normal } ou null
@@ -125,9 +160,10 @@ export class MarkTool {
   }
 
   onDown(e) {
-    const p = this.pick(e);
+    // com o mini-chat aberto, o clique fora só fecha e desliga; fora de uma peça, também desliga
+    const p = this.open ? null : this.pick(e);
     if (!p) {
-      this.closeChat();
+      this.ed.setTool(null);
       return true;
     }
     this.add(p);
@@ -137,10 +173,13 @@ export class MarkTool {
   onMove(e) {
     if (!this.ed.insideViewport(e)) {
       this.setHover(null);
+      this.moveGhost(e);
       return true;
     }
-    this.setHover(this.pick(e));
-    this.ed.renderer.domElement.style.cursor = this.hover ? 'crosshair' : 'default';
+    this.setHover(this.open ? null : this.pick(e));
+    // o alfinete que segue o mouse faz o papel do cursor; com o mini-chat aberto, cursor normal
+    this.ed.renderer.domElement.style.cursor = this.open ? 'default' : 'none';
+    this.moveGhost(e);
     return true;
   }
 
@@ -176,8 +215,10 @@ export class MarkTool {
     mark.face = axisLabel(mark.normal);
     mark.info = () => this.info(mark);
     ed.marks.push(mark);
+    this.hideBalloon();
     this.openChat(mark);
     ed.emit('marcas');
+    ed.emit('alfinete', mark); // a conversa da IA (src/pedido-ia.js) fecha: o mini-chat assume
   }
 
   info(m) {
@@ -241,15 +282,123 @@ export class MarkTool {
         ok = false;
       }
     }
-    ed.emit('aviso', ok ? t.marcar.copiado : t.marcar.naoCopiou);
     this.lastCopy = { text, png: shot.imagem.length };
-    return ok;
+    if (!ok) {
+      ed.emit('aviso', t.marcar.naoCopiou);
+      return false;
+    }
+    // copiou: o mini-chat fecha e o balão do alfinete diz o que fazer com o pedido
+    this.closeChat();
+    ed.emit('mode');
+    this.showBalloon({ p: m.p, n: m.n, texto: t.marcar.balao.copiado, ms: 9000 });
+    return true;
+  }
+
+  // envia o pedido ao Agent Code (src/agentcode.js); o andamento e o fim aparecem no balão do alfinete
+  async send(m) {
+    const ac = this.ed.agentCode;
+    if (!m.texto.trim()) return false;
+    if (ac.ocupado) {
+      this.ed.emit('aviso', t.agentcode.ocupado);
+      return false;
+    }
+    if (!this.acOuvindo) {
+      this.acOuvindo = true;
+      ac.addEventListener('tarefa', (e) => this.onTask(e.detail));
+    }
+    // vai o pedido inteiro (referência + bloco forgia-pedido); a conversa mostra só o que o usuário escreveu
+    const pedido = ac.pedir(this.request(m), { rotulo: m.texto, marca: m.n, detalhe: this.reference(m) });
+    this.showBalloon({ p: m.p, n: m.n, task: ac.tarefa });
+    this.ed.setTool(null); // enviado: o marcador desliga (o clique seguinte não põe outro alfinete)
+    return pedido;
+  }
+
+  // a tarefa do balão mudou (andamento, resposta, erro)
+  onTask(task) {
+    if (this.balao && this.balao.task && this.balao.task === task) this.renderBalloon();
+  }
+
+  // ---------- balão do alfinete ----------
+  // { p (ponto 3D), n, texto } ou { p, n, task }; ms: some sozinho depois disso
+  showBalloon(b) {
+    this.hideBalloon();
+    const el = document.createElement('div');
+    el.className = 'pin-balao';
+    el.setAttribute('role', 'status');
+    el.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.ed.overlay.append(el);
+    this.balao = { ...b, p: [...b.p], el };
+    if (b.ms) this.balao.timer = setTimeout(() => this.hideBalloon(), b.ms);
+    this.renderBalloon();
+  }
+
+  renderBalloon() {
+    const b = this.balao;
+    if (!b) return;
+    const tx = t.marcar.balao;
+    const task = b.task;
+    let status = 'info';
+    let texto = b.texto;
+    let nota = null;
+    if (task) {
+      status = FINAL.has(task.status) ? task.status : 'rodando';
+      if (task.status === 'concluida') texto = tx.terminou(resumo(task.resposta));
+      else if (task.status === 'erro') texto = tx.erro(task.erro || t.agentcode.erros.erro());
+      else if (task.status === 'cancelada') texto = tx.cancelado;
+      else texto = task.cancelando ? t.agentcode.cancelando : tx.trabalhando;
+      nota = task.nota;
+    }
+    b.el.dataset.status = status;
+    const body = document.createElement('div');
+    body.className = 'pin-balao-corpo';
+    if (task) body.append(Object.assign(document.createElement('span'), { className: 'pin-balao-ponto' }));
+    body.append(Object.assign(document.createElement('p'), { textContent: texto }));
+    const parts = [body];
+    if (nota) parts.push(Object.assign(document.createElement('p'), { className: 'pin-balao-nota', textContent: nota }));
+    const actions = document.createElement('div');
+    actions.className = 'pin-balao-acoes';
+    if (task && !FINAL.has(task.status) && task.id) {
+      const cancel = Object.assign(document.createElement('button'), { type: 'button', className: 'text-btn small', textContent: t.agentcode.cancelar });
+      cancel.dataset.balao = 'cancelar';
+      cancel.disabled = !!task.cancelando;
+      cancel.addEventListener('click', () => this.ed.agentCode.cancelar());
+      actions.append(cancel);
+    }
+    if (!task || FINAL.has(task.status)) {
+      const close = Object.assign(document.createElement('button'), { type: 'button', className: 'text-btn small', textContent: t.agentcode.fechar });
+      close.dataset.balao = 'fechar';
+      close.addEventListener('click', () => this.hideBalloon());
+      actions.append(close);
+    }
+    if (actions.childElementCount) parts.push(actions);
+    b.el.replaceChildren(...parts);
+  }
+
+  hideBalloon() {
+    if (!this.balao) return;
+    clearTimeout(this.balao.timer);
+    this.balao.el.remove();
+    this.balao = null;
+  }
+
+  // exclui só esta marcação (os números das outras ficam)
+  remove(m) {
+    const ed = this.ed;
+    const i = ed.marks.indexOf(m);
+    if (i >= 0) ed.marks.splice(i, 1);
+    if (this.open === m) this.closeChat();
+    if (!ed.marks.length) this.next = 1;
+    ed.emit('marcas');
+    ed.emit('mode');
   }
 
   clear() {
     this.ed.marks.length = 0;
     this.next = 1;
     this.closeChat();
+    // o balão de um pedido à IA fica (o agente costuma limpar as marcações no fim do trabalho e o
+    // usuário ainda tem que ver o que ela fez); o de "copiado" vai junto com os alfinetes
+    if (this.balao && !this.balao.task) this.hideBalloon();
     this.ed.emit('marcas');
   }
 
@@ -266,6 +415,7 @@ export class MarkTool {
   openChat(m) {
     this.closeChat();
     this.open = m;
+    if (this.ghost) this.ghost.hidden = true;
     const el = document.createElement('div');
     el.className = 'marca-chat';
     el.setAttribute('role', 'dialog');
@@ -288,17 +438,23 @@ export class MarkTool {
     const ref = document.createElement('p');
     ref.className = 'marca-ref';
     ref.textContent = this.reference(m);
+    // integração com o Agent Code ligada: Enter envia o mesmo pedido que seria copiado (texto,
+    // referência e bloco forgia-pedido; a imagem não vai: o agente lê a marcação pelo
+    // forgia_marcacoes) em vez de copiar
+    const ac = this.ed.agentCode;
+    const send = !!(ac && ac.integrado);
+    const submit = send ? () => this.send(m) : () => this.copy(m);
     const input = document.createElement('textarea');
     input.className = 'marca-texto';
     input.rows = 2;
-    input.placeholder = t.marcar.placeholder;
+    input.placeholder = send ? t.marcar.placeholderEnviar : t.marcar.placeholder;
     input.value = m.texto;
     input.addEventListener('input', () => (m.texto = input.value));
     input.addEventListener('keydown', (e) => {
       e.stopPropagation();
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        this.copy(m);
+        submit();
       } else if (e.key === 'Escape') {
         this.closeChat();
         this.ed.emit('mode');
@@ -308,16 +464,29 @@ export class MarkTool {
     actions.className = 'marca-acoes';
     const clear = document.createElement('button');
     clear.type = 'button';
-    clear.className = 'text-btn small';
-    clear.textContent = t.marcar.limpar;
-    clear.addEventListener('click', () => this.clear());
+    clear.className = 'text-btn small com-icone';
+    clear.dataset.marca = 'excluir';
+    clear.innerHTML = ICONS.deleteSmall;
+    clear.append(t.marcar.excluir);
+    clear.addEventListener('click', () => this.remove(m));
     const copy = document.createElement('button');
     copy.type = 'button';
-    copy.className = 'btn primary';
+    copy.className = (send ? 'text-btn small' : 'btn primary') + ' com-icone';
     copy.dataset.marca = 'copiar';
-    copy.textContent = t.marcar.copiar;
+    copy.innerHTML = ICONS.copySmall;
+    copy.append(t.marcar.copiar);
     copy.addEventListener('click', () => this.copy(m));
     actions.append(clear, copy);
+    if (send) {
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.className = 'btn primary com-icone';
+      go.dataset.marca = 'enviar';
+      go.innerHTML = ICONS.send;
+      go.append(t.marcar.enviar);
+      go.addEventListener('click', submit);
+      actions.append(go);
+    }
     el.append(head, ref, input, actions);
     this.ed.overlay.append(el);
     this.chatEl = el;
@@ -372,6 +541,20 @@ export class MarkTool {
         el.remove();
         this.pinEls.delete(m);
       }
+    }
+    // o balão sai da cabeça do alfinete (vale mesmo se o agente já limpou a marcação)
+    const b = this.balao;
+    if (b) {
+      const s = ed.project(V3(...b.p));
+      const bw = b.el.offsetWidth || 260;
+      const bh = b.el.offsetHeight || 60;
+      const hidden = s.z > 1;
+      b.el.style.display = hidden ? 'none' : '';
+      const x = Math.min(Math.max(8, s.x + 16), W - bw - 8);
+      const y = Math.min(Math.max(8, s.y - bh - 40), H - bh - 8);
+      b.el.style.transform = `translate(${x}px, ${y}px)`;
+      // a ponta do balão aponta para o alfinete, mesmo quando o balão encosta na borda
+      b.el.style.setProperty('--ponta', `${Math.min(Math.max(10, s.x - x - 6), bw - 22)}px`);
     }
   }
 }

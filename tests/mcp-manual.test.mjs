@@ -43,12 +43,26 @@ test('instructions: até 2048 bytes (UTF-8) e com as regras do handoff', () => {
 test('forgia_manual: guia sem seção e as seções pedidas no handoff', () => {
   assert.equal(manual(''), GUIA);
   assert.equal(manual(undefined), GUIA);
-  for (const s of ['coordenadas', 'receitas', 'impressao', 'marcacoes', 'codigo_livre', 'erros']) {
+  for (const s of ['regras', 'coordenadas', 'receitas', 'impressao', 'marcacoes', 'codigo_livre', 'erros']) {
     assert.ok(SECTIONS[s] && SECTIONS[s].length > 200, s);
     assert.equal(manual(s), SECTIONS[s]);
   }
   assert.equal(manual('Impressão'), SECTIONS.impressao, 'aceita acento e maiúscula');
   assert.match(manual('nao-existe'), /não existe\. Seções:/);
+});
+
+test('regras do agente: linha essencial no instructions, seção regras citada no guia', () => {
+  assert.match(INSTRUCTIONS, /só pelas ferramentas forgia_\*; sem criar, editar ou apagar arquivos e sem terminal/);
+  assert.match(INSTRUCTIONS, /Na dúvida, pergunte/);
+  assert.match(INSTRUCTIONS, /forgia_manual \{"secao":"regras"\}/);
+  assert.match(GUIA, /forgia_manual \{"secao":"regras"\}/);
+  assert.match(GUIA, /Seções: regras/);
+  const r = SECTIONS.regras;
+  for (const must of [/Não crie, edite nem apague arquivos/, /exportar .* quando o usuário pedir, no caminho que ele indicar/, /Não rode comandos de terminal nem programas/, /forgia_lote só/, /pergunte antes/, /Responda em português, curto/, /em mm/, /recuse com educação/]) {
+    assert.match(r, must);
+  }
+  // nenhuma receita manda gerar arquivo por programa
+  assert.doesNotMatch(GUIA + Object.values(SECTIONS).join('\n'), /Gere um STL com Python|STL gerado em Python/);
 });
 
 test('regra do código livre em destaque, com o que não justifica e a fachada', () => {
@@ -113,6 +127,7 @@ test('servidor MCP: forgia_manual responde pelo stdio mesmo com o Forgia fechado
   send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'forgia_manual', arguments: {} } });
   send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'forgia_manual', arguments: { secao: 'impressao' } } });
   send({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'forgia_criar', arguments: { tipo: 'caixa' } } });
+  send({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'forgia_manual', arguments: { secao: 'regras' } } });
   child.stdin.end();
   await new Promise((r) => child.on('exit', r));
   const byId = Object.fromEntries(lines.map((m) => [m.id, m]));
@@ -121,4 +136,5 @@ test('servidor MCP: forgia_manual responde pelo stdio mesmo com o Forgia fechado
   assert.equal(byId[3].result.content[0].text, SECTIONS.impressao);
   assert.equal(byId[4].result.isError, true);
   assert.match(byId[4].result.content[0].text, /Abra o Forgia/);
+  assert.equal(byId[5].result.content[0].text, SECTIONS.regras);
 });

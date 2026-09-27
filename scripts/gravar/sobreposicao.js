@@ -6,6 +6,7 @@
 //   exatamente onde o clique acontece. Apertar encolhe a seta e solta um anel laranja.
 // - Selo de teclas: quando o roteiro aperta um atalho, as teclas aparecem no canto do recorte,
 //   no estilo dos <kbd> do cartão de dica (variáveis do tema).
+// - Seta: curva laranja que se desenha de um ponto a outro (ex.: da peça ao encaixe que ela gerou).
 // - O cursor de verdade some (cursor: none), para não aparecer na captura da janela.
 (() => {
   if (window.__gravacao) return;
@@ -25,6 +26,9 @@
 .grav-legenda { position: fixed; z-index: 2147483644; pointer-events: none; max-width: 420px; padding: 9px 13px; border-radius: 10px; background: var(--panel-raised); border: 1px solid var(--line); box-shadow: var(--shadow-2); font: 500 15px/1.35 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; color: var(--ink); opacity: 0; transition: opacity 160ms; }
 .grav-legenda.visivel { opacity: 1; }
 .grav-legenda b { color: var(--accent-ink); font-weight: 600; }
+.grav-seta { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 2147483643; pointer-events: none; overflow: visible; opacity: 0; transition: opacity 160ms; }
+.grav-seta.visivel { opacity: 1; }
+.grav-seta path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 `;
   document.head.append(css);
 
@@ -63,6 +67,12 @@
   const legenda = document.createElement('div');
   legenda.className = 'grav-legenda';
   document.body.append(legenda);
+  const NS = 'http://www.w3.org/2000/svg';
+  const seta = document.createElementNS(NS, 'svg');
+  seta.setAttribute('class', 'grav-seta');
+  seta.setAttribute('aria-hidden', 'true');
+  document.body.append(seta);
+  let setaAnim = 0;
 
   // ---------- ajudantes do roteiro (arrumar a cena e achar pontos na tela) ----------
   const ed = () => window.forgia.editor;
@@ -184,6 +194,48 @@
         legenda.style.top = `${canto.y}px`;
       }
       legenda.classList.toggle('visivel', visivel);
+    },
+    // seta curva laranja (contorno branco, visível nos dois temas) que se desenha de `de` até
+    // `para` em ms; curva = fração da distância que o meio se afasta da reta (para cima)
+    seta({ de, para, ms = 600, curva = 0.25 }) {
+      cancelAnimationFrame(setaAnim);
+      const dx = para.x - de.x;
+      const dy = para.y - de.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const s = dx >= 0 ? 1 : -1;
+      const c = { x: de.x + dx / 2 + s * dy * curva, y: de.y + dy / 2 - s * dx * curva };
+      // ponta: direção da tangente no fim (de c até para)
+      const a = Math.atan2(para.y - c.y, para.x - c.x);
+      const head = (k) => `M ${para.x + 13 * Math.cos(a + k)} ${para.y + 13 * Math.sin(a + k)} L ${para.x} ${para.y}`;
+      const d = `M ${de.x} ${de.y} Q ${c.x} ${c.y} ${para.x} ${para.y} ${head(Math.PI - 0.5)} ${head(Math.PI + 0.5)}`;
+      const mk = (stroke, width) => {
+        const p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', d);
+        p.setAttribute('stroke', stroke);
+        p.setAttribute('stroke-width', width);
+        return p;
+      };
+      const paths = [mk('#ffffff', 7), mk('#f58220', 3.5)];
+      seta.replaceChildren(...paths);
+      const total = paths[1].getTotalLength() || len;
+      for (const p of paths) {
+        p.style.strokeDasharray = `${total} ${total}`;
+        p.style.strokeDashoffset = total;
+      }
+      seta.classList.add('visivel');
+      const t0 = performance.now();
+      const step = () => {
+        const k = Math.min(1, (performance.now() - t0) / Math.max(1, ms));
+        const e = 1 - Math.pow(1 - k, 3);
+        for (const p of paths) p.style.strokeDashoffset = total * (1 - e);
+        if (k < 1) setaAnim = requestAnimationFrame(step);
+      };
+      step();
+    },
+    semSeta() {
+      cancelAnimationFrame(setaAnim);
+      seta.classList.remove('visivel');
+      seta.replaceChildren();
     },
   };
 })();

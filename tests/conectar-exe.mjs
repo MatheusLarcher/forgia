@@ -1,9 +1,9 @@
 // Conectar IA no Forgia.exe gerado (perfil temporário), nos dois temas:
 //   node tests/conectar-exe.mjs [--exe=release\fase-c\win-unpacked\Forgia.exe]
-// 1. Abre o diálogo pelo botão da barra de status, escolhe cada agente e guarda o texto gerado
+// 1. Abre o diálogo pelo Pedir à IA > Conectar IA, escolhe cada agente e guarda o texto gerado
 //    (docs/fase-c-evidence/conectar/<agente>.txt) e a captura (<agente>-<tema>.png).
 // 2. Copiar põe o texto na área de transferência (a do usuário é restaurada no fim).
-// 3. Roda o "claude mcp add" do texto do Agent Code/Claude Code, do jeito que está, no Git Bash e no
+// 3. Roda o "claude mcp add" do texto do Claude Code, do jeito que está, no Git Bash e no
 //    PowerShell, com CLAUDE_CONFIG_DIR numa pasta temporária (NÃO toca ~/.claude.json nem
 //    ~/.claude/settings.json do usuário), e confere com "claude mcp get/list" que o servidor
 //    registrado conecta no Forgia aberto.
@@ -19,7 +19,7 @@ const EXE = path.resolve(ROOT, arg.exe || 'release/fase-c/win-unpacked/Forgia.ex
 const CLAUDE = path.join(process.env.USERPROFILE || '', '.local', 'bin', 'claude.exe');
 const OUT = path.join(ROOT, 'docs', 'fase-c-evidence', 'conectar');
 fs.mkdirSync(OUT, { recursive: true });
-const AGENTS = ['agentcode', 'codex', 'cursor', 'generico'];
+const AGENTS = ['claudecode', 'codex', 'cursor', 'generico']; // Agent Code é a integração, sem texto
 const USER_CLAUDE_JSON = path.join(os.homedir(), '.claude.json');
 const userHasForgia = () => {
   try {
@@ -42,9 +42,12 @@ try {
     await app.mouse('mouseReleased', c.x, c.y, { button: 'left', buttons: 0, clickCount: 1 });
     await wait(250);
   };
+  await app.waitFor("!!document.querySelector('.ia-chat')", 10000, 'conversa da IA montada');
   for (const tema of ['claro', 'escuro']) {
     await app.js(`forgia.theme.set(${JSON.stringify(tema)}), true`);
-    await click('#btn-conectar-ia'); // botão real da barra de status
+    // botão real: "Pedir à IA" na barra de status, e Conectar IA dentro da conversa
+    if (!(await app.js("!!document.querySelector('.ia-chat:not([hidden])')"))) await click('#sb-pedir');
+    await click('.ia-chat [data-ia="conectar"]');
     await app.waitFor("!!document.querySelector('.modal .conectar textarea')", 3000, 'diálogo Conectar IA');
     for (const a of AGENTS) {
       await click(`.modal [data-agente="${a}"]`);
@@ -59,19 +62,19 @@ try {
       res.capturas.push(path.basename(await app.screenshot(path.join(OUT, `${a}-${tema}.png`))));
     }
     // Copiar (botão real) com o agente atual
-    await click('.modal [data-agente="agentcode"]');
+    await click('.modal [data-agente="claudecode"]');
     await click('.modal [data-conectar="copiar"]');
     await wait(300);
     if (tema === 'claro') {
       const got = readClipboardText().replace(/\r\n/g, '\n'); // o Windows guarda o texto com CRLF
-      res.copiar = { igualAoTexto: got === res.textos.agentcode, aviso: await app.js("[...document.querySelectorAll('.toast')].map((e) => e.textContent).join(' | ')"), inicio: got.slice(0, 80) };
+      res.copiar = { igualAoTexto: got === res.textos.claudecode, aviso: await app.js("[...document.querySelectorAll('.toast')].map((e) => e.textContent).join(' | ')"), inicio: got.slice(0, 80) };
     }
     await app.js("document.getElementById('modal-root').innerHTML = '', true");
   }
   writeClipboardText(saved);
 
   // o comando claude mcp add do texto, como o agente o rodaria, numa configuração isolada
-  const add = res.textos.agentcode.split('\n').map((l) => l.trim()).find((l) => l.startsWith('claude mcp add '));
+  const add = res.textos.claudecode.split('\n').map((l) => l.trim()).find((l) => l.startsWith('claude mcp add '));
   res.claude.comando = add;
   res.claude.usuarioAntes = userHasForgia();
   for (const shell of ['bash', 'powershell']) {

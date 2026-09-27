@@ -26,3 +26,34 @@ test('prepareOutline continua centrando e deixando anti-horário (área negativa
   assert.ok(signedArea(res.points) < 0);
   assert.deepEqual(res.size, [20, 10]);
 });
+
+test('firstCrossing: o trecho novo que cruzaria o traço para encostado na linha (o vizinho não conta)', () => {
+  const { firstCrossing } = outline;
+  // traço em L: (0,0) → (10,0) → (10,10); o trecho novo sai de (10,10) para (5,-5) e cruza o 1º lado em (20/3; 0)
+  const path = [[0, 0], [10, 0], [10, 10]];
+  const x = firstCrossing(path, [5, -5]);
+  assert.ok(Math.abs(x[0] - 20 / 3) < 1e-9 && Math.abs(x[1]) < 1e-9, JSON.stringify(x));
+  // com recuo, para 1 mm antes da linha, sobre o trecho novo
+  const r = firstCrossing(path, [5, -5], 1);
+  assert.ok(r[1] > 0 && Math.abs(Math.hypot(r[0] - 20 / 3, r[1]) - 1) < 1e-9, JSON.stringify(r));
+  // não cruza: null (inclusive encostando só no lado vizinho)
+  assert.equal(firstCrossing(path, [2, 8]), null);
+  assert.equal(firstCrossing([[0, 0], [10, 0]], [5, -5]), null);
+  // o mais perto ganha quando cruzaria dois lados
+  const zig = [[0, 0], [10, 0], [10, 2], [0, 2], [0, 10]];
+  const z = firstCrossing(zig, [5, -5]);
+  assert.ok(Math.abs(z[1] - 2) < 1e-9, JSON.stringify(z));
+});
+
+test('firstCrossing: passar exatamente por cima de um vértice do traço também é cruzar', () => {
+  const { firstCrossing } = outline;
+  // o 1º trecho tem um vértice em (0; 0); o trecho novo desce por x = 0 e passaria por ele
+  const path = [[-10, 0], [0, 0], [10, 0], [10, -10], [0, -10]];
+  const x = firstCrossing(path, [0, 10], 1);
+  assert.ok(x && Math.abs(x[0]) < 1e-9 && Math.abs(x[1] + 1) < 1e-9, JSON.stringify(x));
+});
+
+test('firstCrossing: o ponto diz em que trecho encostou (.trecho)', () => {
+  const x = outline.firstCrossing([[0, 0], [10, 0], [20, 0], [20, -10], [15, -10]], [15, 5]);
+  assert.equal(x.trecho, 1); // o trecho (10; 0) → (20; 0)
+});

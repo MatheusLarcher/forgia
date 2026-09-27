@@ -7,6 +7,8 @@ import { theme } from './theme.js';
 import { Ponte } from './ponte.js';
 import { StatusBar } from './statusbar.js';
 import { Arquivo } from './arquivo.js';
+import { AgentCode } from './agentcode.js';
+import { PedidoIA } from './pedido-ia.js';
 
 // Sem WebGL algum: explica no lugar do 3D em vez de deixar a tela em branco
 function showGpuFailure(viewport) {
@@ -33,11 +35,14 @@ try {
   // o projeto chegou (recuperação, migração do localStorage antigo ou .forgia pedido pelo Windows)
   const arquivo = new Arquivo(editor);
   const ponte = new Ponte(editor, arquivo.ready);
-  const ui = new UI(editor, ponte, arquivo);
+  // pedido escrito aqui e enviado ao Agent Code (src/agentcode.js); o Marcar parte usa pelo editor
+  const agentCode = (editor.agentCode = new AgentCode(editor));
+  const ui = new UI(editor, ponte, arquivo, agentCode);
   new StatusBar(editor, ponte, { onConnect: () => ui.connectDialog() });
+  new PedidoIA(editor, agentCode, { onConnect: (agente) => ui.connectDialog(agente) });
   if (gpuInfo.mode === 'software') ui.toast(t.avisos.modoSoftware);
   // acesso para depuração no console
-  window.forgia = { editor, ui, gpu: gpuInfo, theme, ponte, arquivo };
+  window.forgia = { editor, ui, gpu: gpuInfo, theme, ponte, arquivo, agentCode };
   arquivo.start(ui);
 } catch (err) {
   if (!(err instanceof GpuUnavailableError)) throw err;

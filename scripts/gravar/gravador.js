@@ -26,6 +26,13 @@
   let size = null; // { w, h } do vídeo
   let frames = 0;
   let t0 = 0;
+  // relógio do vídeo: anda 1/velocidade do tempo real (velocidade 4 = a espera da IA de verdade
+  // passa 4x mais rápido); só sai quadro quando ele avança 1/fps
+  let vt = 0;
+  let last = 0;
+  let lastFrame = -1e9;
+  let speed = 1;
+  let frameMs = 1000 / 30;
 
   async function readLoop() {
     for (;;) {
@@ -44,6 +51,11 @@
 
   function compose() {
     if (!latest || !writer) return;
+    const now = performance.now();
+    vt += (now - last) / speed;
+    last = now;
+    if (vt - lastFrame < frameMs - 0.5) return;
+    lastFrame = vt;
     ctx.globalAlpha = 1;
     drawLive(ctx, size.w, size.h);
     if (frozen && alpha > 0) {
@@ -51,7 +63,7 @@
       ctx.drawImage(frozen, 0, 0);
       ctx.globalAlpha = 1;
     }
-    const vf = new VideoFrame(out, { timestamp: Math.round((performance.now() - t0) * 1000) });
+    const vf = new VideoFrame(out, { timestamp: Math.round(vt * 1000) });
     writer.write(vf).catch(() => {});
     frames++;
   }
@@ -81,10 +93,21 @@
       alpha = 0;
       frames = 0;
       t0 = performance.now();
+      last = t0;
+      vt = 0;
+      lastFrame = -1e9;
+      speed = 1;
+      frameMs = 1000 / opts.fps;
       rec.start();
       compose();
       timer = setInterval(compose, 1000 / opts.fps);
       return { quadro: { w: latest.displayWidth, h: latest.displayHeight } };
+    },
+
+    // tempo do vídeo em relação ao real (1 = normal; 4 = 4x mais rápido)
+    velocidade(v) {
+      speed = v > 0 ? v : 1;
+      return true;
     },
 
     // guarda a imagem atual por cima de tudo (o main arruma a cena por baixo, sem aparecer)

@@ -32,18 +32,34 @@ Texto:   copiado sem alterações de
 Versão:  lucide-static 1.48.0
          (https://unpkg.com/lucide-static@1.48.0/icons/<nome>.svg)
 
-Os 40 ícones do Lucide copiados para src/icons.js (só o desenho; a moldura do
+Os 47 ícones do Lucide copiados para src/icons.js (só o desenho; a moldura do
 SVG é do Forgia):
 
   align-start-vertical, box, chevron-down, chevron-right, clipboard-paste,
-  copy, copy-plus, eye, eye-off, file-plus, flip-horizontal-2, folder-open,
-  fullscreen, grid-3x3, group, house, list-tree, lock, lock-open, magnet,
-  map-pin, minus, moon, move-horizontal, pause, pencil, pencil-line, play,
-  plus, puzzle, redo-2, ruler, save, search, star, sun, trash-2, undo-2,
+  copy, copy-plus, eye, eye-off, file-input, file-output, file-plus,
+  flip-horizontal-2, folder, folder-open, fullscreen, grid-3x3, group,
+  history, house, keyboard, list-tree, lock, lock-open, magnet, map-pin,
+  minus, moon, move-horizontal, pause, pencil, pencil-line, play, plug, plus,
+  puzzle, redo-2, ruler, save, save-all, search, star, sun, trash-2, undo-2,
   ungroup, x
 
 Destes, chevron-down, chevron-right, lock, minus, moon, plus, search, trash-2
 e x estão na lista de ícones derivados do Feather (licença MIT, abaixo).
+
+Logotipos dos agentes de IA (Conectar IA)
+.........................................
+
+No seletor de agente do Conectar IA (src/assets/ia), só para indicar com qual
+programa cada texto funciona. Os logotipos são marcas dos seus donos; o Forgia
+não é afiliado a eles nem tem o apoio deles.
+
+  claude.svg     Claude, marca da Anthropic. Desenho de simple-icons 16.32.0
+                 (https://simpleicons.org, dados sob CC0 1.0).
+  cursor.svg     Cursor, marca da Anysphere. Desenho de simple-icons 16.32.0
+                 (CC0 1.0).
+  codex.png      Codex, marca da OpenAI. Ícone do próprio app Codex para
+                 Windows (Square44x44Logo, 48 px).
+  agentcode.svg  Agent Code, da LarcherTech (mesmo autor do Forgia).
 
 Texto integral da licença do Lucide
 ...................................

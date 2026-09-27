@@ -1,0 +1,39 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (cena de dica)",
+ "nome": "Parafuso",
+ "descricao": "Um parafuso M8 × 20 da biblioteca (Hardware), em pé com a cabeça para cima e à esquerda da mesa para caber o encaixe ao lado (Criar encaixe): o bloco abre em cima no sextavado da cabeça, com o furo da rosca descendo no meio.",
+ "montagem": {
+  "comandos": [
+   {
+    "cmd": "criar",
+    "tipo": "parafuso",
+    "nome": "Parafuso M8",
+    "params": {"m":8,"comprimento":20,"cabeca":"sextavada"},
+    "rotacao": [180,0,0],
+    "centro": [-20,0,null],
+    "base_z": 0
+   }
+  ]
+ },
+ "projeto": {
+  "name": "Parafuso",
+  "grid": 1,
+  "workplane": {"w":255,"l":255,"h":255},
+  "objects": [
+   {
+    "id": "derh3yl7",
+    "type": "bolt",
+    "name": "Parafuso M8",
+    "color": "#8b9197",
+    "hole": false,
+    "params": {"m":8,"length":20,"head":1,"thread":1,"clearance":0,"segments":48},
+    "size": [13,25.3,15.011],
+    "pos": [-20,12.65,0],
+    "quat": [1,0,0,6.123233995736766e-17],
+    "flip": [1,1,1]
+   }
+  ]
+ }
+}

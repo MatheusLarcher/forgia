@@ -98,7 +98,7 @@
       if (body && body.querySelector('.gpu-line') && !body.querySelector('.sobre')) {
         const s = document.createElement('div');
         s.className = 'sobre';
-        s.innerHTML = '<h4>Sobre o Forgia (simulação)</h4><p>Feito no Brasil, por um carioca — <a href="https://larchertech.com/" target="_blank" rel="noopener noreferrer">LarcherTech</a></p>';
+        s.innerHTML = '<h4>Sobre o Forgia (simulação)</h4><p>Feito por um carioca — <a href="https://larchertech.com/" target="_blank" rel="noopener noreferrer">LarcherTech</a>, empresa brasileira</p>';
         body.append(s);
       }
     }).observe(document.getElementById('modal-root'), { childList: true, subtree: true });

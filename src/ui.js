@@ -46,10 +46,11 @@ const h = (tag, attrs = {}, ...children) => {
 // categorias e itens da biblioteca: src/biblioteca.js
 
 export class UI {
-  constructor(editor, ponte = null, arquivo = null) {
+  constructor(editor, ponte = null, arquivo = null, agentCode = null) {
     this.ed = editor;
     this.ponte = ponte;
     this.arquivo = arquivo;
+    this.agentCode = agentCode;
     this.thumbs = new Map();
     this.paletteOpen = false;
     this.collapsed = false;
@@ -80,6 +81,13 @@ export class UI {
     const viewIcons = { home: 'home', fit: 'fit', in: 'plus', out: 'minus', ortho: 'cube' };
     for (const b of $$('[data-view]')) b.innerHTML = ICONS[viewIcons[b.dataset.view]];
     $('#btn-new').innerHTML = ICONS.newFile;
+    // barra de cima: ícone antes do texto (o texto veio do applyTexts e continua o mesmo)
+    const topIcons = { '#btn-arquivo': ICONS.folder, '#btn-import': ICONS.importFile, '#btn-export': ICONS.exportFile, '#btn-help': ICONS.keyboard, '#btn-settings': ICONS.settings };
+    for (const [sel, svg] of Object.entries(topIcons)) {
+      const b = $(sel);
+      b.classList.add('com-icone');
+      b.insertAdjacentHTML('afterbegin', svg);
+    }
     $('.search-ico').innerHTML = ICONS.search;
   }
 
@@ -191,7 +199,7 @@ export class UI {
     const arq = this.arquivo;
     const recents = await arq.recents();
     const item = (text, key, fn, opts = {}) => {
-      const b = h('button', { class: 'menu-item', role: 'menuitem', type: 'button', disabled: opts.disabled || false, title: opts.title || null }, h('span', { class: 'menu-texto' }, text), key ? h('kbd', {}, key) : null);
+      const b = h('button', { class: 'menu-item', role: 'menuitem', type: 'button', disabled: opts.disabled || false, title: opts.title || null }, h('span', { class: 'menu-icone', html: opts.icon || '' }), h('span', { class: 'menu-texto' }, text), key ? h('kbd', {}, key) : null);
       b.addEventListener('click', () => {
         this.closeMenu();
         fn();
@@ -202,13 +210,13 @@ export class UI {
     const menu = h(
       'div',
       { class: 'menu', role: 'menu', id: 'menu-arquivo' },
-      item(tx.abrir, 'Ctrl+O', () => arq.open()),
-      item(tx.salvar, 'Ctrl+S', () => arq.save()),
-      item(tx.salvarComo, 'Ctrl+Shift+S', () => arq.save({ como: true })),
+      item(tx.abrir, 'Ctrl+O', () => arq.open(), { icon: ICONS.open }),
+      item(tx.salvar, 'Ctrl+S', () => arq.save(), { icon: ICONS.save }),
+      item(tx.salvarComo, 'Ctrl+Shift+S', () => arq.save({ como: true }), { icon: ICONS.saveAll }),
       h('div', { class: 'menu-sep', role: 'separator' }),
       h('div', { class: 'menu-titulo' }, tx.recentes),
       ...(recents.length
-        ? recents.map((r, i) => item(r.existe ? r.nome : `${r.nome} (${tx.naoEncontrado})`, null, () => arq.openRecent(i), { title: r.caminho, disabled: !r.existe }))
+        ? recents.map((r, i) => item(r.existe ? r.nome : `${r.nome} (${tx.naoEncontrado})`, null, () => arq.openRecent(i), { title: r.caminho, disabled: !r.existe, icon: ICONS.history }))
         : [h('div', { class: 'menu-vazio' }, tx.semRecentes)]),
     );
     document.body.append(menu);
@@ -1067,6 +1075,7 @@ export class UI {
           }, t.barra.areas[key]),
         ),
       ),
+      h('p', { class: 'muted settings-versao' }, tx.versao(__APP_VERSION__)),
     );
     this.modal(tx.titulo, body, [
       h('button', { class: 'btn', onclick: () => this.closeModal() }, t.dialogos.cancelar),
@@ -1083,15 +1092,17 @@ export class UI {
     ], stopWatch);
   }
 
-  // Conectar IA: texto para colar no agente (src/conectar.js), com os caminhos desta instalação
-  async connectDialog() {
+  // Conectar IA: na opção Agent Code, a integração (Integrar e o estado); nas outras, o texto para
+  // colar no agente (src/conectar.js), com os caminhos desta instalação
+  async connectDialog(agente) {
     const info = this.ponte && this.ponte.api ? await this.ponte.api.info() : null;
     const tx = t.dialogos.conectar;
-    this.modal(tx.titulo, connectContent(info, (text) => this.copyText(text)), [
+    const content = connectContent(info, (text) => this.copyText(text), typeof agente === 'string' ? agente : undefined, this.agentCode);
+    this.modal(tx.titulo, content, [
       h('button', { class: 'btn', onclick: () => this.closeModal() }, tx.fechar),
-    ]);
+    ], () => content.fechar && content.fechar());
     const dlg = $('.modal');
-    if (dlg) dlg.classList.add('largo');
+    if (dlg) dlg.classList.add('largo', 'conectar-modal');
   }
 
   // área de transferência do Electron (pelo preload, a mesma do Marcar parte); sem ela (npm run
@@ -1127,7 +1138,7 @@ export class UI {
         h('span', { class: 'sobre-nome' }, t.app.nome),
         h('span', { class: 'sobre-versao' }, tx.versao(__APP_VERSION__)),
       ),
-      h('p', {}, tx.feito, h('a', { href: 'https://larchertech.com/', target: '_blank', rel: 'noopener noreferrer' }, tx.empresa)),
+      h('p', {}, tx.feito, h('a', { href: 'https://larchertech.com/', target: '_blank', rel: 'noopener noreferrer' }, tx.empresa), tx.empresaDe),
       h('p', {}, tx.licenca),
       h('p', {}, tx.icones),
     );

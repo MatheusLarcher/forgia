@@ -1,0 +1,29 @@
+{
+ "dica": "importar",
+ "titulo": "Abrir um modelo baixado: arrastar o .3MF para a janela e pôr uma plaquinha com o nome (modelo: Triceratops horridus, Smithsonian Institution, CC0)",
+ "cena": "docs/media/cenas/vazia",
+ "recorte": {"janela":true},
+ "video": {"w":960,"h":607,"fps":30,"bitrate":1600000},
+ "camera": {"alvo":[-6,0,10],"de":[40,-128,105]},
+ "cursor": {"recorte":[0.97,0.42]},
+ "pausaInicial": 300,
+ "passos": [
+  {"legenda":{"html":"Abra <b>STL, OBJ e 3MF</b> — até projetos do Bambu Studio","recorte":[0.23,0.135]}},
+  {"arquivo":{"caminho":"docs/media/modelos/triceratops.3mf","para":{"recorte":[0.42,0.55]}},"ms":1100},
+  {"esperar":2700},
+  {"tecla":"Escape","selo":false},
+  {"esperar":300},
+  {"mover":{"seletor":".tile[data-label=\"Texto\"]"},"ms":800},
+  {"apertar":true,"pausa":120},
+  {"arrastar":{"mundo":[0,-92,0]},"ms":1000},
+  {"esperar":450},
+  {"clicar":{"seletor":"#inspector .param input.param-text"},"ms":650},
+  {"tecla":"Ctrl+A","selo":false},
+  {"digitar":"DINO","ms":600},
+  {"tecla":"Enter","selo":false},
+  {"esperar":400},
+  {"clicar":{"recorte":[0.1,0.33]},"ms":600},
+  {"clicar":{"seletor":".view-btns [data-view=\"fit\"]"},"ms":600},
+  {"esperar":1700}
+ ]
+}

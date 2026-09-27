@@ -24,7 +24,7 @@
     <!-- textos vêm de src/textos: data-t (texto), data-t-aria (aria-label), data-t-placeholder -->
     <div id="app">
       <header id="topbar">
-        <a class="logo" href="#" data-t-aria="app.nome">
+        <a class="logo" data-t-aria="app.nome">
           <img class="logo-symbol" src="./branding/forgia-forge-v1.svg" width="26" height="26" alt="" />
           <span class="logo-wordmark" data-t="app.nome"></span>
         </a>
@@ -62,7 +62,6 @@
           <button class="icon-btn" data-cmd="draw" data-t-aria="ferramentas.draw" data-dica="draw"></button>
           <button class="icon-btn" data-cmd="cruise" data-t-aria="ferramentas.cruise" data-dica="cruise"></button>
           <button class="icon-btn" data-cmd="measure" data-t-aria="ferramentas.measure" data-dica="measure"></button>
-          <button class="icon-btn" data-cmd="mark" data-t-aria="ferramentas.mark" data-dica="mark"></button>
           <button class="icon-btn" data-cmd="workplane" data-t-aria="ferramentas.workplane" data-dica="workplane"></button>
         </div>
       </div>
@@ -132,9 +131,10 @@
         <span class="sb-size" id="sb-size"></span>
         <span class="sb-plano" id="sb-plano" hidden></span>
         <span class="spacer"></span>
-        <button class="text-btn small" id="btn-limpar-marcas" data-dica="limparMarcas" hidden></button>
+        <button class="text-btn small com-icone" id="btn-limpar-marcas" data-dica="limparMarcas" hidden></button>
         <button class="sb-ia" id="sb-ia" data-dica="ia_pronta"><span class="sb-ia-ponto"></span><span class="sb-ia-texto"></span></button>
-        <button class="text-btn small" id="btn-conectar-ia" data-t="status.conectar" data-dica="conectarIA"></button>
+        <!-- pedido à IA pela integração com o Agent Code (src/pedido-ia.js) -->
+        <button class="sb-pedir" id="sb-pedir" type="button" data-dica="pedir" hidden aria-haspopup="dialog" aria-expanded="false"><span class="sb-pedir-ponto"></span><span class="sb-pedir-rotulo" data-t="agentcode.rotulo"></span></button>
         <span class="sb-sep"></span>
         <a class="credit" id="sb-credito" href="https://larchertech.com/" target="_blank" rel="noopener noreferrer" data-t-aria="status.creditoAria" data-dica="credito">
           <img src="./branding/larchertech-lb.png" width="16" height="15" alt="" />

@@ -18,7 +18,10 @@ const webm = createRequire(import.meta.url)('../scripts/gravar/webm.cjs');
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DICAS = ['cruise', 'align', 'mirror', 'group', 'duplicate', 'draw', 'mark', 'encaixe', 'workplane', 'soltar', 'measure'];
-const ACOES = ['tecla', 'mover', 'clicar', 'apertar', 'arrastar', 'caminho', 'soltar', 'digitar', 'esperar', 'selo'];
+// dicas com o vídeo de um fluxo inteiro (o pedido à IA indo e voltando): roteiro em
+// docs/media/roteiros, mais longas que as das funções
+const DICAS_FLUXO = ['pedir'];
+const ACOES = ['tecla', 'mover', 'clicar', 'apertar', 'arrastar', 'caminho', 'soltar', 'digitar', 'esperar', 'selo', 'seta', 'legenda'];
 const readJson = (...p) => JSON.parse(fs.readFileSync(path.join(ROOT, ...p), 'utf8'));
 const roteiros = fs.readdirSync(path.join(ROOT, 'ajuda', 'roteiros')).filter((f) => f.endsWith('.json')).map((f) => readJson('ajuda', 'roteiros', f));
 
@@ -28,7 +31,7 @@ test('um roteiro para cada uma das 11 funções com vídeo', () => {
 
 test('t.dicas: vídeo nas 11 funções (nome do roteiro) e em nenhuma outra', () => {
   const comVideo = Object.entries(t.dicas).filter(([, d]) => d.video).map(([k, d]) => [k, d.video]);
-  assert.deepEqual(comVideo.map(([k]) => k).sort(), [...DICAS].sort());
+  assert.deepEqual(comVideo.map(([k]) => k).sort(), [...DICAS, ...DICAS_FLUXO].sort());
   for (const [k, v] of comVideo) assert.equal(v, k);
   for (const k of ['copy', 'paste', 'delete', 'undo', 'redo', 'in', 'out']) assert.ok(t.dicas[k] && !t.dicas[k].video, k);
 });
@@ -42,7 +45,12 @@ test('cada roteiro usa uma cena que existe, com câmera, seleção e passos conh
     assert.equal(r.camera.de.length, 3, r.dica);
     assert.ok(r.passos.length > 0, r.dica);
     for (const p of r.passos) assert.ok(ACOES.some((k) => k in p), `${r.dica}: passo sem ação ${JSON.stringify(p)}`);
-    for (const p of r.passos) for (const k of ['mover', 'clicar', 'arrastar']) if (p[k] && p[k].peca) assert.ok(nomes.has(p[k].peca), `${r.dica}: alvo "${p[k].peca}"`);
+    // alvos: peças da cena ou o encaixe que o próprio roteiro cria a partir de uma delas
+    const alvos = new Set([...nomes, ...[...nomes].map((n) => t.encaixe.grupo(n))]);
+    for (const p of r.passos) {
+      const specs = [p.mover, p.clicar, p.arrastar, p.seta && p.seta.de, p.seta && p.seta.para];
+      for (const s of specs) if (s && s.peca) assert.ok(alvos.has(s.peca), `${r.dica}: alvo "${s.peca}"`);
+    }
   }
 });
 
@@ -123,4 +131,19 @@ test('os 22 vídeos: 640x480, VP9, 4 a 6 s, com duração gravada e no máximo 3
     }
   }
   assert.ok(total <= 6 * 1024 * 1024, `total ${total}`);
+});
+
+test('dicas de fluxo: roteiro em docs/media/roteiros e vídeo 640x480 VP9 nos dois temas, até 12 s e 600 KB', () => {
+  for (const d of DICAS_FLUXO) {
+    assert.equal(readJson('docs', 'media', 'roteiros', d + '.json').dica, d);
+    for (const tema of ['claro', 'escuro']) {
+      const file = path.join(ROOT, 'public', 'ajuda', `${d}-${tema}.webm`);
+      const buf = fs.readFileSync(file);
+      const i = webm.info(buf);
+      assert.equal(`${i.largura}x${i.altura}`, '640x480', file);
+      assert.equal(i.codec, 'V_VP9', file);
+      assert.ok(i.duracaoGravada && i.duracaoMs <= 12000, `${file}: ${i.duracaoMs} ms`);
+      assert.ok(buf.length <= 600 * 1024, `${file}: ${buf.length} bytes`);
+    }
+  }
 });

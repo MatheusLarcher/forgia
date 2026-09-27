@@ -24,6 +24,14 @@
 //   criacoes(), salvarCriacao(bytes, nome), renomearCriacao(id, nome), excluirCriacao(id)
 //                               Suas criações da biblioteca, na pasta fixa <userData>\criacoes
 //
+// window.forgiaAgentCode — pedido escrito no Forgia enviado ao Agent Code (electron/agentcode.cjs).
+// Só ações de alto nível; porta, URL, token e o servidor MCP ficam no main. Cada uma devolve
+// { ok: true, ... } ou { ok: false, tipo, erro }.
+//   estado() / integrar() / desligar()   { estado: ausente|login|indisponivel|pronto|integrado|desligado, versao, integrado }
+//   enviar(texto, conversaId, contexto)  { tarefa_id, conversa_id }; contexto = { estado, imagem } (opcional)
+//   tarefa(id)                           { status: na_fila|rodando|concluida|erro|cancelada, resposta, erro }
+//   cancelar(id)
+//
 // Nada de leitura ou gravação de arquivo em caminho escolhido pela página.
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -55,6 +63,15 @@ contextBridge.exposeInMainWorld('forgiaPonte', {
   copiar(texto, png) {
     return ipcRenderer.invoke('ponte:copiar', { texto, png });
   },
+});
+
+contextBridge.exposeInMainWorld('forgiaAgentCode', {
+  estado: () => ipcRenderer.invoke('agentcode:estado'),
+  integrar: () => ipcRenderer.invoke('agentcode:integrar'),
+  desligar: () => ipcRenderer.invoke('agentcode:desligar'),
+  enviar: (texto, conversaId, contexto) => ipcRenderer.invoke('agentcode:enviar', String(texto || ''), conversaId ? String(conversaId) : null, contexto && typeof contexto === 'object' ? contexto : null),
+  tarefa: (id) => ipcRenderer.invoke('agentcode:tarefa', String(id || '')),
+  cancelar: (id) => ipcRenderer.invoke('agentcode:cancelar', String(id || '')),
 });
 
 contextBridge.exposeInMainWorld('forgiaProjeto', {

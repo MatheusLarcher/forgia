@@ -81,13 +81,14 @@ async function fetchJson(url, timeout = 30000) {
 
 export class Forgia {
   // extraArgs: argumentos a mais (ex.: o caminho de um .forgia, como o duplo clique no arquivo)
-  static async open(exe, profile, { metrics = { width: 1400, height: 900, deviceScaleFactor: 1.5, mobile: false }, extraArgs = [], ready = null } = {}) {
+  // env: variáveis a mais para o exe (ex.: FORGIA_AGENTCODE_PORTAS)
+  static async open(exe, profile, { metrics = { width: 1400, height: 900, deviceScaleFactor: 1.5, mobile: false }, extraArgs = [], ready = null, env = null } = {}) {
     const app = new Forgia();
     app.exe = exe;
     app.profile = profile;
     fs.rmSync(path.join(profile, 'DevToolsActivePort'), { force: true });
     const args = [`--user-data-dir=${profile}`, '--remote-debugging-port=0', '--disable-renderer-backgrounding', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', ...extraArgs];
-    const child = spawn(exe, args, { stdio: 'ignore' });
+    const child = spawn(exe, args, { stdio: 'ignore', ...(env ? { env: { ...process.env, ...env } } : {}) });
     app.pid = child.pid;
     app.exited = null;
     app.exitPromise = new Promise((r) => child.on('exit', (code) => r((app.exited = { code }))));

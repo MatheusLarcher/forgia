@@ -5,6 +5,8 @@ const path = require('path');
 const { startBridge } = require('./ponte.cjs');
 // projeto em arquivo (.forgia), Recentes, cópia de segurança e a pergunta ao fechar
 const { startProject, fileFromArgv } = require('./projeto.cjs');
+// pedido escrito no Forgia enviado ao Agent Code aberto na mesma máquina (MCP por HTTP local)
+const { startAgentCode } = require('./agentcode.cjs');
 
 // GPU: usa a placa dedicada quando houver mais de uma; se não houver GPU utilizável,
 // mantém o WebGL por software (SwiftShader) como fallback. Só carregamos arquivos locais.
@@ -67,6 +69,7 @@ function createWindow() {
     return { action: 'deny' };
   });
   startBridge(win);
+  startAgentCode(win);
   // .forgia pedido pelo Windows ao abrir (duplo clique no arquivo)
   projeto = startProject(win, { arquivoInicial: fileFromArgv(process.argv) });
 }

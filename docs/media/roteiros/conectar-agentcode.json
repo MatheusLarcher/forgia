@@ -1,0 +1,138 @@
+{
+ "dica": "conectar-agentcode",
+ "titulo": "Conectar IA: Agent Code integrado. Gravado com o Agent Code de verdade (--agentcode-real): a IA faz o pedido de verdade; a espera dela passa 4x mais rápido no vídeo (passo velocidade) e a legenda avisa.",
+ "cena": "docs/media/cenas/vazia",
+ "recorte": {
+  "janela": true
+ },
+ "video": {
+  "w": 960,
+  "h": 607,
+  "fps": 30,
+  "bitrate": 1600000
+ },
+ "camera": {
+  "alvo": [
+   -3,
+   0,
+   2
+  ],
+  "de": [
+   36,
+   -92,
+   78
+  ]
+ },
+ "estilo": ".conectar-tutorial { display: none !important; } .modal.conectar-modal { width: min(640px, 94vw); } .grav-legenda { font-size: 21px; max-width: 700px; padding: 11px 16px; }",
+ "cursor": {
+  "recorte": [
+   0.6,
+   0.72
+  ]
+ },
+ "pausaInicial": 300,
+ "agentCode": {
+  "real": true,
+  "integrar": false
+ },
+ "passos": [
+  {
+   "legenda": {
+    "html": "<b>1.</b> Com o <b>Agent Code</b> aberto, clique em <b>Pedir à IA</b> e em <b>Conectar IA</b>",
+    "recorte": [
+     0.2,
+     0.06
+    ]
+   }
+  },
+  {
+   "esperar": 900
+  },
+  {
+   "clicar": {
+    "seletor": "#sb-pedir"
+   },
+   "ms": 1000
+  },
+  {
+   "esperar": 500
+  },
+  {
+   "clicar": {
+    "seletor": ".ia-chat [data-ia=\"conectar\"]"
+   },
+   "ms": 700
+  },
+  {
+   "esperar": 900
+  },
+  {
+   "legenda": {
+    "html": "<b>2.</b> Na opção <b>Agent Code</b>, clique em <b>Integrar</b>"
+   }
+  },
+  {
+   "clicar": {
+    "seletor": ".modal [data-agentcode=\"integrar\"]"
+   },
+   "ms": 900
+  },
+  {
+   "esperarQue": "document.querySelector('.modal .ac-estado') && document.querySelector('.modal .ac-estado').dataset.estado === 'integrado'",
+   "ms": 8000
+  },
+  {
+   "esperar": 1600
+  },
+  {
+   "clicar": {
+    "seletor": ".modal .modal-actions .btn"
+   },
+   "ms": 700
+  },
+  {
+   "legenda": {
+    "html": "<b>3.</b> Clique em <b>Pedir à IA</b> e escreva o que quer"
+   }
+  },
+  {
+   "clicar": {
+    "seletor": "#sb-pedir"
+   },
+   "ms": 900
+  },
+  {
+   "esperar": 500
+  },
+  {
+   "digitar": "faça um chaveiro com o nome ANA",
+   "ms": 1600
+  },
+  {
+   "esperar": 400
+  },
+  {
+   "tecla": "Enter",
+   "selo": false
+  },
+  {
+   "legenda": {
+    "html": "<b>4.</b> A IA faz a peça aqui mesmo, sem copiar e colar <span style=\"font-weight:400;opacity:.7\">(espera acelerada 4×)</span>"
+   }
+  },
+  {
+   "velocidade": 4
+  },
+  {
+   "esperarQue": "(() => { const l = document.querySelectorAll('.ia-chat .ia-msg.ia'); return l.length && l[l.length - 1].dataset.status === 'concluida'; })()",
+   "ms": 240000,
+   "foto": "ia"
+  },
+  {
+   "velocidade": 1
+  },
+  {
+   "esperar": 3000
+  }
+ ]
+}

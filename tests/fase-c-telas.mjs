@@ -31,7 +31,7 @@ export const SCENES = {
     await app.js("(() => { const row = [...document.querySelectorAll('.modal table.keys tr')].find((r) => r.textContent.startsWith('N')); row.scrollIntoView({ block: 'center' }); return true; })()");
   },
   async 'conectar-ia'({ app }) {
-    await app.js("document.getElementById('btn-conectar-ia').click(), true");
+    await app.js("(!document.querySelector('.ia-chat:not([hidden])') && document.getElementById('sb-pedir').click(), document.querySelector('.ia-chat [data-ia="conectar"]').click()), true");
     await app.waitFor("!!document.querySelector('.modal .conectar')", 3000, 'diálogo Conectar IA');
   },
 };

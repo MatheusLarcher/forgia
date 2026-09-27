@@ -1,12 +1,15 @@
 import * as THREE from 'three';
 import { t } from './textos/index.js';
-import { prepareOutline, smoothOpen, trimSeam } from './outline.js';
+import { prepareOutline, smoothOpen, trimSeam, firstCrossing } from './outline.js';
 
 // Ferramenta Desenhar (tecla B): contorno fechado na mesa que vira a forma 'desenho'.
 // - Ao entrar, a vista vai para o topo ortográfico (desenhar em perspectiva distorce o traço) e o
 //   giro da vista fica desligado; ao sair, volta exatamente à vista de antes (editor.restoreView).
 // - Arrastar desenha à mão livre (sem grade); clicar põe um vértice reto, grudado na grade. A mão
 //   treme num clique: só vira traço depois de DRAG_PX, e o traço guarda o caminho desde o aperto.
+// - O traço não cruza a si mesmo: o trecho que passaria por cima de outro para encostado nele
+//   (firstCrossing, src/outline.js); à mão livre ele desliza pela linha até o cursor voltar para o
+//   lado de dentro. Vale para os cliques e para a linha elástica até o cursor.
 // - Enter ou clicar no 1º ponto (com 3 ou mais) fecha; com menos, o clique ali é um vértice comum.
 //   Um traço à mão livre começado do zero fecha ao soltar.
 // - O traço é limpo por prepareOutline (src/outline.js): suavizado, simplificado (RDP com
@@ -87,6 +90,21 @@ export class DrawTool {
     return this.ed.project(new THREE.Vector3(x, 0, z));
   }
 
+  // p que não cruza o traço feito (path): p mesmo, ou o ponto em que o trecho novo encosta na linha
+  blocked(path, p) {
+    return firstCrossing(path, p, 2 * this.ed.pixelSize(this.ed.controls.target)) || p; // 2 px de folga: a suavização não encosta de novo
+  }
+
+  // amostra da mão livre: encostada na linha, só entra quando andou pela linha (sem repetir o ponto)
+  sample(s, p) {
+    const q = this.blocked([...this.points, ...s.pts], p);
+    const last = s.pts[s.pts.length - 1];
+    if (q !== p && last && Math.hypot(q[0] - last[0], q[1] - last[1]) < this.ed.pixelSize(this.ed.controls.target)) return;
+    s.pts.push(q);
+    // encostado: em que trecho do caminho (this.points + s.pts); ao soltar, o laço fecha ali
+    s.encosto = q !== p ? q.trecho : null;
+  }
+
   nearFirst() {
     if (!this.points.length) return false;
     const s = this.screen(this.points[0]);
@@ -113,7 +131,7 @@ export class DrawTool {
     if (d && e.buttons & 1) {
       const s = this.stroke || d;
       if (Math.hypot(e.clientX - s.last.x, e.clientY - s.last.y) >= SAMPLE_PX) {
-        s.pts.push(p);
+        this.sample(s, p);
         s.last = { x: e.clientX, y: e.clientY };
         if (this.stroke) this.dirty = true;
       }
@@ -122,7 +140,8 @@ export class DrawTool {
         this.stroke = { pts: d.pts, last: d.last, alone: !this.points.length };
       }
     }
-    const cursor = this.stroke ? null : this.snapped(p);
+    // a linha elástica também encosta em vez de cruzar
+    const cursor = this.stroke ? null : this.blocked(this.points, this.snapped(p));
     const closing = !this.stroke && this.points.length >= 3 && this.nearFirst();
     if (closing !== this.closing || String(cursor) !== String(this.cursor)) this.dirty = true;
     this.cursor = cursor;
@@ -139,12 +158,15 @@ export class DrawTool {
     if (s) {
       this.stroke = null;
       const p = this.tablePoint(e);
-      if (p) s.pts.push(p);
+      if (p) this.sample(s, p);
       const pts = smoothOpen(s.pts, 2);
       this.hasFree = true;
       if (s.alone) {
-        // traço à mão livre começado do zero: fecha sozinho ao soltar (a sobra na emenda sai)
-        this.points = trimSeam(pts);
+        // traço à mão livre começado do zero: fecha sozinho ao soltar. Se terminou encostado na
+        // própria linha, o laço fecha ali e o começo antes do encosto sai (sem rebarba); senão, a
+        // sobra na emenda sai
+        const laco = s.encosto != null ? s.pts.slice(s.encosto + 1) : null;
+        this.points = laco && laco.length >= 3 ? smoothOpen(laco, 2) : trimSeam(pts);
         this.finish();
       } else {
         this.points.push(...pts);
@@ -153,7 +175,7 @@ export class DrawTool {
     }
     this.ed.setRay(e);
     if (this.points.length >= 3 && this.nearFirst()) this.finish();
-    else this.points.push(this.snapped(d.p));
+    else this.points.push(this.blocked(this.points, this.snapped(d.p)));
     return true;
   }
 

@@ -4,10 +4,13 @@ import { fmt } from './editor.js';
 
 const r2 = (v) => Math.round(v * 100) / 100 || 0;
 import { selectionSummary } from './ponte-comandos.js';
+import { iaCorner } from './pedido-ia.js';
+import { ICONS } from './icons.js';
 
 // Barra de status: X/Y/Z e medidas da seleção no sistema do usuário (o MESMO cálculo do
 // forgia_estado, src/ponte-comandos.js), o rótulo do Plano de trabalho quando ativo, indicador da
-// IA, botão Conectar IA e o crédito LarcherTech na ponta direita (HTML fixo do index.html).
+// IA (clique abre o Conectar IA; o botão dele fica na conversa da IA, src/pedido-ia.js) e o crédito
+// LarcherTech na ponta direita (HTML fixo do index.html).
 // Também mostra o aviso da IA no canto da vista ("IA: criou 2, alterou 1 · Desfazer").
 export class StatusBar {
   constructor(editor, ponte, { onConnect }) {
@@ -17,7 +20,6 @@ export class StatusBar {
     this.sizeEl = document.getElementById('sb-size');
     this.iaEl = document.getElementById('sb-ia');
     this.iaText = this.iaEl.querySelector('.sb-ia-texto');
-    document.getElementById('btn-conectar-ia').addEventListener('click', onConnect);
     this.iaEl.addEventListener('click', onConnect);
     const refresh = () => this.refreshCoords();
     editor.addEventListener('change', refresh);
@@ -33,6 +35,8 @@ export class StatusBar {
     this.refreshMarks();
     ponte.addEventListener('estado', (e) => this.refreshIa(e.detail.status));
     ponte.addEventListener('aviso', (e) => this.notice(e.detail));
+    // integração com o Agent Code ligada: a IA já está ligada ao Forgia (ponto verde)
+    if (editor.agentCode) editor.agentCode.addEventListener('estado', () => this.refreshIa(ponte.status));
     this.refreshCoords();
     this.refreshIa(ponte.status);
   }
@@ -64,10 +68,14 @@ export class StatusBar {
   refreshMarks() {
     const n = (this.ed.marks || []).length;
     this.marksBtn.hidden = !n;
-    this.marksBtn.textContent = t.marcar.limparN(n);
+    this.marksBtn.innerHTML = ICONS.eraser;
+    this.marksBtn.append(t.marcar.limparN(n));
   }
 
   refreshIa(status) {
+    // ponte no ar e o Agent Code integrado: "IA conectada" (verde) sem esperar o primeiro pedido
+    const ac = this.ed.agentCode;
+    if (status === 'pronta' && ac && ac.integrado) status = 'conectada';
     this.iaEl.dataset.estado = status;
     this.iaText.textContent = t.ia.estados[status];
     this.iaEl.setAttribute('aria-label', t.ia.estados[status]);
@@ -96,7 +104,7 @@ export class StatusBar {
       });
       el.append(document.createTextNode(' · '), btn);
     }
-    vp.append(el);
+    iaCorner().append(el); // abaixo do painel do pedido à IA, se houver (src/pedido-ia.js)
     requestAnimationFrame(() => el.classList.add('show'));
     const close = () => {
       el.classList.remove('show');

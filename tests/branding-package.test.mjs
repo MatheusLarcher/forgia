@@ -1,4 +1,5 @@
-// Run after npm run dist:win:branding.
+// Roda depois de gerar o instalador: confere o build mais novo do gerar_setup.bat
+// (release\builds\<versão>\) ou, sem ele, o do npm run dist:win:branding (release\branding\).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -6,7 +7,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import asar from '@electron/asar';
 const root = fileURLToPath(new URL('../', import.meta.url));
-const archive = path.join(root, 'release/branding/win-unpacked/resources/app.asar');
+// pasta do build: a de release\builds modificada por último que tenha o exe e o instalador
+function buildDir() {
+  const builds = path.join(root, 'release', 'builds');
+  const ok = (d) => fs.existsSync(path.join(d, 'win-unpacked', 'Forgia.exe')) && fs.existsSync(path.join(d, 'Forgia-Setup.exe'));
+  const list = fs.existsSync(builds) ? fs.readdirSync(builds).map((n) => path.join(builds, n)).filter(ok) : [];
+  list.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+  return list[0] || path.join(root, 'release', 'branding');
+}
+const dir = buildDir();
+const archive = path.join(dir, 'win-unpacked/resources/app.asar');
 const publicIcon = fs.readFileSync(path.join(root, 'public/branding/forgia-forge-v1.ico'));
 // @electron/asar splits entry paths on the platform separator, so '/' fails on Windows.
 const entry = (p) => p.split('/').join(path.sep);
@@ -27,8 +37,8 @@ test('ASAR includes identical SVG, PNG and ICO; compiled HTML URLs resolve', () 
 });
 
 test('application executable and NSIS installer contain all seven branded icon frames', () => {
-  for (const file of ['release/branding/win-unpacked/Forgia.exe', 'release/branding/Forgia-Setup-0.1.0.exe']) {
-    const exe = fs.readFileSync(path.join(root, file));
+  for (const file of [path.join(dir, 'win-unpacked/Forgia.exe'), path.join(dir, 'Forgia-Setup.exe')]) {
+    const exe = fs.readFileSync(file);
     assert.equal(exe.toString('ascii', 0, 2), 'MZ');
     for (let index = 0; index < 7; index++) {
       const at = 6 + index * 16;

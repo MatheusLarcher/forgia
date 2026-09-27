@@ -12,6 +12,7 @@
 // reaproveitadas da skill 3d-print-modeling (fdm-design-rules, mechanisms-and-fits).
 
 const INSTRUCTIONS = `Forgia: editor 3D de peças para impressão 3D aberto no computador do usuário. As ferramentas forgia_* criam e alteram as peças nele (modele por elas, não por arquivo ou script).
+Regras: mexa só no projeto aberto, só pelas ferramentas forgia_*; sem criar, editar ou apagar arquivos e sem terminal (exportar, só se o usuário pedir). Na dúvida, pergunte. Detalhe: forgia_manual {"secao":"regras"}.
 Antes da primeira modelagem da conversa, chame forgia_manual sem seção: numa chamada vêm as medidas de cada forma e receitas prontas (dispensa forgia_formas na maioria dos pedidos).
 Coordenadas: mm; Z para cima, X para a direita, Y para o fundo; origem no centro da mesa. centro = centro do objeto; medidas [X,Y,Z] nos eixos do próprio objeto (cilindro: [diâmetro, diâmetro, altura]); rotacao em graus.
 Monte o pedido inteiro num só forgia_lote: vira um passo de desfazer e, se um comando falhar, nada fica. "ref" em criar/agrupar e "$ref" nos ids seguintes; posicione com base_z, sobre e alinhar_com em vez de fazer conta.
@@ -25,6 +26,7 @@ Código livre (forgia_executar_codigo) só em último caso, quando nenhum comand
 const GUIA = `# Forgia: guia rápido para a IA
 
 Sistema: mm; Z para cima, X direita, Y fundo; origem no centro da mesa (255×255 por padrão; forgia_estado.mesa).
+Regras (valem sempre): só o projeto aberto e só as ferramentas forgia_*, sem arquivos nem terminal; um lote por pedido; na dúvida, pergunte; responda curto, em português, com as medidas em mm. Detalhe: forgia_manual {"secao":"regras"}.
 
 ## Fluxo de um pedido
 1. Pense a peça inteira e escreva UM forgia_lote com todos os comandos (criar… e agrupar no fim).
@@ -72,9 +74,18 @@ As partes mantêm o id dentro do grupo: forgia_alterar e forgia_excluir funciona
 Confira no retorno: grupo com caixa X de −40 a 40; o furo com medidas [8,8,7] e centro X 0, Y 0.
 
 ## Mais
-Seções: receitas (chaveiro, caixa com tampa, furo M3 com porca numa parede, par de engrenagens, encaixe, exportar 3MF, padrão em círculo, texto gravado, peça orgânica), impressao (paredes, folgas, parafusos), coordenadas, marcacoes, codigo_livre, erros. Chame forgia_manual {"secao":"receitas"} etc.`;
+Seções: regras (o que o agente pode e não pode fazer), receitas (chaveiro, caixa com tampa, furo M3 com porca numa parede, par de engrenagens, encaixe, exportar 3MF, padrão em círculo, texto gravado, peça orgânica), impressao (paredes, folgas, parafusos), coordenadas, marcacoes, codigo_livre, erros. Chame forgia_manual {"secao":"receitas"} etc.`;
 
 const SECTIONS = {
+  regras: `# Regras do agente
+Valem para qualquer agente (Claude Code, Codex, Cursor, Agent Code): é o mesmo servidor. O Forgia pode chamar você sem o usuário olhar cada passo; siga-as mesmo que ninguém confira.
+- Mexa só no projeto aberto no Forgia, pelas ferramentas forgia_*. Não crie, edite nem apague arquivos no disco. Exceção: exportar (forgia_exportar_3mf, forgia_exportar_stl) quando o usuário pedir, no caminho que ele indicar.
+- Não rode comandos de terminal nem programas para fazer a peça (nada de script gerando STL): monte com as formas, o desenho e, em último caso, o código livre (forgia_executar_codigo, que roda isolado no Forgia). forgia_importar só de um arquivo que o usuário já tenha e indicar.
+- Cada pedido num forgia_lote só: vira um passo de desfazer e, se um comando falha, nada fica.
+- Pedido ambíguo (qual peça? qual medida?) ou que apagaria muita coisa (excluir tudo, recomeçar do zero): pergunte antes, na resposta, em vez de adivinhar.
+- Responda em português, curto: o que mudou na peça, com as medidas em mm. Ex.: "Furo aumentado de 6 para 8 mm; o resto ficou igual."
+- Pedido que não é sobre a peça no Forgia (outros arquivos, e-mail, internet, programas do computador): recuse com educação e diga o que dá para fazer aqui.`,
+
   coordenadas: `# Coordenadas
 - mm; Z para cima, X para a direita, Y para o fundo da mesa; origem no centro da mesa. É o mesmo sistema do STL exportado e da barra de status do Forgia: o usuário vê os mesmos números.
 - centro = centro do objeto (da caixa das medidas, girada com ele). caixa = {min, max} do objeto no mundo, já com giro: use caixa.min[2] para a base e caixa.max[2] para o topo.
@@ -131,7 +142,7 @@ Crie um e use duplicar com giro em torno do centro: {"cmd":"criar","ref":"p","ti
 Cilindro deitado: rotacao [90,0,0] faz o eixo correr em Y; [0,90,0] em X. Altura do cilindro = espessura da parede + 2 mm; agrupe com a parede.
 
 ## Peça orgânica ou complexa
-Gere um STL com Python (trimesh/manifold3d), salve num caminho absoluto e use forgia_importar {"caminho":"C:\\\\...\\\\peca.stl","base_z":0}. Depois ela combina com as outras formas (agrupar, furos).
+Monte com as formas (esfera, meia_esfera, toroide, cone) e o desenho (contorno com pontos calculados por você), agrupando e furando; em último caso, código livre. Não gere arquivo por programa (regras). Se o usuário já tiver um STL, use forgia_importar {"caminho":"C:\\\\...\\\\peca.stl","base_z":0} no caminho que ele indicar; depois a malha combina com as outras formas (agrupar, furos).
 
 ## Mudar o que já existe
 forgia_estado (filhos:true para ver as partes) -> forgia_alterar pelo id da parte. Não recrie a peça para mudar uma medida.`,
@@ -161,7 +172,7 @@ NÃO justificam código livre (resolva com comandos):
 - posicionar e apoiar: centro, base_z, sobre, alinhar_com, mover, forgia_alinhar;
 - repetir em fileira, grade ou círculo: forgia_duplicar (deslocamento, giro_z, centro_giro) dentro do lote;
 - espelhar, agrupar, furar: forgia_espelhar, forgia_agrupar, furo:true;
-- curva ou contorno: tipo desenho com pontos (calcule os pontos você mesmo); peça orgânica: forgia_importar de STL gerado em Python.
+- curva ou contorno: tipo desenho com pontos (calcule os pontos você mesmo); peça orgânica: combine formas e desenho, ou forgia_importar de um STL que o usuário já tenha (não gere arquivo por programa).
 Justifica: dezenas de peças com posições que dependem de uma fórmula que duplicar não faz (espiral, espaçamento variável).
 Como funciona: JavaScript num Worker isolado (sem disco, rede nem Node), limite de 10 s. A fachada forgia.* enfileira os mesmos comandos do lote e tudo vira UM passo de desfazer; erro ou projeto inválido não aplicam nada.
 - forgia.criar({...}) devolve "$ref"; forgia.alterar(id, {...}); forgia.excluir(ids); forgia.agrupar(ids, {nome}) devolve "$ref"; forgia.duplicar(ids, {...}); forgia.alinhar(ids, eixo, onde); forgia.espelhar(ids, eixo); forgia.soltar_na_mesa(ids); forgia.selecionar(ids)

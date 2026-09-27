@@ -1,0 +1,138 @@
+{
+ "dica": "pedir",
+ "titulo": "Pedir à IA: a conversa, o pedido e o chaveiro aparecendo. O Agent Code é o falso do teste (tests/agentcode-falso.mjs), já integrado pelo gravador; o 'agente' monta o chaveiro com forgia_lote pelo servidor MCP que o Forgia mandou",
+ "cena": "docs/media/cenas/vazia",
+ "recorte": {
+  "largura": 720,
+  "dx": 350,
+  "dy": 131
+ },
+ "camera": {
+  "alvo": [
+   -42,
+   6,
+   2
+  ],
+  "de": [
+   -4,
+   -118,
+   100
+  ]
+ },
+ "estilo": ".ia-convite { display: none !important; }",
+ "cursor": {
+  "recorte": [
+   0.5,
+   0.6
+  ]
+ },
+ "agentCode": {
+  "pensarMs": 2200,
+  "chamadas": [
+   {
+    "ferramenta": "forgia_lote",
+    "args": {
+     "comandos": [
+      {
+       "cmd": "criar",
+       "ref": "base",
+       "tipo": "caixa",
+       "nome": "base",
+       "medidas": [
+        50,
+        18,
+        3
+       ],
+       "params": {
+        "raio": 3
+       }
+      },
+      {
+       "cmd": "criar",
+       "ref": "nome",
+       "tipo": "texto",
+       "nome": "ANA",
+       "medidas": [
+        38,
+        11,
+        2
+       ],
+       "params": {
+        "texto": "ANA"
+       },
+       "centro": [
+        3,
+        0,
+        null
+       ],
+       "sobre": "$base"
+      },
+      {
+       "cmd": "criar",
+       "ref": "argola",
+       "tipo": "tubo",
+       "nome": "argola",
+       "medidas": [
+        10,
+        10,
+        3
+       ],
+       "params": {
+        "parede": 2.5,
+        "lados": 48
+       },
+       "centro": [
+        -29,
+        0,
+        null
+       ]
+      },
+      {
+       "cmd": "agrupar",
+       "ids": [
+        "$base",
+        "$nome",
+        "$argola"
+       ],
+       "nome": "chaveiro ANA"
+      }
+     ]
+    }
+   }
+  ],
+  "resposta": "Fiz um chaveiro com o nome ANA, com argola para a corrente."
+ },
+ "passos": [
+  {
+   "esperar": 300
+  },
+  {
+   "clicar": {
+    "seletor": "#sb-pedir"
+   },
+   "ms": 900
+  },
+  {
+   "esperar": 500
+  },
+  {
+   "digitar": "faça um chaveiro com o nome ANA",
+   "ms": 1500
+  },
+  {
+   "esperar": 300
+  },
+  {
+   "tecla": "Enter",
+   "selo": false
+  },
+  {
+   "esperarQue": "(() => { const l = document.querySelectorAll('.ia-chat .ia-msg.ia'); return l.length && l[l.length - 1].dataset.status === 'concluida'; })()",
+   "ms": 20000,
+   "foto": "ia"
+  },
+  {
+   "esperar": 1800
+  }
+ ]
+}

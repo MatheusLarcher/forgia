@@ -17,7 +17,7 @@
  <rect width="320" height="230" rx="6" fill="#0f5ea8"/>
  <text x="22" y="46" font-size="21" fill="#fff" font-weight="600">O Windows protegeu o</text>
  <text x="22" y="72" font-size="21" fill="#fff" font-weight="600">computador</text>
- <text x="22" y="108" font-size="12.5" fill="#dce9f7">Aplicativo: Forgia-Setup-0.1.0.exe</text>
+ <text x="22" y="108" font-size="12.5" fill="#dce9f7">Aplicativo: Forgia-Setup.exe</text>
  <text x="22" y="126" font-size="12.5" fill="#dce9f7">Fornecedor: Fornecedor desconhecido</text>
  <rect x="22" y="186" width="150" height="30" rx="3" fill="#ffffff"/><text x="97" y="206" font-size="12.5" fill="#1b1e22" text-anchor="middle">Executar assim mesmo</text>
  <rect x="18" y="182" width="158" height="38" rx="5" fill="none" stroke="#f58220" stroke-width="3"/>

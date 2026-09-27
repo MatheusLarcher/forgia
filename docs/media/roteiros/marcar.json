@@ -1,0 +1,171 @@
+{
+ "dica": "marcar",
+ "titulo": "Marcar parte com a IA: marca a engrenagem cinza, pede para aumentar o furo do eixo para 8 mm, a IA faz. Gravado com o Agent Code de verdade (--agentcode-real): a IA faz o pedido de verdade; a espera dela passa 4x mais rápido no vídeo (passo velocidade) e a legenda avisa.",
+ "cena": "engrenagem",
+ "recorte": {
+  "janela": true
+ },
+ "video": {
+  "w": 960,
+  "h": 607,
+  "fps": 30,
+  "bitrate": 1600000
+ },
+ "camera": {
+  "alvo": [
+   0,
+   -2,
+   3
+  ],
+  "de": [
+   -45,
+   -95,
+   85
+  ]
+ },
+ "estilo": ".grav-legenda { font-size: 21px; max-width: 640px; padding: 11px 16px; }",
+ "cursor": {
+  "recorte": [
+   0.62,
+   0.7
+  ]
+ },
+ "agentCode": {
+  "real": true
+ },
+ "pausaInicial": 300,
+ "passos": [
+  {
+   "legenda": {
+    "html": "<b>1.</b> Em <b>Pedir à IA</b>, clique em <b>Marcar</b> e na parte que quer mudar",
+    "recorte": [
+     0.2,
+     0.1
+    ]
+   }
+  },
+  {
+   "esperar": 1300
+  },
+  {
+   "clicar": {
+    "seletor": "#sb-pedir"
+   },
+   "ms": 900
+  },
+  {
+   "esperar": 400
+  },
+  {
+   "clicar": {
+    "seletor": ".ia-chat [data-ia=\"marcar\"]"
+   },
+   "ms": 700
+  },
+  {
+   "esperar": 300
+  },
+  {
+   "mover": {
+    "mundo": [
+     -14,
+     -8,
+     10
+    ]
+   },
+   "ms": 900
+  },
+  {
+   "esperar": 350
+  },
+  {
+   "clicar": {
+    "mundo": [
+     -14,
+     -8,
+     10
+    ]
+   },
+   "ms": 60
+  },
+  {
+   "esperar": 700
+  },
+  {
+   "legenda": {
+    "html": "<b>2.</b> Escreva o pedido e aperte <b>Enter</b>"
+   }
+  },
+  {
+   "digitar": "aumenta o furo do eixo pra 8 mm, o eixo do motor não entra",
+   "ms": 1800
+  },
+  {
+   "esperar": 500
+  },
+  {
+   "tecla": "Enter",
+   "selo": false
+  },
+  {
+   "legenda": {
+    "html": "<b>3.</b> A IA recebe o pedido e muda a peça… <span style=\"font-weight:400;opacity:.7\">(espera acelerada 4×)</span>"
+   }
+  },
+  {
+   "tecla": "Escape",
+   "selo": false
+  },
+  {
+   "mover": {
+    "recorte": [
+     0.66,
+     0.8
+    ]
+   },
+   "ms": 700
+  },
+  {
+   "velocidade": 4
+  },
+  {
+   "esperarQue": "document.querySelector('.pin-balao') && document.querySelector('.pin-balao').dataset.status === 'concluida'",
+   "ms": 240000,
+   "foto": "ia"
+  },
+  {
+   "velocidade": 1
+  },
+  {
+   "legenda": {
+    "html": "<b>4.</b> Pronto: o furo agora é de 8 mm"
+   }
+  },
+  {
+   "esperar": 1400
+  },
+  {
+   "clicar": {
+    "seletor": ".pin-balao [data-balao=\"fechar\"]"
+   },
+   "ms": 800
+  },
+  {
+   "esperar": 1400
+  },
+  {
+   "legenda": {
+    "html": "<b>5.</b> O pedido e a resposta ficam na <b>conversa</b>"
+   }
+  },
+  {
+   "clicar": {
+    "seletor": "#sb-pedir"
+   },
+   "ms": 900
+  },
+  {
+   "esperar": 3200
+  }
+ ]
+}

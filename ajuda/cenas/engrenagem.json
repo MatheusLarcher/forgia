@@ -1,0 +1,39 @@
+{
+ "formato": "forgia.projeto",
+ "versao": 1,
+ "app": "Forgia (cena de dica)",
+ "nome": "Engrenagem",
+ "descricao": "Uma engrenagem cinza de 18 dentes (Geradores), módulo 2,5, com furo de 5 mm para o eixo, no centro da mesa. A IA aumenta o furo para 8 mm no Marcar parte.",
+ "montagem": {
+  "comandos": [
+   {
+    "cmd": "criar",
+    "tipo": "engrenagem",
+    "nome": "Engrenagem",
+    "params": {"modulo":2.5,"dentes":18,"espessura":10,"furo":5},
+    "cor": "#8b9197",
+    "centro": [0,0,null],
+    "base_z": 0
+   }
+  ]
+ },
+ "projeto": {
+  "name": "Engrenagem",
+  "grid": 1,
+  "workplane": {"w":255,"l":255,"h":255},
+  "objects": [
+   {
+    "id": "f9tph7hl",
+    "type": "gear",
+    "name": "Engrenagem",
+    "color": "#8b9197",
+    "hole": false,
+    "params": {"module":2.5,"teeth":18,"thickness":10,"bore":5,"backlash":0.2,"resolution":8},
+    "size": [50,10,49.492],
+    "pos": [0,5,0],
+    "quat": [0,0,0,1],
+    "flip": [1,1,1]
+   }
+  ]
+ }
+}
