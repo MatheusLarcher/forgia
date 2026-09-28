@@ -28,6 +28,11 @@
 </p>
 
 <p align="center">
+  <a href="docs/media/forgia-comercial.mp4"><img src="docs/media/forgia-comercial-capa.png" width="960" alt="Vídeo de apresentação do Forgia (50 segundos): peça para a IA, arraste formas, crie encaixes e exporte em STL ou 3MF. Clique para assistir"></a><br>
+  <sub>▶ Clique para assistir ao vídeo (50 s)</sub>
+</p>
+
+<p align="center">
   <img src="docs/media/ia-chaveiro.gif" width="960" alt="Um pedido em português aparece na tela, a IA monta um chaveiro com o nome ANA no Forgia e a peça segue para a exportação em 3MF">
 </p>
 
