@@ -19,12 +19,15 @@
   <sub>Windows 10 e 11 · 64 bits · <a href="#comece-em-1-minuto">Como instalar</a></sub>
 </p>
 
-
-
 <p align="center">
-  <a href="docs/media/forgia-comercial.mp4"><img src="docs/media/forgia-comercial.gif" width="800" alt="Vídeo de apresentação do Forgia (50 segundos): peça para a IA, arraste formas, crie encaixes e exporte em STL ou 3MF. Clique para assistir"></a><br>
-  <sub>▶ Vídeo de 50 s (o clique abre a versão MP4)</sub>
+  <img alt="Windows 10 e 11" src="docs/media/selos/windows.svg">
+  <img alt="Em português" src="docs/media/selos/idioma.svg">
+  <img alt="Grátis" src="docs/media/selos/preco.svg">
+  <img alt="Funciona offline" src="docs/media/selos/offline.svg">
+  <img alt="IA: Claude e GPT" src="docs/media/selos/ia.svg">
 </p>
+
+
 
 <p align="center">
   <a href="docs/media/forgia-comercial-full.mp4"><img src="docs/media/forgia-comercial-full.gif" width="800" alt="Comercial completo do Forgia (54 segundos): pedido para a IA, tampa marcada que ganha 61 furos em colmeia, formas arrastadas, encaixe com folga, modelo 3MF importado e exportação em STL ou 3MF. Clique para assistir"></a><br>
