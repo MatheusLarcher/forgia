@@ -28,8 +28,13 @@
 </p>
 
 <p align="center">
-  <a href="docs/media/forgia-comercial.mp4"><img src="docs/media/forgia-comercial-capa.png" width="960" alt="Vídeo de apresentação do Forgia (50 segundos): peça para a IA, arraste formas, crie encaixes e exporte em STL ou 3MF. Clique para assistir"></a><br>
-  <sub>▶ Clique para assistir ao vídeo (50 s)</sub>
+  <a href="docs/media/forgia-comercial.mp4"><img src="docs/media/forgia-comercial.gif" width="800" alt="Vídeo de apresentação do Forgia (50 segundos): peça para a IA, arraste formas, crie encaixes e exporte em STL ou 3MF. Clique para assistir"></a><br>
+  <sub>▶ Vídeo de 50 s (o clique abre a versão MP4)</sub>
+</p>
+
+<p align="center">
+  <a href="docs/media/forgia-comercial-full.mp4"><img src="docs/media/forgia-comercial-full.gif" width="800" alt="Comercial completo do Forgia (54 segundos): pedido para a IA, tampa marcada que ganha 61 furos em colmeia, formas arrastadas, encaixe com folga, modelo 3MF importado e exportação em STL ou 3MF. Clique para assistir"></a><br>
+  <sub>▶ Comercial completo, 54 s (o clique abre a versão MP4, com som)</sub>
 </p>
 
 <p align="center">

@@ -32,3 +32,9 @@ build/mcp-*.json
 
 # saída da linha de comando do Bambu Studio
 /result.json
+
+# sobras da geração do comercial
+.comercial-tmp/
+brag-output/render.log
+brag-output/composition/node_modules/
+/brag-output
