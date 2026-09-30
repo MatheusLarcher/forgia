@@ -141,6 +141,8 @@ for (const sse of [false, true]) {
       assert.ok(fs.statSync(args.projeto).isDirectory(), 'pasta do agente criada');
       assert.deepEqual(args.mcp_servers, { forgia: SERVIDOR });
       assert.ok(args.prompt.includes('forgia_manual') && args.prompt.includes('forgia_*') && args.prompt.endsWith('faça um chaveiro com o nome ANA'));
+      // o pedido do Forgia já está no chat: a IA não repete por forgia_conversa
+      assert.match(args.prompt, /já aparecem no chat do Forgia: não chame forgia_conversa \(ela é só para mensagens escritas direto no agente\)/);
       assert.equal(args.conversa_id, undefined);
       const seen = new Set();
       const fim = await until(async () => {

@@ -8,6 +8,8 @@ export default {
     titulo: 'Forgia — Editor 3D para impressão',
     // título da janela: nome do arquivo (ou do projeto ainda sem arquivo) e "•" com alteração não salva
     tituloJanela: (nome, sujo) => `${nome}${sujo ? ' •' : ''} — Forgia`,
+    // loading da abertura (index.html, src/carregando.js)
+    carregando: 'Carregando…',
   },
 
   // barra superior e controles do canto inferior direito
@@ -572,6 +574,14 @@ export default {
     semResposta: 'O Agent Code não está respondendo; tentando de novo…',
     cancelar: 'Cancelar',
     fechar: 'Fechar',
+    // conversa feita direto no agente (Agent Code, Claude…): chega pela ferramenta forgia_conversa
+    // e pelo que a IA faz na peça (src/pedido-ia.js)
+    externo: {
+      origem: 'Pelo agente',
+      trabalhando: 'A IA está trabalhando pelo agente…',
+      semResposta: 'O agente não mandou resposta.',
+      novidade: 'mensagem nova na conversa',
+    },
   },
 
   // diálogo Conectar IA (src/conectar.js): um texto para colar no agente escolhido. Os pedaços

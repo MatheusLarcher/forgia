@@ -130,6 +130,8 @@ export class Forgia {
       return app;
     }
     await app.waitFor('!!(window.forgia && window.forgia.editor && window.forgia.ponte && window.forgia.ponte.info && window.forgia.ponte.info.porta)', 45000, 'Forgia e ponte prontos');
+    // loading da abertura (src/carregando.js) fora da frente antes de clicar ou capturar
+    await app.waitFor("!document.getElementById('carregando')", 45000, 'loading da abertura fora');
     app.bridge = await app.waitBridgeFile();
     return app;
   }

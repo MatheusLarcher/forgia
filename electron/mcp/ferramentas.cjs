@@ -164,9 +164,16 @@ const TOOLS = [
     inputSchema: obj({ codigo: str('corpo de função JS; pode usar return') }, ['codigo']),
   },
   {
+    // o chat "Pedir à IA" do Forgia só vê o que chega por ele; a conversa feita direto no agente
+    // entra por aqui (src/ponte.js, evento 'conversa' -> src/pedido-ia.js)
+    name: 'forgia_conversa',
+    description: 'Mostra no chat "Pedir à IA" do Forgia uma mensagem escrita direto no agente: pedido (o texto do usuário, literal) antes de mexer na peça e resposta no fim; pelo menos um dos dois. Não use em pedido que veio do Forgia (já está no chat). Ex.: {"pedido":"faça uma caixa de 30 mm"}; {"resposta":"Criei uma caixa de 30 × 30 × 10 mm."}',
+    inputSchema: obj({ pedido: { type: 'string', maxLength: 4000, description: 'mensagem do usuário, literal (até 4000 caracteres)' }, resposta: { type: 'string', maxLength: 20000, description: 'sua resposta final ao usuário (até 20000 caracteres)' } }),
+  },
+  {
     name: 'forgia_manual',
-    description: 'Manual do Forgia para a IA. Sem seção: guia rápido com as medidas de cada forma, posição, furos e um exemplo de lote (leia uma vez antes da primeira modelagem). Seções: receitas, impressao, coordenadas, marcacoes, codigo_livre, erros.',
-    inputSchema: obj({ secao: str('vazio = guia rápido; ou receitas, impressao, coordenadas, marcacoes, codigo_livre, erros') }),
+    description: 'Manual do Forgia para a IA. Sem seção: guia rápido com as medidas de cada forma, posição, furos e um exemplo de lote (leia uma vez antes da primeira modelagem). Seções: regras, receitas, impressao, coordenadas, orientacao, marcacoes, codigo_livre, erros.',
+    inputSchema: obj({ secao: str('vazio = guia rápido; ou regras, receitas, impressao, coordenadas, orientacao, marcacoes, codigo_livre, erros') }),
   },
 ];
 

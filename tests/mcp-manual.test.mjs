@@ -97,8 +97,22 @@ test('Fase D: hardware, geradores, encaixe e 3MF no manual e nas ferramentas', (
   assert.match(byName.forgia_criar.inputSchema.properties.tipo.description, /engrenagem/);
 });
 
-test('ferramentas: 24 forgia_*, cada uma com descrição e inputSchema de objeto', () => {
-  assert.equal(TOOLS.length, 24);
+test('forgia_conversa: pedido e/ou resposta com limite, e o comando na lista da ponte', () => {
+  const c = TOOLS.find((t) => t.name === 'forgia_conversa');
+  assert.ok(c, 'forgia_conversa existe');
+  assert.deepEqual(Object.keys(c.inputSchema.properties).sort(), ['pedido', 'resposta']);
+  assert.equal(c.inputSchema.required, undefined, 'nenhum dos dois é obrigatório sozinho');
+  assert.equal(c.inputSchema.properties.pedido.maxLength, 4000);
+  assert.equal(c.inputSchema.properties.resposta.maxLength, 20000);
+  for (const must of [/direto no agente/, /pedido .* antes de mexer na peça/, /resposta no fim/, /Não use em pedido que veio do Forgia/]) assert.match(c.description, must);
+  const { COMMANDS } = require('../electron/ponte-servidor.cjs');
+  assert.ok(COMMANDS.has('conversa'));
+  // toda ferramenta que vai à ponte tem o comando na lista (só forgia_manual responde no servidor MCP)
+  for (const t of TOOLS) if (t.name !== 'forgia_manual') assert.ok(COMMANDS.has(t.name.replace(/^forgia_/, '')), t.name);
+});
+
+test('ferramentas: 25 forgia_*, cada uma com descrição e inputSchema de objeto', () => {
+  assert.equal(TOOLS.length, 25);
   for (const t of TOOLS) {
     assert.match(t.name, /^forgia_[a-z0-9_]+$/);
     assert.ok(t.description && t.description.length >= 20, t.name);

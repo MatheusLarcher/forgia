@@ -10,6 +10,11 @@ import { state, catalog, mutate, applyQueued, medir, stl, tresMF, marksOut, Brid
 //     dos objetos afetados pisca (~1,5 s). A seleção do usuário não muda (só "selecionar" muda);
 //   - executar_codigo roda num Worker (src/ponte-codigo.js) com limite de 10 s; os comandos que o
 //     código enfileirou são aplicados como um lote.
+//   - conversa { pedido?, resposta? }: a mensagem escrita direto no agente (forgia_conversa) vira o
+//     evento 'conversa', que o chat "Pedir à IA" mostra (src/pedido-ia.js). Não altera o projeto
+//     nem vira passo de desfazer.
+// Eventos: 'estado', 'aviso' (o aviso do canto) e 'atividade' ({ text }: o mesmo texto do aviso,
+// para o chat mostrar o que a IA fez mesmo que ela não chame forgia_conversa).
 // Configurações da IA (Permitir IA, Permitir código livre) ficam em localStorage['forgia.ia'] e são
 // repassadas ao main, que recusa antes de chegar aqui.
 
@@ -18,6 +23,7 @@ const MUTATING = new Set(['criar', 'alterar', 'excluir', 'agrupar', 'desagrupar'
 const CODE_TIMEOUT = 10000;
 const CONNECTED_MS = 10 * 60 * 1000; // "IA conectada" até 10 min depois do último pedido
 const NOTICE_MS = 6000;
+const CONVERSA_MAX = { pedido: 4000, resposta: 20000 }; // os mesmos limites de forgia_conversa
 
 export function loadIaConfig() {
   try {
@@ -135,6 +141,8 @@ export class Ponte extends EventTarget {
       }
       case 'executar_codigo':
         return this.runCode(args);
+      case 'conversa':
+        return this.conversa(args);
       default: {
         const res = mutate(ed, cmd, args, files);
         return this.done(res, false);
@@ -170,6 +178,34 @@ export class Ponte extends EventTarget {
 
   notify({ text, undo }) {
     this.dispatchEvent(new CustomEvent('aviso', { detail: { text, undo, index: this.ed.historyIndex, ms: NOTICE_MS } }));
+    this.dispatchEvent(new CustomEvent('atividade', { detail: { text } }));
+  }
+
+  // forgia_conversa: valida e entrega ao chat. Quem ouve o evento diz se mostrou (detail.ignorado:
+  // 'forgia' = o pedido veio do próprio Forgia e já está no chat; 'repetido' = igual ao último)
+  conversa(args) {
+    const exemplo = { pedido: 'faça uma caixa de 30 mm' };
+    const extra = Object.keys(args).filter((k) => k !== 'pedido' && k !== 'resposta');
+    if (extra.length) throw new BridgeError(`conversa: parâmetro desconhecido "${extra[0]}". Use só "pedido" e/ou "resposta".`, { validos: ['pedido', 'resposta'], exemplo });
+    const campo = (nome, max) => {
+      const v = args[nome];
+      if (v == null) return null;
+      if (typeof v !== 'string') throw new BridgeError(`conversa: "${nome}" precisa ser texto.`, { exemplo });
+      const s = v.trim();
+      if (!s) throw new BridgeError(`conversa: "${nome}" está vazio.`, { exemplo });
+      if (s.length > max) throw new BridgeError(`conversa: "${nome}" passa de ${max} caracteres (tem ${s.length}). Resuma.`, { exemplo });
+      return s;
+    };
+    const pedido = campo('pedido', CONVERSA_MAX.pedido);
+    const resposta = campo('resposta', CONVERSA_MAX.resposta);
+    if (!pedido && !resposta) {
+      throw new BridgeError('conversa precisa de "pedido" (a mensagem do usuário, antes de mexer na peça) ou "resposta" (a sua resposta, no fim).', { exemplo, exemplo_resposta: { resposta: 'Criei uma caixa de 30 × 30 × 10 mm.' } });
+    }
+    const detail = { pedido, resposta, ignorado: null };
+    this.dispatchEvent(new CustomEvent('conversa', { detail }));
+    if (detail.ignorado === 'forgia') return { ok: true, chat: 'ignorado', aviso: 'Há um pedido do chat do Forgia em andamento e o chat mostra só ele agora: esta mensagem não entrou. Se o pedido veio do Forgia, ele já está no chat e não precisa de forgia_conversa.' };
+    if (detail.ignorado) return { ok: true, chat: 'ignorado', aviso: 'Mensagem igual à anterior: já está no chat.' };
+    return { ok: true, chat: 'mostrado' };
   }
 
   capture(args) {

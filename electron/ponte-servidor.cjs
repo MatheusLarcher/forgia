@@ -22,6 +22,7 @@ const COMMANDS = new Set([
   'estado', 'formas', 'criar', 'alterar', 'excluir', 'agrupar', 'desagrupar', 'alinhar', 'espelhar',
   'soltar_na_mesa', 'selecionar', 'duplicar', 'lote', 'captura', 'medir', 'marcacoes',
   'exportar_stl', 'exportar_3mf', 'importar', 'criar_encaixe', 'desfazer', 'refazer', 'executar_codigo',
+  'conversa', // só mostra a mensagem no chat do Forgia (src/pedido-ia.js); não altera o projeto
 ]);
 
 const newToken = () => crypto.randomBytes(32).toString('hex');

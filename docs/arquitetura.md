@@ -364,6 +364,17 @@ theme.watch(fn)       // chama fn(colors, name) agora e a cada troca; devolve a 
   uma vez, não são refeitas.
 - **Depuração**: `window.forgia.theme` é o objeto `theme`.
 
+## Loading da abertura (`src/carregando.js`)
+
+- `#carregando` (logo de `public/branding`, barra animada e `t.app.carregando`) já vem no
+  `index.html` com o CSS inline, porque `style.css` só chega com o JS. Com o `backgroundColor` da
+  `BrowserWindow` e o script de tema no `<head>`, a janela abre sem clarão branco, no tema certo.
+- `src/main.js` chama `esperarPronto(arquivo.ready)`: sai com fade curto depois do projeto
+  carregado e de dois quadros (a cena já desenhou). Sai também ao aparecer uma pergunta em
+  `#modal-root` (recuperar cópia), em erro (`error`/`unhandledrejection`, falha de GPU, na hora) e
+  no tempo máximo de 20 s. `role=status` + `aria-live`; `prefers-reduced-motion` tira a animação.
+- Pronto: `html[data-carregado]` e `#carregando` fora do DOM; `tests/forgia-exe.mjs` espera isso.
+
 ## Cartão de dica (`src/dica.js`)
 
 Qualquer elemento com `data-dica="<chave>"` ganha um cartão explicativo, com o conteúdo de
@@ -504,6 +515,12 @@ agente de IA ──stdio (JSON-RPC)──► Forgia.exe + ELECTRON_RUN_AS_NODE=1
   (conta as peças do topo; o Desfazer só vale enquanto o passo da IA for o último) e o contorno
   dos objetos afetados pisca ~1,5 s (`editor.flash`). A seleção do usuário só muda com
   `selecionar`.
+- `conversa { pedido?, resposta? }` (ferramenta `forgia_conversa`): texto, pelo menos um dos dois,
+  até 4000 e 20000 caracteres; argumento errado volta 422 com `exemplo`. Não mexe no projeto nem
+  vira passo de desfazer: a página emite o evento `conversa` e quem mostra é o chat
+  (`src/pedido-ia.js`), que responde pelo próprio evento se ignorou (`chat: "ignorado"` e um
+  `aviso` para o agente) ou mostrou (`chat: "mostrado"`). Todo aviso "IA: criou…" (e o desfez/refez
+  da IA) também sai como evento `atividade { text }`, que o chat usa de reserva.
 - As mensagens para o agente (erros, descrições das ferramentas, manual) são protocolo, não tela:
   ficam em `src/ponte-comandos.js` e `electron/mcp/`, fora de `src/textos`.
 
@@ -548,8 +565,9 @@ conteúdo `image` (PNG base64).
   `forgia_espelhar`, `forgia_soltar_na_mesa`, `forgia_selecionar`, `forgia_duplicar`,
   `forgia_lote`, `forgia_captura`, `forgia_medir`, `forgia_marcacoes`, `forgia_exportar_stl`,
   `forgia_exportar_3mf`, `forgia_criar_encaixe`, `forgia_importar`, `forgia_desfazer`,
-  `forgia_refazer`, `forgia_executar_codigo` e `forgia_manual` (respondida pelo próprio servidor,
-  funciona com o Forgia fechado) — 24 ao todo.
+  `forgia_refazer`, `forgia_executar_codigo`, `forgia_conversa` (mostra no chat do Forgia a
+  mensagem escrita direto no agente; veja *Integração com o Agent Code*) e `forgia_manual`
+  (respondida pelo próprio servidor, funciona com o Forgia fechado) — 25 ao todo.
 
 ### Manual da IA (`electron/mcp/manual.cjs`)
 
@@ -667,8 +685,8 @@ desfazer e o aviso "IA: criou…", como qualquer pedido de agente). O usuário n
   ferramentas de arquivo; nem a pasta de dados (`ponte.json`, `recuperacao\`, `criacoes\`) nem a
   do projeto do usuário ficam ao alcance por acidente.
 - `prompt` = instruções curtas do Forgia (só `forgia_*`, sem arquivos nem terminal, ler
-  `forgia_manual` e a seção `regras`, um lote por pedido, perguntar se ambíguo, português curto)
-  + o texto do usuário. `mcp_servers.forgia` = `serverSpec(forgiaPaths(app))`. Os dois são
+  `forgia_manual` e a seção `regras`, um lote por pedido, perguntar se ambíguo, português curto,
+  não chamar `forgia_conversa` porque o pedido já está no chat do Forgia) + o texto do usuário. `mcp_servers.forgia` = `serverSpec(forgiaPaths(app))`. Os dois são
   montados aqui: a página só manda o texto.
 - IPC `agentcode:estado | integrar | desligar | enviar | tarefa | cancelar`, só da janela do Forgia
   (`e.sender === win.webContents`), exposto pelo preload em `window.forgiaAgentCode`; cada um
@@ -698,6 +716,27 @@ com `marca` = número da marcação (entra na conversa como "Marcação n", resu
 alfinete (`.pin-balao`, em `src/marcar.js`), com a resposta resumida por `resumo()`
 (`src/agentcode.js`: a 1ª frase ou ~140 caracteres, sem markdown); o balão também aparece depois
 de Copiar ("cole na sua IA"). O aviso "IA: criou…" fica em `.ia-canto`.
+
+**Conversa feita direto no agente.** Não há canal do Agent Code (nem de outro agente) para o
+Forgia: o que o usuário escreve direto no agente só chega se a IA contar, pela ferramenta
+`forgia_conversa` (o pedido literal antes de mexer na peça, a resposta no fim). Quem diz ao agente
+quando chamá-la é uma linha do `instructions` (`electron/mcp/manual.cjs`) e, no sentido contrário (pedido que já
+veio do Forgia), o `prompt()` de `electron/agentcode.cjs`. Resposta que chega depois do prazo de 3 min
+volta ao balão do último pedido do agente. `src/pedido-ia.js` recebe a ponte (`src/main.js` passa) e ouve os eventos
+`conversa` e `atividade` dela: o pedido vira um balão `.ia-msg.externo.voce` com a marca "Pelo
+agente" e um balão da IA em andamento (`.ia-msg.externo.ia`, `data-status="rodando"`); cada
+atividade ("IA: criou 1") entra nele como uma linha (`.ia-msg-atividades`); a resposta o conclui
+com `respostaIA()`. Sem pedido aberto, a atividade vira um balão só de atividade, e as seguidas em
+até 60 s (`juntarMs`) se juntam: é a reserva para a conversa se atualizar mesmo que a IA não chame
+a ferramenta. Pedido sem resposta por 3 min (`turnoMs`, recomeça a cada atividade) fecha sozinho,
+com "O agente não mandou resposta." e o que a IA fez. **Sem duplicar**: com um pedido do próprio
+Forgia em andamento (`agentCode.ocupado`), `conversa` e `atividade` são ignorados (a tarefa já
+mostra), e um pedido igual ao último "você" em até 10 s também; o `prompt()` do
+`electron/agentcode.cjs` ainda diz que aquele pedido já está no chat e que `forgia_conversa` é só
+para mensagens escritas direto no agente. Com a conversa fechada, uma mensagem dessas acende um
+ponto no botão (`#sb-pedir.novidade`, com `aria-label`), que some ao abrir. Como o resto da
+conversa, fica só em memória e por projeto: Novo ou Abrir (evento `projeto`) limpa, e recarregar a
+janela começa vazio.
 
 Testes: `tests/agentcode.test.mjs` (cliente contra o falso numa faixa própria),
 `tests/agentcode-exe.test.mjs` (exe contra o falso na faixa real, com um "agente" que sobe o
@@ -909,6 +948,14 @@ quadro de arraste.
   tempo (a tarefa segue e avisa; Cancelar que falha), outro projeto aberto com pedido rodando e com
   pedido ainda indo (cancela), Novo projeto com conversa nova, renderer sem token/porta, reabrir sem varredura e o erro com o Agent Code fechado.
   Capturas em `%TEMP%\forgia-agentcode-shots`.
+- `FORGIA_EXE=release\conversa\win-unpacked\Forgia.exe node --test tests/conversa-exe.test.mjs`:
+  conversa feita direto no agente, pelo MCP stdio do exe: `forgia_conversa {pedido}` →
+  `forgia_lote` → `forgia_conversa {resposta}` mostra os três no chat aberto (sem passo de desfazer a
+  mais), fechar e reabrir mantém, atividade sem pedido vira balão (e as seguidas se juntam), ponto
+  no botão com a conversa fechada, pedido sem resposta fecha sozinho, pedido repetido ignorado,
+  argumentos errados voltam `isError` com exemplo, Novo projeto limpa, tarefa do próprio Forgia
+  (Agent Code falso na faixa 47490–47529) sem duplicar e recarregar a janela. Capturas e
+  `resultado.json` em `release\conversa-evidencias`.
 - `FORGIA_EXE=… node --test tests/regua-exe.test.mjs`: régua da mesa (A1 mini termina em 180,
   Ender 3 redesenha em 220, marquinha do cursor, faixa de 40 mm igual à barra de status ao
   selecionar e ao arrastar, nenhum número sobreposto em 8 vistas e 4 zooms, tema, some com o plano

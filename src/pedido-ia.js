@@ -16,6 +16,17 @@ import { ICONS } from './icons.js';
 //   andamento deles aparece no balão do alfinete (src/marcar.js).
 // - A conversa é por projeto aberto, como o conversa_id (novo projeto ou abrir outro: começa vazia).
 // O que a IA muda chega pela ponte: vira um passo de desfazer e o aviso aparece sozinho.
+// Conversa feita direto no agente (o usuário escreveu no Agent Code, no Claude…), pela ponte
+// (src/ponte.js):
+// - 'conversa' (ferramenta forgia_conversa): o pedido vira um balão "você" marcado "Pelo agente" e
+//   um balão da IA em andamento; a resposta conclui esse balão.
+// - 'atividade' (o texto do aviso "IA: criou 1"): entra no balão em andamento; sem pedido aberto,
+//   vira um balão só de atividade (as seguidas em até JUNTAR_MS se juntam). É a reserva para a
+//   conversa se atualizar mesmo que a IA não chame forgia_conversa.
+// - Pedido aberto sem resposta por TURNO_MS fecha sozinho, mostrando o que a IA fez.
+// - Com um pedido do próprio Forgia em andamento (agentCode.ocupado), os dois são ignorados: a
+//   tarefa já mostra; um pedido igual ao último "você" em até REPETIDO_MS também.
+// - Com a conversa fechada, uma mensagem dessas acende um ponto no botão (some ao abrir).
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -24,16 +35,26 @@ const el = (tag, cls, text) => {
   return e;
 };
 const CONVITE_VISTO = 'forgia.iaConviteVisto';
+const TURNO_MS = 3 * 60 * 1000; // pedido do agente sem resposta: fecha sozinho depois disso
+const JUNTAR_MS = 60 * 1000; // atividades sem pedido, uma depois da outra: o mesmo balão
+const REPETIDO_MS = 10 * 1000;
 
 // o que pode ser clicado sem fechar a conversa (ela, o botão, o alfinete e o mini-chat dele, diálogos)
 const DENTRO = '.ia-chat, #sb-pedir, .pin, .marca-chat, .pin-balao, .modal, #modal-root, .toast, .ia-convite';
 
 export class PedidoIA {
-  constructor(editor, agentCode, { onConnect }) {
+  // ponte: src/ponte.js (eventos 'conversa' e 'atividade'); sem ela, só os pedidos daqui
+  constructor(editor, agentCode, { onConnect, ponte = null }) {
     this.ed = editor;
     this.ac = agentCode;
     this.onConnect = onConnect;
-    this.msgs = []; // { de: 'voce' | 'ia', texto, marca, detalhe, task, aberta }
+    // { de: 'voce', texto, marca, detalhe, aberta, em } | { de: 'ia', task }
+    // | { de: 'ia', externo: true, pedido (tem balão "você" antes), atividades, resposta, aberto, ultima }
+    // (externo = conversa feita direto no agente; em/ultima = Date.now())
+    this.msgs = [];
+    this.turno = null; // balão externo que ainda recebe atividade/resposta
+    this.turnoMs = TURNO_MS;
+    this.juntarMs = JUNTAR_MS;
     this.btn = document.getElementById('sb-pedir');
     this.btn.hidden = !agentCode.available;
     this.btnText = this.btn.querySelector('.sb-pedir-rotulo');
@@ -47,8 +68,14 @@ export class PedidoIA {
       const cur = this.ac.tarefa;
       const keep = cur && !FINAL.has(cur.status) ? this.msgs.findIndex((m) => m.task === cur) : -1;
       this.msgs = keep > 0 ? this.msgs.slice(keep - 1, keep + 1) : [];
+      this.fecharTurno();
+      this.novidade(false);
       this.render();
     });
+    if (ponte) {
+      ponte.addEventListener('conversa', (e) => this.onConversa(e.detail));
+      ponte.addEventListener('atividade', (e) => this.onAtividade(e.detail));
+    }
     // alfinete posto: o mini-chat dele assume
     editor.addEventListener('alfinete', () => this.fechar());
     // o botão do marcador na conversa acompanha a ferramenta (N, Esc, clique fora de uma peça)
@@ -180,6 +207,7 @@ export class PedidoIA {
 
   abrir() {
     this.semConvite({ visto: true });
+    this.novidade(false);
     this.panel.hidden = false;
     this.btn.setAttribute('aria-expanded', 'true');
     // a dica com vídeo (data-dica) cobriria a conversa: só volta quando ela fechar
@@ -219,10 +247,99 @@ export class PedidoIA {
   // pedido novo (daqui ou do alfinete) entra na conversa; o andamento atualiza a resposta dele
   onTask(task) {
     if (task && !this.msgs.some((m) => m.task === task)) {
-      this.msgs.push({ de: 'voce', texto: task.texto, marca: task.marca, detalhe: task.detalhe, aberta: false }, { de: 'ia', task });
+      this.fecharTurno(); // o que vier agora é desta tarefa
+      this.msgs.push({ de: 'voce', texto: task.texto, marca: task.marca, detalhe: task.detalhe, aberta: false, em: Date.now() }, { de: 'ia', task });
     }
     this.renderBtn();
     this.render();
+  }
+
+  // forgia_conversa (src/ponte.js); detail.ignorado diz à ponte que não entrou
+  onConversa(detail) {
+    const { pedido, resposta } = detail;
+    if (this.ac.ocupado) {
+      detail.ignorado = 'forgia';
+      return;
+    }
+    if (pedido) {
+      const last = [...this.msgs].reverse().find((m) => m.de === 'voce');
+      if (!resposta && last && last.texto === pedido && Date.now() - last.em < REPETIDO_MS) {
+        detail.ignorado = 'repetido';
+        return;
+      }
+      this.fecharTurno();
+      const turno = { de: 'ia', externo: true, pedido: true, atividades: [], resposta: null, aberto: true, ultima: Date.now() };
+      this.msgs.push({ de: 'voce', externo: true, texto: pedido, em: Date.now() }, turno);
+      this.turno = turno;
+      this.armarTurno();
+    }
+    if (resposta) {
+      if (this.turno && this.parado(this.turno)) this.fecharTurno();
+      // resposta depois do prazo: volta ao último pedido do agente que fechou sem ela
+      const last = this.msgs[this.msgs.length - 1];
+      const atrasado = !this.turno && last && last.externo && last.de === 'ia' && last.pedido && !last.resposta ? last : null;
+      const turno = this.turno || atrasado || { de: 'ia', externo: true, pedido: false, atividades: [], resposta: null, aberto: true };
+      if (!this.turno && !atrasado) this.msgs.push(turno);
+      turno.resposta = resposta;
+      this.fecharTurno();
+    }
+    this.novidade(true);
+    this.render();
+  }
+
+  // o que a IA fez na peça ("IA: criou 1"), venha ou não um forgia_conversa
+  onAtividade({ text }) {
+    if (this.ac.ocupado || !text) return;
+    const now = Date.now();
+    let turno = this.turno;
+    // balão só de atividade que ficou parado: a próxima começa outro
+    if (turno && this.parado(turno)) turno = this.fecharTurno();
+    if (!turno) {
+      turno = this.turno = { de: 'ia', externo: true, pedido: false, atividades: [], resposta: null, aberto: true };
+      this.msgs.push(turno);
+    }
+    turno.atividades.push(text);
+    turno.ultima = now;
+    if (turno.pedido) this.armarTurno();
+    this.novidade(true);
+    this.render();
+  }
+
+  // balão só de atividade sem novidade há mais de juntarMs (o de pedido espera o turnoMs)
+  parado(turno) {
+    return !turno.pedido && Date.now() - turno.ultima > this.juntarMs;
+  }
+
+  // pedido do agente sem resposta: o prazo recomeça a cada atividade
+  armarTurno() {
+    clearTimeout(this.turnoTimer);
+    const turno = this.turno;
+    this.turnoTimer = setTimeout(() => {
+      if (this.turno !== turno) return;
+      this.fecharTurno();
+      this.render();
+    }, this.turnoMs);
+  }
+
+  // o balão externo em andamento para de receber; devolve null
+  fecharTurno() {
+    clearTimeout(this.turnoTimer);
+    if (this.turno) this.turno.aberto = false;
+    this.turno = null;
+    return null;
+  }
+
+  // ponto no botão: mensagem do agente chegou com a conversa fechada
+  novidade(on) {
+    this.btn.classList.toggle('novidade', on && !this.aberta);
+    this.labelBtn();
+  }
+
+  // o texto do botão não muda com o ponto (ele é só visual); o leitor de tela ouve o aria-label,
+  // que junta o rótulo atual (inclusive "trabalhando") e o aviso de mensagem nova
+  labelBtn() {
+    if (this.btn.classList.contains('novidade')) this.btn.setAttribute('aria-label', `${this.btnText.textContent}: ${t.agentcode.externo.novidade}`);
+    else this.btn.removeAttribute('aria-label');
   }
 
   renderBtn() {
@@ -231,6 +348,7 @@ export class PedidoIA {
     // integração ligada: o ponto do botão fica verde (a IA já está ligada ao Forgia)
     this.btn.classList.toggle('integrado', this.ac.integrado);
     this.btnText.textContent = busy ? t.agentcode.rotuloTrabalhando : t.agentcode.rotulo;
+    this.labelBtn();
   }
 
   renderMarker() {
@@ -258,6 +376,12 @@ export class PedidoIA {
     const tx = t.agentcode;
     if (m.de === 'voce') {
       const b = el('div', 'ia-msg voce');
+      if (m.externo) {
+        // escrito direto no agente: a marca diz de onde veio
+        b.className = 'ia-msg externo voce';
+        b.append(el('span', 'ia-msg-origem', tx.externo.origem), el('p', null, m.texto));
+        return b;
+      }
       if (!m.marca) {
         b.append(el('p', null, m.texto));
         return b;
@@ -284,6 +408,7 @@ export class PedidoIA {
       });
       return b;
     }
+    if (m.externo || !m.task) return this.bubbleExterno(m);
     const task = m.task;
     const done = FINAL.has(task.status);
     const b = el('div', 'ia-msg ia');
@@ -304,6 +429,29 @@ export class PedidoIA {
       cancel.addEventListener('click', () => this.ac.cancelar());
       b.append(cancel);
     }
+    return b;
+  }
+
+  // balão da IA de uma conversa feita direto no agente: andamento (se há pedido aberto), o que ela
+  // fez na peça (as atividades, em linhas curtas) e a resposta
+  bubbleExterno(m) {
+    const tx = t.agentcode;
+    const atividades = m.atividades || [];
+    const emAndamento = m.aberto && m.pedido && !m.resposta;
+    const b = el('div', 'ia-msg externo ia');
+    b.dataset.status = emAndamento ? 'rodando' : 'concluida';
+    if (emAndamento) {
+      const head = el('p', 'ia-msg-andamento');
+      head.append(el('span', 'ia-msg-ponto'), document.createTextNode(tx.externo.trabalhando));
+      b.append(head);
+    } else if (!m.pedido) b.append(el('span', 'ia-msg-origem', tx.externo.origem));
+    if (atividades.length) {
+      const list = el('ul', 'ia-msg-atividades');
+      for (const a of atividades) list.append(el('li', null, a));
+      b.append(list);
+    }
+    if (m.resposta) b.append(...respostaIA(m.resposta));
+    else if (!emAndamento && m.pedido) b.append(el('p', 'ia-msg-nota', tx.externo.semResposta));
     return b;
   }
 }

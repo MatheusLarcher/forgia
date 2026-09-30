@@ -54,6 +54,8 @@ const prompt = (pedido, ctx = {}) => {
       ? 'O manual e as regras da IA estão abaixo: não precisa chamar forgia_manual para começar (outras seções, se precisar: forgia_manual {"secao":"receitas"}, "impressao", "marcacoes", "erros").'
       : 'Antes de modelar, leia forgia_manual (sem seção) e siga forgia_manual {"secao":"regras"}.',
     'Faça o pedido num único forgia_lote (um passo de desfazer). Se o pedido for ambíguo ou apagaria muita coisa, pergunte antes. Responda em português, curto: o que mudou na peça, em mm.',
+    // o pedido e a resposta desta tarefa já aparecem no chat do Forgia (src/pedido-ia.js)
+    'Este pedido e a sua resposta já aparecem no chat do Forgia: não chame forgia_conversa (ela é só para mensagens escritas direto no agente).',
   ];
   const img = ctx.imagem;
   if (img && img.anexo) linhas.push('Imagem da vista do usuário agora, com os alfinetes das marcações:', MARCA_IMAGEM);

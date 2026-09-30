@@ -10,17 +10,24 @@
 // consultadas uma a uma, texto criado fora do lote para medir) -> receitas positivas; a regra do
 // código livre é de DISCIPLINA -> regra explícita + o que não justifica. Regras de impressão
 // reaproveitadas da skill 3d-print-modeling (fdm-design-rules, mechanisms-and-fits).
+// Orientação (seção orientacao + uma linha no INSTRUCTIONS, no GUIA e nas regras): o usuário diz "base",
+// "em cima", "do lado" pensando na peça em uso, não no Z atual; a IA descobre se ela está de pé, de lado
+// ou invertida antes de alterar, pergunta na dúvida e, só para peça a imprimir, recomenda a posição de
+// impressão. Testes em tests/manual-orientacao.test.mjs. O INSTRUCTIONS também manda a IA ecoar no chat
+// do Forgia (forgia_conversa) o que o usuário escreveu direto no agente.
 
-const INSTRUCTIONS = `Forgia: editor 3D de peças para impressão 3D aberto no computador do usuário. As ferramentas forgia_* criam e alteram as peças nele (modele por elas, não por arquivo ou script).
+const INSTRUCTIONS = `Forgia: editor 3D de peças para impressão 3D, aberto no PC do usuário; as ferramentas forgia_* criam e alteram as peças nele.
 Regras: mexa só no projeto aberto, só pelas ferramentas forgia_*; sem criar, editar ou apagar arquivos e sem terminal (exportar, só se o usuário pedir). Na dúvida, pergunte. Detalhe: forgia_manual {"secao":"regras"}.
-Antes da primeira modelagem da conversa, chame forgia_manual sem seção: numa chamada vêm as medidas de cada forma e receitas prontas (dispensa forgia_formas na maioria dos pedidos).
-Coordenadas: mm; Z para cima, X para a direita, Y para o fundo; origem no centro da mesa. centro = centro do objeto; medidas [X,Y,Z] nos eixos do próprio objeto (cilindro: [diâmetro, diâmetro, altura]); rotacao em graus.
-Monte o pedido inteiro num só forgia_lote: vira um passo de desfazer e, se um comando falhar, nada fica. "ref" em criar/agrupar e "$ref" nos ids seguintes; posicione com base_z, sobre e alinhar_com em vez de fazer conta.
-Confira pelo retorno (medidas, caixa min/max, apoiado_em), não pela imagem; forgia_captura é para mostrar o resultado no fim, uma vez.
-Furo só recorta quando está no mesmo grupo que o sólido.
-Hardware (porca, parafuso, furo_parafuso, furo_inserto) e geradores (engrenagem, caixa_com_tampa, grade, mola, dobradica, texto_curvo) são tipos do forgia_criar: omita medidas, elas saem dos params. Soquete de uma peça: forgia_criar_encaixe. Para o fatiador: forgia_exportar_3mf.
-Se o usuário disser "aqui", "essa parte" ou "a 1": leia forgia_marcacoes e altere só a parte marcada, pelo id dela.
-Código livre (forgia_executar_codigo) só em último caso, quando nenhum comando pronto resolve: posicionar, repetir e alinhar se fazem com lote, duplicar e alinhar. Antes de usar, diga ao usuário por quê.`;
+Mensagem escrita direto a você, fora do Forgia: forgia_conversa {"pedido": texto literal do usuário} antes de mexer e {"resposta": sua resposta} no fim, para ir ao chat do Forgia (pedido vindo de lá já está).
+Antes de modelar, leia forgia_manual sem seção (medidas das formas e receitas; dispensa forgia_formas).
+Coordenadas: mm; Z para cima, X direita, Y fundo; origem no centro da mesa. centro = centro do objeto; medidas [X,Y,Z] nos eixos do objeto (cilindro: [Ø, Ø, altura]); rotacao em graus.
+Um pedido = um forgia_lote: um passo de desfazer; se um comando falha, nada fica. "ref" em criar/agrupar, "$ref" depois; posicione com base_z, sobre, alinhar_com.
+Confira pelo retorno (medidas, caixa min/max, apoiado_em), não pela imagem; forgia_captura: no fim ou para ver a orientação.
+Furo só recorta no mesmo grupo que o sólido.
+Hardware (porca, parafuso, furo_parafuso, furo_inserto) e geradores (engrenagem, caixa_com_tampa, grade, mola, dobradica, texto_curvo): tipos do forgia_criar, omita medidas (saem dos params). Soquete: forgia_criar_encaixe. Fatiador: forgia_exportar_3mf.
+"Aqui", "essa parte", "a 1": leia forgia_marcacoes e altere só a parte marcada, pelo id.
+Base, topo, em cima, embaixo, lado ou frente no pedido: antes veja se a peça está de pé, de lado ou de cabeça para baixo (forgia_estado rotacao/caixa, captura, marcações); na dúvida, pergunte. Peça a imprimir sem orientação clara: recomende deixá-la na posição de impressão. forgia_manual {"secao":"orientacao"}.
+Código livre (forgia_executar_codigo) só em último caso, se nenhum comando pronto resolve (posicionar/repetir: lote, duplicar); antes, diga ao usuário por quê.`;
 
 // guia rápido: forgia_manual sem seção
 const GUIA = `# Forgia: guia rápido para a IA
@@ -33,6 +40,7 @@ Regras (valem sempre): só o projeto aberto e só as ferramentas forgia_*, sem a
 2. Leia o retorno: cada objeto volta com medidas, centro, caixa {min,max} e apoiado_em. Se algo ficou errado, corrija com outro lote ou forgia_alterar pelo id.
 3. No fim, se quiser mostrar, uma forgia_captura (vista iso). Não use captura para descobrir medidas.
 Projeto já existente: forgia_estado (partes dos grupos com filhos:true).
+Pedido com base, topo, em cima, embaixo, lado ou frente: antes de alterar, descubra se a peça está de pé, de lado ou de cabeça para baixo (rotacao, caixa, marcações, captura) e diga como entendeu; na dúvida, pergunte. Peça a imprimir sem orientação clara: recomende deixá-la na posição de impressão. Detalhe: forgia_manual {"secao":"orientacao"}.
 
 ## Formas (tipo: o que as medidas [X, Y, Z] são; params)
 - caixa: largura, profundidade, altura. params raio (arredonda arestas, mm, 0–10)
@@ -74,7 +82,7 @@ As partes mantêm o id dentro do grupo: forgia_alterar e forgia_excluir funciona
 Confira no retorno: grupo com caixa X de −40 a 40; o furo com medidas [8,8,7] e centro X 0, Y 0.
 
 ## Mais
-Seções: regras (o que o agente pode e não pode fazer), receitas (chaveiro, caixa com tampa, furo M3 com porca numa parede, par de engrenagens, encaixe, exportar 3MF, padrão em círculo, texto gravado, peça orgânica), impressao (paredes, folgas, parafusos), coordenadas, marcacoes, codigo_livre, erros. Chame forgia_manual {"secao":"receitas"} etc.`;
+Seções: regras (o que o agente pode e não pode fazer), receitas (chaveiro, caixa com tampa, furo M3 com porca numa parede, par de engrenagens, encaixe, exportar 3MF, padrão em círculo, texto gravado, peça orgânica), impressao (paredes, folgas, parafusos), coordenadas, orientacao (base, topo e lados de uma peça girada), marcacoes, codigo_livre, erros. Chame forgia_manual {"secao":"receitas"} etc.`;
 
 const SECTIONS = {
   regras: `# Regras do agente
@@ -83,6 +91,7 @@ Valem para qualquer agente (Claude Code, Codex, Cursor, Agent Code): é o mesmo 
 - Não rode comandos de terminal nem programas para fazer a peça (nada de script gerando STL): monte com as formas, o desenho e, em último caso, o código livre (forgia_executar_codigo, que roda isolado no Forgia). forgia_importar só de um arquivo que o usuário já tenha e indicar.
 - Cada pedido num forgia_lote só: vira um passo de desfazer e, se um comando falha, nada fica.
 - Pedido ambíguo (qual peça? qual medida?) ou que apagaria muita coisa (excluir tudo, recomeçar do zero): pergunte antes, na resposta, em vez de adivinhar.
+- Pedido que fala de base, topo, em cima, embaixo, lado ou frente: antes de alterar, descubra se a peça está de pé, de lado ou de cabeça para baixo; se não der para saber, pergunte. Não gire a peça sem o usuário concordar. Detalhe: forgia_manual {"secao":"orientacao"}.
 - Responda em português, curto: o que mudou na peça, com as medidas em mm. Ex.: "Furo aumentado de 6 para 8 mm; o resto ficou igual."
 - Pedido que não é sobre a peça no Forgia (outros arquivos, e-mail, internet, programas do computador): recuse com educação e diga o que dá para fazer aqui.`,
 
@@ -93,6 +102,28 @@ Valem para qualquer agente (Claude Code, Codex, Cursor, Agent Code): é o mesmo 
 - rotacao [X, Y, Z] em graus, nos eixos fixos da mesa: gira em X, depois em Y, depois em Z (regra da mão direita). rotacao [-15, 0, 0] inclina o topo de uma placa em pé para o fundo (+Y); [90, 0, 0] deita um cilindro com o eixo ao longo de Y.
 - apoiado_em: "mesa", o id do objeto logo abaixo (mesmo nível), "no_ar" ou "abaixo_da_mesa".
 - Partes de grupo: centro, caixa e rotacao vêm no mundo, como os objetos soltos; "grupo" diz a qual grupo pertencem.`,
+
+  orientacao: `# Orientação da peça (base, topo, lados)
+Quando se aplica: o pedido fala de base, fundo, topo, em cima, embaixo, lado, lateral, frente ou trás ("aumenta a base", "fura em cima", "tira a parte do lado"). Antes de alterar, descubra se a peça está de pé, de lado ou de cabeça para baixo: a base do usuário nem sempre é o Z mínimo de agora.
+
+## Como descobrir
+- forgia_estado: rotacao [180,0,0] ou [0,180,0] = de cabeça para baixo (o +Z da peça aponta para −Z); 90 ou −90 em X ou Y = deitada de lado ([90,0,0] leva o +Z da peça para −Y, a frente; [0,90,0] para +X). Rotação só em Z não muda o que é topo e base, só a frente e os lados.
+- caixa {min,max} contra medidas: altura no mundo (max[2] − min[2]) diferente de medidas Z indica peça girada. apoiado_em diz o que está embaixo agora.
+- rotacao [0,0,0] não garante que está de pé: um STL importado ou uma peça feita em partes pode ter vindo deitada ou invertida. Aí olhe a forma.
+- Marcações: face = para onde a face aponta no mundo, normal = a direção exata, lado_da_parte = a mesma face nos eixos da peça. Face "-Z" com lado_da_parte "+Z" = a peça está de cabeça para baixo e o usuário marcou o topo original, que hoje está na mesa.
+- forgia_captura para olhar (não para medir): vista frente (olha de −Y), direita e topo mostram de que lado está cada coisa.
+- Pistas da forma: caixa ou copo tem a abertura em cima e o fundo embaixo; texto se lê de cima (texto de ponta-cabeça na vista topo = peça invertida); a face plana grande costuma ser a base; tampa vai com a face grande para baixo; suporte e gancho têm a base larga e o braço para cima.
+
+## Como interpretar
+- Base = a face que fica na mesa na posição de uso ou de impressão, não necessariamente o Z mínimo atual. Topo = a oposta. Frente = a que o usuário vê na vista frente (−Y), salvo se a peça tiver uma frente clara (texto, abertura, botão).
+- esticar usa os lados da peça (lado_da_parte), não os da mesa: com rotacao [180,0,0], a face que está na mesa (−Z do mundo) é o "+Z" da peça, e o "−Z" da peça está virado para cima.
+- Diga ao usuário como entendeu, antes de alterar se houver chance de erro e sempre na resposta. Ex.: "A peça está de cabeça para baixo (girada 180° em X); aumentei 3 mm a base, que hoje está virada para cima."
+
+## Na dúvida, pergunte
+Não adivinhe. Pergunte com opções concretas e o que você viu. Ex.: "A peça está girada 90° em X. A base é a face que está na mesa agora (Z 0) ou a face com o texto, que está virada para a frente?". Se preferir, peça ao usuário para marcar a face (Marcar parte, tecla N).
+
+## Peça que será impressa em 3D
+Só para peça que vai para a impressora (não para peça de referência, maquete ou modelo só para ver): se a orientação não estiver clara, recomende deixá-la na posição em que será impressa (base na mesa, abertura para cima, a face plana grande para baixo). Ofereça girar e depois soltar na mesa (forgia_alterar rotacao + forgia_soltar_na_mesa), mas só faça com a confirmação do usuário: girar muda o que ele chama de base e de topo.`,
 
   receitas: `# Receitas (todas num lote; troque as medidas)
 
