@@ -1494,3 +1494,95 @@ kbd {
 .ag-icone[data-ia='codex'] { -webkit-mask-image: url('./assets/ia/codex.png'); mask-image: url('./assets/ia/codex.png'); }
 .ag-icone[data-ia='cursor'] { -webkit-mask-image: url('./assets/ia/cursor.svg'); mask-image: url('./assets/ia/cursor.svg'); }
 .ag-icone svg { width: 16px; height: 16px; }
+
+/* ---------- tela inicial e menu lateral do símbolo (src/inicio.js): Seus projetos ---------- */
+#topbar .logo { cursor: pointer; border-radius: 6px; padding: 3px 6px 3px 2px; margin-left: -2px; }
+#topbar .logo:hover { background: var(--hover); }
+.inicio {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  overflow: auto;
+  background: var(--bg);
+}
+.inicio[hidden], .gaveta[hidden], .gaveta-fundo[hidden] { display: none; }
+.inicio-caixa { max-width: 1080px; margin: 0 auto; padding: 40px 32px 48px; }
+.inicio-topo { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+.inicio-topo > div { flex: 1; min-width: 0; }
+.inicio-topo h1 { margin: 0; font-size: 22px; font-weight: 650; color: var(--ink); }
+.inicio-topo p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.inicio-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.inicio-vazio { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.btn.small { height: 26px; padding: 0 10px; font-size: 12px; }
+
+.proj { position: relative; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-raised); }
+.proj:hover { border-color: var(--line-strong); box-shadow: var(--shadow-1); }
+.proj.atual { border-color: var(--accent); }
+.proj.sumiu { opacity: 0.55; }
+.proj-abrir {
+  display: flex;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: inherit;
+}
+.proj-abrir:disabled, .proj-abrir.editando { cursor: default; }
+.proj-abrir:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.proj-thumb { display: grid; place-items: center; flex: none; object-fit: contain; background: linear-gradient(180deg, var(--view-top), var(--view-bottom)); color: var(--muted); }
+.proj-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px; }
+.proj-nome { font-weight: 600; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proj-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proj-renomear { position: absolute; top: 6px; right: 6px; opacity: 0; background: var(--panel-raised); }
+.proj:hover .proj-renomear, .proj-renomear:focus-visible { opacity: 1; }
+.proj-editar { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.proj-nome-campo {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.proj-nome-campo:focus { outline: none; border-color: var(--focus); }
+.proj-editar-acoes { display: flex; justify-content: flex-end; gap: 6px; }
+
+/* tela: grade de cartões com miniatura grande */
+.proj-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.proj-tela .proj-abrir { flex-direction: column; }
+.proj-tela .proj-thumb { width: 100%; aspect-ratio: 4 / 3; border-radius: 7px 7px 0 0; }
+.proj-tela .proj-thumb.vazio svg { width: 40px; height: 40px; }
+
+/* menu lateral: lista compacta, por cima do editor */
+.gaveta-fundo { position: fixed; inset: 0; z-index: 42; background: var(--backdrop); }
+.gaveta {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 43;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 320px;
+  max-width: 90vw;
+  padding: 12px;
+  overflow: auto;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  box-shadow: var(--shadow-2);
+}
+.gaveta-topo { display: flex; align-items: center; justify-content: space-between; }
+.gaveta-topo h2 { margin: 0; font-size: 15px; color: var(--ink); }
+.gaveta-inicial { align-self: flex-start; }
+.proj-lista { display: flex; flex-direction: column; gap: 6px; }
+.proj-gaveta .proj-thumb { width: 56px; height: 56px; border-radius: 7px 0 0 7px; }
+.proj-gaveta .proj-thumb.vazio svg { width: 22px; height: 22px; }
+.proj-gaveta .proj-info { justify-content: center; padding: 6px 34px 6px 10px; }

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <title>Forgia — F esculpido</title>
+  <defs>
+    <linearGradient id="graphite" x1="192" y1="64" x2="832" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#363b40"/>
+      <stop offset=".48" stop-color="#2b2f33"/>
+      <stop offset="1" stop-color="#202428"/>
+    </linearGradient>
+    <linearGradient id="forge" x1="256" y1="288" x2="600" y2="800" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff9b37"/>
+      <stop offset=".48" stop-color="#f58220"/>
+      <stop offset="1" stop-color="#e76a17"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#graphite)"/>
+  <!-- The F is one continuous face; its upper/right extrusion is only 64 units. -->
+  <path d="M288 320H736V448H448V528H672V656H448V832H288Z" fill="#171b1e" fill-opacity=".34"/>
+  <path d="M256 288L320 224H768L704 288Z" fill="#ffc16b"/>
+  <path d="M704 288L768 224V352L704 416Z" fill="#b95119"/>
+  <path d="M416 416L480 352V432L416 496Z" fill="#b95119"/>
+  <path d="M416 496L480 432H704L640 496Z" fill="#ffc16b"/>
+  <path d="M640 496L704 432V560L640 624Z" fill="#b95119"/>
+  <path d="M416 624L480 560V736L416 800Z" fill="#b95119"/>
+  <path d="M256 288H704V416H416V496H640V624H416V800H256Z" fill="url(#forge)"/>
+</svg>

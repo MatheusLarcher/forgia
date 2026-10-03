@@ -4,7 +4,8 @@
 //
 // - .forgia: salvar/abrir só por diálogo do Electron (showSaveDialog/showOpenDialog), pelos Recentes
 //   (lista guardada aqui, em <userData>\recentes.json) ou pelo arquivo que o Windows mandou abrir
-//   (duplo clique, associação de arquivo). O caminho do arquivo aberto fica aqui (atual); Ctrl+S
+//   (duplo clique, associação de arquivo). A mesma lista (até 50) é o histórico da tela inicial:
+//   miniatura de cada um em <userData>\miniaturas\<sha1 do caminho>.png e renomear por lá. O caminho do arquivo aberto fica aqui (atual); Ctrl+S
 //   grava nele. Abrir devolve os bytes com um id; o arquivo só vira o atual quando a página
 //   confirma que leu (adotar), para um arquivo estragado nunca ser sobrescrito por engano.
 // - Cópia de segurança: <userData>\recuperacao\ (%APPDATA%\Forgia\recuperacao no instalado), pasta
@@ -13,11 +14,14 @@
 // - Fechar a janela com o projeto aberto: o main pergunta à página (que pode mostrar Salvar / Não
 //   salvar / Cancelar) e só fecha quando ela libera. Sem resposta em 2 s (página travada), fecha.
 const { app, ipcMain, dialog } = require('electron');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const MAX_PROJETO = 1024 * 1024 * 1024; // 1 GB
-const MAX_RECENTES = 5;
+const MAX_RECENTES = 50; // histórico da tela inicial; o menu Arquivo mostra os 5 primeiros
+const MENU_RECENTES = 5;
+const MAX_MINIATURA = 2 * 1024 * 1024;
 const REF_OK = /^[A-Za-z0-9_-]{1,40}$/;
 const EXT = '.forgia';
 
@@ -38,6 +42,7 @@ function writeAtomic(file, data) {
   fs.renameSync(tmp, file);
 }
 
+const isPng = (b) => b && b.length > 8 && b.length <= MAX_MINIATURA && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47;
 const isZip = (b) => b && b.length > 22 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04;
 const toBuffer = (d) => (d instanceof Uint8Array ? Buffer.from(d.buffer, d.byteOffset, d.byteLength) : null);
 
@@ -49,6 +54,7 @@ function startProject(win, { arquivoInicial = null } = {}) {
   const arqCopia = path.join(pastaCopia, 'projeto.json');
   const pastaMalhas = path.join(pastaCopia, 'malhas');
   const arqRecentes = path.join(dados, 'recentes.json');
+  const pastaMiniaturas = path.join(dados, 'miniaturas');
 
   let atual = null; // caminho do .forgia aberto (null = projeto ainda não salvo em arquivo)
   let seq = 0;
@@ -74,6 +80,40 @@ function startProject(win, { arquivoInicial = null } = {}) {
   const lembrar = (p) => gravarRecentes([p, ...lerRecentes().filter((q) => q.toLowerCase() !== p.toLowerCase())]);
   const esquecer = (p) => gravarRecentes(lerRecentes().filter((q) => q.toLowerCase() !== p.toLowerCase()));
   const recentes = () => lerRecentes().map((p) => ({ nome: path.basename(p), caminho: p, existe: fs.existsSync(p) }));
+  const mesmo = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
+  // item i do histórico, só se ainda é o caminho que a página viu (a lista pode ter mudado)
+  const doHistorico = (i, caminho) => {
+    const p = Number.isInteger(i) ? lerRecentes()[i] : null;
+    return p && mesmo(p, caminho) ? p : null;
+  };
+
+  // ---------- miniaturas do histórico ----------
+  const arqMiniatura = (p) => path.join(pastaMiniaturas, crypto.createHash('sha1').update(p.toLowerCase()).digest('hex') + '.png');
+  const gravarMiniatura = (p, png) => {
+    const buf = toBuffer(png);
+    if (!p || !isPng(buf)) return;
+    try {
+      writeAtomic(arqMiniatura(p), buf);
+    } catch (err) {
+      console.warn('[projeto] miniatura não gravada:', err.message);
+    }
+  };
+  const lerMiniatura = (p) => {
+    try {
+      return 'data:image/png;base64,' + fs.readFileSync(arqMiniatura(p)).toString('base64');
+    } catch {
+      return null;
+    }
+  };
+  const historico = () =>
+    lerRecentes().map((p) => {
+      let st = null;
+      try {
+        st = fs.statSync(p);
+      } catch {}
+      const existe = !!(st && st.isFile());
+      return { nome: path.basename(p), caminho: p, existe, alteradoEm: existe ? st.mtime.toISOString() : null, miniatura: existe ? lerMiniatura(p) : null };
+    });
   const descreve = () => (atual ? { nome: path.basename(atual), caminho: atual } : null);
 
   // ---------- ler um .forgia (vira pendente até a página adotar) ----------
@@ -182,6 +222,7 @@ function startProject(win, { arquivoInicial = null } = {}) {
     }
     atual = destino;
     lembrar(destino);
+    gravarMiniatura(destino, opts.miniatura);
     return { ok: true, ...descreve(), bytes: buf.length };
   });
 
@@ -189,7 +230,7 @@ function startProject(win, { arquivoInicial = null } = {}) {
     if (!fromWindow(e)) return null;
     let p = null;
     if (Number.isInteger(opts.recente)) {
-      p = lerRecentes()[opts.recente] || null;
+      p = opts.caminho ? doHistorico(opts.recente, opts.caminho) : lerRecentes()[opts.recente] || null;
       if (!p) return { ok: false, erro: 'naoEncontrado' };
     } else if (opts.reabrir) {
       if (!atual) return { ok: false, erro: 'naoEncontrado' };
@@ -210,13 +251,15 @@ function startProject(win, { arquivoInicial = null } = {}) {
   });
 
   // a página leu o arquivo pendente: ele vira o atual e entra nos Recentes
-  ipcMain.handle('projeto:adotar', (e, id) => {
+  // miniatura = a miniatura.png de dentro do .forgia (para o histórico), se houver
+  ipcMain.handle('projeto:adotar', (e, id, miniatura) => {
     if (!fromWindow(e)) return null;
     const p = pendentes.get(id);
     pendentes.clear();
     if (!p) return { ok: false };
     atual = p;
     lembrar(p);
+    gravarMiniatura(p, miniatura);
     return { ok: true, ...descreve() };
   });
   ipcMain.handle('projeto:recusar', (e, id) => {
@@ -230,7 +273,34 @@ function startProject(win, { arquivoInicial = null } = {}) {
     atual = null;
     return { ok: true };
   });
-  ipcMain.handle('projeto:recentes', (e) => (fromWindow(e) ? recentes() : null));
+  ipcMain.handle('projeto:recentes', (e) => (fromWindow(e) ? recentes().slice(0, MENU_RECENTES) : null));
+  ipcMain.handle('projeto:historico', (e) => (fromWindow(e) ? historico() : null));
+
+  // renomeia o .forgia do item i do histórico, na mesma pasta (o nome vem da página; a pasta, nunca)
+  ipcMain.handle('projeto:renomear', (e, i, caminho, nome) => {
+    if (!fromWindow(e)) return null;
+    const p = doHistorico(i, caminho);
+    if (!p) return { ok: false, erro: 'naoEncontrado' };
+    let base = String(nome || '').replace(/[\\/:*?"<>|\x00-\x1f]+/g, '_').trim().replace(/[. ]+$/, '').slice(0, 120);
+    if (base.toLowerCase().endsWith(EXT)) base = base.slice(0, -EXT.length).trim();
+    if (!base) return { ok: false, erro: 'nomeVazio' };
+    const destino = path.join(path.dirname(p), base + EXT);
+    if (destino === p) return { ok: true, nome: path.basename(p), caminho: p, atual: mesmo(atual, p) };
+    // só muda maiúscula/minúscula: no Windows é o mesmo arquivo, renomeia direto
+    if (!mesmo(destino, p) && fs.existsSync(destino)) return { ok: false, erro: 'nomeExiste', nome: path.basename(destino) };
+    try {
+      fs.renameSync(p, destino);
+    } catch (err) {
+      return { ok: false, erro: fs.existsSync(p) ? 'renomear' : 'naoEncontrado', detalhe: err.message };
+    }
+    try {
+      fs.renameSync(arqMiniatura(p), arqMiniatura(destino));
+    } catch {}
+    gravarRecentes(lerRecentes().map((q) => (mesmo(q, p) ? destino : q)));
+    const eraAtual = mesmo(atual, p);
+    if (eraAtual) atual = destino;
+    return { ok: true, nome: path.basename(destino), caminho: destino, atual: eraAtual };
+  });
   ipcMain.handle('projeto:copia', (e, msg) => {
     if (!fromWindow(e) || !msg) return null;
     try {

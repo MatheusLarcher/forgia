@@ -13,11 +13,13 @@
 // para gravar: salvar/abrir vão por diálogo do Electron, pelos Recentes (lista do main) ou pelo
 // arquivo que o Windows mandou abrir; a cópia de segurança grava numa pasta fixa do main.
 //   inicio()                    cópia de segurança, arquivo pedido pelo Windows e Recentes
-//   salvar(bytes, opts)         { como, sugestao, titulo, filtro }: grava no arquivo atual ou pergunta onde
-//   abrir(opts)                 {} diálogo | { recente: i } | { reabrir: true } -> { id, nome, dados }
-//   adotar(id) / recusar(id)    a página leu (ou não) o arquivo aberto
+//   salvar(bytes, opts)         { como, sugestao, titulo, filtro, miniatura }: grava no arquivo atual ou pergunta onde
+//   abrir(opts)                 {} diálogo | { recente: i, caminho? } | { reabrir: true } -> { id, nome, dados }
+//   adotar(id, png) / recusar(id)  a página leu (ou não) o arquivo aberto (png = miniatura dele)
 //   novo()                      projeto sem arquivo
-//   recentes()                  últimos 5 arquivos
+//   recentes()                  últimos 5 arquivos (menu Arquivo)
+//   historico()                 até 50, com data e miniatura (tela inicial e menu lateral)
+//   renomear(i, caminho, nome)  renomeia o .forgia do item i do histórico, na mesma pasta
 //   copia(msg) / descartar()    cópia de segurança (a cada alteração) / "Não salvar"
 //   pronto(), aoFechar(fn), fechando(), fechar(ok)   pergunta ao fechar a janela
 //   aoAbrirArquivo(fn)          o Windows mandou abrir um .forgia com o Forgia aberto
@@ -78,10 +80,12 @@ contextBridge.exposeInMainWorld('forgiaProjeto', {
   inicio: () => ipcRenderer.invoke('projeto:inicio'),
   salvar: (bytes, opts) => ipcRenderer.invoke('projeto:salvar', bytes, opts),
   abrir: (opts) => ipcRenderer.invoke('projeto:abrir', opts || {}),
-  adotar: (id) => ipcRenderer.invoke('projeto:adotar', id),
+  adotar: (id, miniatura) => ipcRenderer.invoke('projeto:adotar', id, miniatura || null),
   recusar: (id) => ipcRenderer.invoke('projeto:recusar', id),
   novo: () => ipcRenderer.invoke('projeto:novo'),
   recentes: () => ipcRenderer.invoke('projeto:recentes'),
+  historico: () => ipcRenderer.invoke('projeto:historico'),
+  renomear: (i, caminho, nome) => ipcRenderer.invoke('projeto:renomear', i, caminho, nome),
   copia: (msg) => ipcRenderer.invoke('projeto:copia', msg),
   descartar: () => ipcRenderer.invoke('projeto:descartar'),
   pronto: () => ipcRenderer.invoke('projeto:pronto'),

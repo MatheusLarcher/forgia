@@ -10,6 +10,7 @@ import { StatusBar } from './statusbar.js';
 import { Arquivo } from './arquivo.js';
 import { AgentCode } from './agentcode.js';
 import { PedidoIA } from './pedido-ia.js';
+import { Inicio } from './inicio.js';
 
 // Sem WebGL algum: explica no lugar do 3D em vez de deixar a tela em branco
 function showGpuFailure(viewport) {
@@ -43,9 +44,14 @@ try {
   // a conversa também mostra o que foi escrito direto no agente (forgia_conversa e a atividade da ponte)
   const pedidoIA = new PedidoIA(editor, agentCode, { ponte, onConnect: (agente) => ui.connectDialog(agente) });
   if (gpuInfo.mode === 'software') ui.toast(t.avisos.modoSoftware);
+  // tela inicial com os projetos salvos e o menu lateral do símbolo (src/inicio.js)
+  const inicio = new Inicio(editor, arquivo);
   // acesso para depuração no console
-  window.forgia = { editor, ui, gpu: gpuInfo, theme, ponte, arquivo, agentCode, pedidoIA };
-  arquivo.start(ui);
+  window.forgia = { editor, ui, gpu: gpuInfo, theme, ponte, arquivo, agentCode, pedidoIA, inicio };
+  // abre na tela inicial, menos quando o Windows mandou abrir um .forgia (vai direto ao editor)
+  arquivo.start(ui).then(() => {
+    if (!arquivo.abertoPeloSistema) inicio.showHome();
+  });
   // loading da abertura sai quando o projeto chegou e a cena desenhou (src/carregando.js)
   esperarPronto(arquivo.ready);
 } catch (err) {

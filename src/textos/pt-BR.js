@@ -179,7 +179,11 @@ export default {
       naoEncontrado: 'o arquivo não foi encontrado',
       grande: 'o arquivo passa de 1 GB',
       gravar: 'sem permissão para gravar nessa pasta',
+      nomeVazio: 'o nome está vazio',
+      renomear: 'o arquivo está em uso ou sem permissão na pasta',
     },
+    nomeExiste: (nome) => `Já existe um arquivo ${nome} nessa pasta. Escolha outro nome.`,
+    naoRenomeou: (nome, motivo) => `Não foi possível renomear ${nome}${motivo ? ': ' + motivo : ''}`,
     pergunta: {
       titulo: 'Salvar as alterações?',
       arquivo: (nome) => `Há alterações não salvas em ${nome}. Salvar antes de continuar?`,
@@ -196,6 +200,28 @@ export default {
       descartar: 'Descartar',
       abrirOutro: (nome) => `Descartar e abrir ${nome}`,
     },
+  },
+
+  // tela inicial e menu lateral do símbolo (src/inicio.js): o histórico dos projetos salvos
+  inicio: {
+    titulo: 'Seus projetos',
+    subtitulo: 'Projetos salvos ou abertos neste computador. Clique para abrir.',
+    novo: 'Novo projeto',
+    abrirArquivo: 'Abrir arquivo…',
+    continuar: 'Continuar',
+    continuarAtual: (nome) => `Continuar "${nome}"`,
+    naoSalvo: 'ainda não salvo em arquivo',
+    vazio: 'Nenhum projeto ainda. Crie um novo ou abra um arquivo .forgia; ao salvar, ele aparece aqui.',
+    semHistorico: 'O histórico de projetos aparece no Forgia instalado.',
+    naoEncontrado: 'Arquivo não encontrado',
+    aberto: 'aberto',
+    renomear: 'Renomear',
+    salvarNome: 'Salvar nome',
+    cancelar: 'Cancelar',
+    abrirMenu: 'Seus projetos',
+    fecharMenu: 'Fechar',
+    telaInicial: 'Tela inicial',
+    alterado: (data) => `Alterado em ${data}`,
   },
 
   formas: {

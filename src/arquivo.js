@@ -83,7 +83,10 @@ export class Arquivo extends EventTarget {
             return;
           }
         }
-        if (await this.openResult(ini.abrir)) return;
+        if (await this.openResult(ini.abrir)) {
+          this.abertoPeloSistema = true; // vai direto para o editor, sem a tela inicial
+          return;
+        }
       }
     }
     if (!c) {
@@ -283,13 +286,14 @@ export class Arquivo extends EventTarget {
     try {
       const data = this.ed.projectData();
       const key = JSON.stringify(data);
-      const bytes = await packProject(data, getMesh, { png: await this.thumbnail(), app: `Forgia ${__APP_VERSION__}` });
+      const png = await this.thumbnail();
+      const bytes = await packProject(data, getMesh, { png, app: `Forgia ${__APP_VERSION__}` });
       if (!this.api) {
         this.ui.download(new Blob([bytes], { type: 'application/zip' }), this.suggestName() + '.forgia');
         this.markSaved(key);
         return true;
       }
-      const r = await this.api.salvar(bytes, { como, sugestao: this.suggestName(), titulo: t.arquivo.dialogoSalvar, filtro: t.arquivo.filtro });
+      const r = await this.api.salvar(bytes, { como, sugestao: this.suggestName(), titulo: t.arquivo.dialogoSalvar, filtro: t.arquivo.filtro, miniatura: png });
       if (!r || r.cancelado) return false;
       if (!r.ok) {
         this.toast(t.arquivo.naoSalvou(r.nome || this.suggestName(), t.arquivo.motivos[r.erro] || r.detalhe || ''));
@@ -324,7 +328,7 @@ export class Arquivo extends EventTarget {
     this.sentRefs = new Set();
     this.ed.loadProject(parsed.data);
     if (this.api && r.id) {
-      const a = await this.api.adotar(r.id);
+      const a = await this.api.adotar(r.id, parsed.miniatura);
       this.file = a && a.ok ? { nome: a.nome, caminho: a.caminho } : { nome: r.nome, caminho: r.caminho };
     } else this.file = { nome: r.nome, caminho: r.caminho || null };
     this.markSaved();
@@ -356,6 +360,33 @@ export class Arquivo extends EventTarget {
 
   async recents() {
     return this.api ? (await this.api.recentes()) || [] : [];
+  }
+
+  // ---------- histórico (tela inicial e menu lateral, src/inicio.js) ----------
+
+  // [{ i, nome, caminho, existe, alteradoEm, miniatura }]; vazio sem o preload (npm run dev)
+  async history() {
+    const lista = this.api ? (await this.api.historico()) || [] : [];
+    return lista.map((p, i) => ({ ...p, i }));
+  }
+
+  openHistory(item) {
+    return this.open({ recente: item.i, caminho: item.caminho });
+  }
+
+  // renomeia o arquivo do histórico; se é o aberto, o título acompanha. Devolve o novo nome ou null
+  async rename(item, nome) {
+    const r = await this.api.renomear(item.i, item.caminho, nome);
+    if (!r || !r.ok) {
+      const tx = t.arquivo;
+      this.toast(r && r.erro === 'nomeExiste' ? tx.nomeExiste(r.nome) : tx.naoRenomeou(item.nome, (r && (tx.motivos[r.erro] || r.detalhe)) || ''));
+      return null;
+    }
+    if (r.atual && this.file) {
+      this.file = { nome: r.nome, caminho: r.caminho };
+      this.refresh();
+    }
+    return r.nome;
   }
 
   async newProject() {
