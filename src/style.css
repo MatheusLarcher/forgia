@@ -1586,3 +1586,6 @@ kbd {
 .proj-gaveta .proj-thumb { width: 56px; height: 56px; border-radius: 7px 0 0 7px; }
 .proj-gaveta .proj-thumb.vazio svg { width: 22px; height: 22px; }
 .proj-gaveta .proj-info { justify-content: center; padding: 6px 34px 6px 10px; }
+/* menu lateral: o projeto arrasta para a mesa; dica discreta até a primeira vez */
+.proj-gaveta .proj-abrir:not(:disabled):not(.editando) { cursor: grab; }
+.gaveta-dica { margin: 0; padding: 0 2px; font-size: 11.5px; line-height: 1.45; color: var(--muted); }

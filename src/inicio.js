@@ -1,5 +1,8 @@
 import { t } from './textos/index.js';
 import { ICONS } from './icons.js';
+import { unpackProject } from './projeto.js';
+import { validateProject } from './ponte-comandos.js';
+import { Library } from './biblioteca.js';
 
 // Tela inicial (Seus projetos) e o menu lateral que o símbolo do Forgia abre no editor. As duas
 // mostram o histórico do main (electron/projeto.cjs: os .forgia salvos ou abertos, com miniatura)
@@ -7,6 +10,12 @@ import { ICONS } from './icons.js';
 // antes de trocar um projeto com alteração não salva.
 // - A tela inicial aparece ao abrir o Forgia, menos quando o Windows mandou abrir um .forgia.
 // - Enquanto uma das duas está aberta, as teclas do editor ficam paradas (Esc fecha o menu).
+// - No menu lateral, arrastar um projeto põe o projeto inteiro na mesa (uma peça, ou um grupo com
+//   todas as peças dele), como uma criação da biblioteca. A dica discreta sobre isso some de vez
+//   depois do primeiro projeto posto na mesa (localStorage).
+
+const LS_DICA_ARRASTAR = 'forgia.dicaArrastarProjeto';
+const LIMIAR_ARRASTE = 6; // px até o clique virar arraste
 
 const h = (tag, attrs = {}, ...children) => {
   const el = document.createElement(tag);
@@ -167,6 +176,7 @@ export class Inicio {
         ),
         acoes,
         h('button', { class: 'text-btn small gaveta-inicial', type: 'button', onclick: () => this.showHome() }, tx.telaInicial),
+        lista.some((i) => i.existe) && this.arq.api && !this.jaArrastou() ? h('p', { class: 'gaveta-dica' }, tx.dicaArrastar) : null,
         corpo,
       );
     }
@@ -176,7 +186,91 @@ export class Inicio {
     const tx = t.inicio;
     const atual = this.arq.file && this.arq.file.caminho && this.arq.file.caminho.toLowerCase() === item.caminho.toLowerCase();
     const sub = item.existe ? tx.alterado(quando(item.alteradoEm)) : tx.naoEncontrado;
-    return this.card({ nome: semExt(item.nome), sub, miniatura: item.miniatura, atual, item, title: item.caminho, disabled: !item.existe }, () => this.openItem(item), modo);
+    const el = this.card({ nome: semExt(item.nome), sub, miniatura: item.miniatura, atual, item, title: item.caminho, disabled: !item.existe }, () => this.openItem(item), modo);
+    if (modo === 'gaveta' && item.existe && this.arq.api) this.dragToTable(el.querySelector('.proj-abrir'), item);
+    return el;
+  }
+
+  // ---------- arrastar o projeto inteiro para a mesa (menu lateral) ----------
+
+  jaArrastou() {
+    try {
+      return !!localStorage.getItem(LS_DICA_ARRASTAR);
+    } catch {
+      return false;
+    }
+  }
+
+  // .forgia do histórico -> spec de peça pronta para o editor.startPlacing (como Suas criações)
+  async pieceOf(item) {
+    const r = await this.arq.api.lerHistorico(item.i, item.caminho);
+    if (!r || !r.ok) throw new Error(t.arquivo.motivos[r && r.erro] || '');
+    const { data, meshes } = unpackProject(r.dados);
+    validateProject(data.objects);
+    if (!data.objects.length) throw new Error(t.inicio.projetoVazio);
+    const object = Library.creationObject(data.objects);
+    return { object, meshes, name: data.name || semExt(item.nome) };
+  }
+
+  // clique abre (o onclick do cartão); passou do limiar com o botão apertado: vira arraste para a mesa
+  dragToTable(btn, item) {
+    let arrastou = false;
+    // o clique que vem depois de um arraste não abre o projeto
+    btn.addEventListener(
+      'click',
+      (ev) => {
+        if (!arrastou) return;
+        arrastou = false;
+        ev.stopImmediatePropagation();
+        ev.preventDefault();
+      },
+      true,
+    );
+    btn.addEventListener('pointerdown', (e) => {
+      arrastou = false;
+      if (e.button !== 0 || this.ocupado) return;
+      const x0 = e.clientX;
+      const y0 = e.clientY;
+      let peca = null; // promessa da peça, lida assim que o botão desce
+      let arrastando = false;
+      let solto = false;
+      const fim = () => {
+        window.removeEventListener('pointermove', mover, true);
+        window.removeEventListener('pointerup', soltar, true);
+      };
+      const mover = (ev) => {
+        if (arrastando || Math.hypot(ev.clientX - x0, ev.clientY - y0) < LIMIAR_ARRASTE) return;
+        arrastando = arrastou = true;
+        fim();
+        this.closeDrawer(); // a mesa precisa ficar livre para o editor achar o ponto embaixo do cursor
+        window.addEventListener('pointerup', () => (solto = true), { once: true, capture: true });
+        peca = peca || this.pieceOf(item);
+        peca.then(
+          (spec) => {
+            if (solto) return; // soltou antes de o arquivo chegar: nada a pôr
+            const antes = this.ed.objects.length; // antes de a peça entrar na mesa
+            this.ed.startPlacing(spec);
+            this.ed.placing.tileDrag = true;
+            this.ed.updatePlacing(ev);
+            window.addEventListener(
+              'pointerup',
+              () => setTimeout(() => {
+                if (!this.ed.placing && this.ed.objects.length > antes) {
+                  try {
+                    localStorage.setItem(LS_DICA_ARRASTAR, new Date().toISOString());
+                  } catch {}
+                }
+              }),
+              { once: true },
+            );
+          },
+          (err) => this.arq.toast(t.inicio.naoArrastou(semExt(item.nome), err.message)),
+        );
+      };
+      const soltar = () => fim();
+      window.addEventListener('pointermove', mover, true);
+      window.addEventListener('pointerup', soltar, true);
+    });
   }
 
   // um projeto: miniatura, nome, linha de baixo e (com arquivo) o lápis de renomear

@@ -222,6 +222,9 @@ export default {
     fecharMenu: 'Fechar',
     telaInicial: 'Tela inicial',
     alterado: (data) => `Alterado em ${data}`,
+    dicaArrastar: 'Dica: arraste um projeto daqui para a mesa para juntar ele inteiro ao projeto aberto.',
+    projetoVazio: 'o projeto não tem peças',
+    naoArrastou: (nome, motivo) => `Não foi possível pôr ${nome} na mesa${motivo ? ': ' + motivo : ''}`,
   },
 
   formas: {

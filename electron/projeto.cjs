@@ -276,6 +276,20 @@ function startProject(win, { arquivoInicial = null } = {}) {
   ipcMain.handle('projeto:recentes', (e) => (fromWindow(e) ? recentes().slice(0, MENU_RECENTES) : null));
   ipcMain.handle('projeto:historico', (e) => (fromWindow(e) ? historico() : null));
 
+  // bytes do .forgia do item i do histórico, para pôr o projeto inteiro na mesa (não vira o atual)
+  ipcMain.handle('projeto:lerHistorico', (e, i, caminho) => {
+    if (!fromWindow(e)) return null;
+    const p = doHistorico(i, caminho);
+    if (!p) return { ok: false, erro: 'naoEncontrado' };
+    try {
+      const st = fs.statSync(p);
+      if (st.size > MAX_PROJETO) return { ok: false, erro: 'grande', nome: path.basename(p) };
+      return { ok: true, nome: path.basename(p), dados: new Uint8Array(fs.readFileSync(p)) };
+    } catch {
+      return { ok: false, erro: 'naoEncontrado', nome: path.basename(p) };
+    }
+  });
+
   // renomeia o .forgia do item i do histórico, na mesma pasta (o nome vem da página; a pasta, nunca)
   ipcMain.handle('projeto:renomear', (e, i, caminho, nome) => {
     if (!fromWindow(e)) return null;

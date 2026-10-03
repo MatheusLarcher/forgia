@@ -19,6 +19,7 @@
 //   novo()                      projeto sem arquivo
 //   recentes()                  últimos 5 arquivos (menu Arquivo)
 //   historico()                 até 50, com data e miniatura (tela inicial e menu lateral)
+//   lerHistorico(i, caminho)    bytes do .forgia do item i (arrastar o projeto inteiro para a mesa)
 //   renomear(i, caminho, nome)  renomeia o .forgia do item i do histórico, na mesma pasta
 //   copia(msg) / descartar()    cópia de segurança (a cada alteração) / "Não salvar"
 //   pronto(), aoFechar(fn), fechando(), fechar(ok)   pergunta ao fechar a janela
@@ -85,6 +86,7 @@ contextBridge.exposeInMainWorld('forgiaProjeto', {
   novo: () => ipcRenderer.invoke('projeto:novo'),
   recentes: () => ipcRenderer.invoke('projeto:recentes'),
   historico: () => ipcRenderer.invoke('projeto:historico'),
+  lerHistorico: (i, caminho) => ipcRenderer.invoke('projeto:lerHistorico', i, caminho),
   renomear: (i, caminho, nome) => ipcRenderer.invoke('projeto:renomear', i, caminho, nome),
   copia: (msg) => ipcRenderer.invoke('projeto:copia', msg),
   descartar: () => ipcRenderer.invoke('projeto:descartar'),

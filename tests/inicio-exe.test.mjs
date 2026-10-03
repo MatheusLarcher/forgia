@@ -132,6 +132,38 @@ test('tela inicial e menu lateral com o histórico de projetos', { timeout: 3000
       await app.js(`document.querySelector('#gaveta .gaveta-inicial').click()`);
       await app.waitFor(`!document.getElementById('inicio').hidden && document.getElementById('gaveta').hidden`, 3000, 'tela inicial');
     });
+
+    await t.test('arrastar um projeto do menu lateral põe o projeto inteiro na mesa; a dica some', async () => {
+      await app.js(`forgia.inicio.close()`);
+      await app.js(`document.querySelector('#topbar .logo').click()`);
+      await app.waitFor(`document.querySelectorAll('#gaveta .proj').length === 3`, 5000, 'menu');
+      assert.match(await app.js(`document.querySelector('#gaveta .gaveta-dica')?.textContent || ''`), /arraste/i, 'dica aparece');
+      await app.screenshot(path.join(EVID, '5-menu-dica-arrastar.png'));
+      // clique simples continua abrindo (sem arrastar): conferido no teste do início; aqui, o arraste
+      const [x0, y0] = await app.js(`(() => { const b = [...document.querySelectorAll('#gaveta .proj')].find((c) => c.querySelector('.proj-nome').textContent === 'engrenagem 40 dentes').querySelector('.proj-abrir').getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; })()`);
+      const [x1, y1] = await app.js(`(() => { const r = forgia.editor.renderer.domElement.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);
+      await app.mouse('mouseMoved', x0, y0);
+      await app.mouse('mousePressed', x0, y0, { button: 'left', buttons: 1, clickCount: 1 });
+      for (let i = 1; i <= 12; i++) {
+        await app.mouse('mouseMoved', x0 + ((x1 - x0) * i) / 12, y0 + ((y1 - y0) * i) / 12, { button: 'left', buttons: 1 });
+        await wait(40);
+      }
+      await app.waitFor('!!(forgia.editor.placing && forgia.editor.placing.obj)', 5000, 'peça presa ao cursor');
+      await app.mouse('mouseReleased', x1, y1, { button: 'left', buttons: 0, clickCount: 1 });
+      await app.waitFor('!forgia.editor.placing && forgia.editor.objects.length === 1', 5000, 'projeto na mesa');
+      const obj = await app.js(`(() => { const o = forgia.editor.objects[0]; return { type: o.type, filhos: (o.children || []).length, nome: o.name }; })()`);
+      assert.deepEqual(obj, { type: 'group', filhos: 2, nome: 'engrenagem' }, 'grupo com as 2 peças do projeto');
+      assert.equal(await app.js(`forgia.arquivo.file`), null, 'o projeto aberto continua o mesmo (não trocou de arquivo)');
+      await app.screenshot(path.join(EVID, '6-projeto-na-mesa.png'));
+      await app.js(`document.querySelector('#topbar .logo').click()`);
+      await app.waitFor(`document.querySelectorAll('#gaveta .proj').length === 4`, 5000, 'menu');
+      assert.equal(await app.js(`!!document.querySelector('#gaveta .gaveta-dica')`), false, 'dica não volta');
+      // depois de um arraste, o clique simples ainda abre o projeto
+      await clicarCartao(app, gav, 'suporte da prateleira');
+      await app.waitFor(`!!document.querySelector('.modal')`, 5000, 'pergunta de salvar (projeto novo com peça)');
+      await app.js(`document.querySelector('.modal [data-escolha="nao"]').click()`);
+      await app.waitFor(`forgia.arquivo.file && forgia.arquivo.file.nome === 'suporte da prateleira.forgia'`, 5000, 'clique abriu');
+    });
   } finally {
     await app.close();
   }
