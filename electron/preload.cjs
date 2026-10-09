@@ -35,8 +35,18 @@
 //   tarefa(id)                           { status: na_fila|rodando|concluida|erro|cancelada, resposta, erro }
 //   cancelar(id)
 //
+// window.forgiaAbertura (src/carregando.js e o fallback de index.html):
+//   carregado()      a página tirou o loading; o main mostra a janela do editor e fecha a janela de
+//                    abertura (electron/splash.html)
+//   projetoPronto()  o projeto da abertura chegou: o main entrega o .forgia que a 2ª instância pediu
+//
 // Nada de leitura ou gravação de arquivo em caminho escolhido pela página.
 const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('forgiaAbertura', {
+  carregado: () => ipcRenderer.send('abertura:carregado'),
+  projetoPronto: () => ipcRenderer.send('abertura:projeto'),
+});
 
 let onRequest = null;
 let onState = null;

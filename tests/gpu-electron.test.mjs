@@ -21,13 +21,26 @@ function run({ isPackaged = true, platform = 'win32', queryResult = { code: 1 },
   const app = {
     isPackaged,
     commandLine: { appendSwitch: (s, v) => switches.push(v === undefined ? s : `${s}=${v}`) },
+    // a GPU é configurada no topo do main.cjs; as janelas (whenReady) não são criadas aqui
     requestSingleInstanceLock: () => true, on() {}, whenReady: () => ({ then() {} }),
+  };
+  const modules = {
+    path,
+    child_process: { execFile },
+    electron: { app, BrowserWindow: class {}, ipcMain: { on() {} }, Menu: { setApplicationMenu() {} }, shell: {}, nativeTheme: { shouldUseDarkColors: false } },
+    './ponte.cjs': { startBridge() {} },
+    './projeto.cjs': { startProject() {}, fileFromArgv: () => null },
+    './agentcode.cjs': { startAgentCode() {} },
   };
   vm.runInNewContext(source, {
     __dirname: path.join(root, 'electron'),
-    process: { platform, execPath: EXE },
+    process: { platform, execPath: EXE, argv: [], env: {} },
     console: { warn: (...a) => warnings.push(a.join(' ')) },
-    require: (name) => name === 'path' ? path : name === 'child_process' ? { execFile } : { app, BrowserWindow: class {}, Menu: {}, shell: {} },
+    // módulo não simulado falha alto, em vez de devolver um objeto qualquer
+    require: (name) => {
+      if (!Object.hasOwn(modules, name)) throw new Error(`require não simulado: ${name}`);
+      return modules[name];
+    },
   });
   return { switches, calls, warnings };
 }
@@ -52,9 +65,10 @@ test('valor ausente: grava GpuPreference=2; para o próprio exe', () => {
 });
 
 test('valor já existe (escolha do usuário): não sobrescreve', () => {
-  const { calls } = run({ queryResult: null });
+  const { calls, warnings } = run({ queryResult: null });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].args[0], 'query');
+  assert.equal(warnings.length, 0);
 });
 
 test('falhas do reg.exe são ignoradas com aviso no console', () => {

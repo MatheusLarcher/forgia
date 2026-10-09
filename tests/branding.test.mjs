@@ -83,17 +83,33 @@ test('Windows and NSIS consume a valid branded ICO', () => {
 });
 
 test('BrowserWindow icon resolves inside the packaged dist directory', () => {
-  let options;
+  // every window main.cjs creates (splash first, then the editor) with the page it loads
+  const windows = [];
   const app = { commandLine: { appendSwitch() {} }, requestSingleInstanceLock: () => true, on() {}, whenReady: () => ({ then: fn => fn() }) };
   class BrowserWindow {
-    constructor(value) { options = value; this.webContents = { setWindowOpenHandler() {} }; }
-    maximize() {} loadFile() {} once() {} show() {}
+    constructor(value) {
+      this.options = value;
+      this.webContents = { on() {}, setWindowOpenHandler() {} };
+      windows.push(this);
+    }
+    loadFile(file) { this.file = file; }
+    on() {} once() {} maximize() {} show() {} showInactive() {} focus() {} destroy() {}
+    isDestroyed() { return false; }
   }
   vm.runInNewContext(fs.readFileSync(path.join(root, 'electron/main.cjs'), 'utf8'), {
     __dirname: path.join(root, 'electron'),
-    process: { argv: [] },
-    require: name => name === 'path' ? path : name === './ponte.cjs' ? { startBridge() {} } : name === './projeto.cjs' ? { startProject() {}, fileFromArgv: () => null } : name === './agentcode.cjs' ? { startAgentCode() {} } : { app, BrowserWindow, Menu: { setApplicationMenu() {} }, shell: {}, nativeTheme: { shouldUseDarkColors: false } },
+    process: { argv: [], env: {}, platform: 'win32' },
+    console,
+    // opening fallback timer (20 s): not scheduled for real here
+    setTimeout: () => 0,
+    clearTimeout() {},
+    require: name => name === 'path' ? path : name === './ponte.cjs' ? { startBridge() {} } : name === './projeto.cjs' ? { startProject() {}, fileFromArgv: () => null } : name === './agentcode.cjs' ? { startAgentCode() {} } : { app, BrowserWindow, ipcMain: { on() {} }, Menu: { setApplicationMenu() {} }, shell: {}, nativeTheme: { shouldUseDarkColors: false } },
   });
-  assert.ok(options.icon, 'BrowserWindow icon not configured');
-  assert.equal(path.relative(path.join(root, 'dist'), options.icon).replaceAll('\\', '/'), 'branding/forgia-forge-v1.ico');
+  // the editor window is the one that loads the packaged dist/index.html
+  const editor = windows.filter(w => w.file && path.relative(root, w.file).replaceAll('\\', '/') === 'dist/index.html');
+  assert.equal(editor.length, 1, 'exactly one editor BrowserWindow loading dist/index.html');
+  const { icon } = editor[0].options;
+  assert.ok(icon, 'BrowserWindow icon not configured');
+  assert.equal(path.relative(path.join(root, 'dist'), icon).replaceAll('\\', '/'), 'branding/forgia-forge-v1.ico');
+  assert.ok(fs.existsSync(path.join(root, 'public', 'branding', path.basename(icon))), 'icon ships from public/branding');
 });

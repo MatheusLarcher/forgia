@@ -26,6 +26,10 @@ function showGpuFailure(viewport) {
   viewport.append(box);
 }
 
+// marcos da abertura (performance.mark; tests/carregando-abertura.mjs lê): módulos avaliados,
+// editor (WebGL) criado e interface montada; projeto e loading marcam em src/carregando.js
+performance.mark('forgia:modulos');
+
 // textos do HTML antes de tudo: aparecem mesmo se o 3D não iniciar
 document.title = t.app.titulo;
 applyTexts();
@@ -33,6 +37,7 @@ applyTexts();
 const viewport = document.getElementById('viewport');
 try {
   const editor = new Editor(viewport);
+  performance.mark('forgia:editor');
   // projeto em arquivo e cópia de segurança (src/arquivo.js); a ponte da IA só atende depois que
   // o projeto chegou (recuperação, migração do localStorage antigo ou .forgia pedido pelo Windows)
   const arquivo = new Arquivo(editor);
@@ -46,6 +51,7 @@ try {
   if (gpuInfo.mode === 'software') ui.toast(t.avisos.modoSoftware);
   // tela inicial com os projetos salvos e o menu lateral do símbolo (src/inicio.js)
   const inicio = new Inicio(editor, arquivo);
+  performance.mark('forgia:ui');
   // acesso para depuração no console
   window.forgia = { editor, ui, gpu: gpuInfo, theme, ponte, arquivo, agentCode, pedidoIA, inicio };
   // abre na tela inicial, menos quando o Windows mandou abrir um .forgia (vai direto ao editor)

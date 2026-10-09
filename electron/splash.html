@@ -1,0 +1,168 @@
+<!doctype html>
+<!-- Janela de abertura do Forgia (electron/main.cjs): aparece logo depois do app.whenReady, enquanto o
+     editor carrega escondido, e fecha quando ele aparece. Autocontida: sem JS, sem rede, sem o build
+     do Vite. Animação (1,8 s em loop): o bico de uma impressora 3D imprime o F da logo camada por
+     camada; pronta a peça, ela é "forjada": as camadas se fundem, o relevo da logo sai e voam faíscas.
+     Tema do Windows por prefers-color-scheme; com movimento reduzido, a logo pronta e parada. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'" />
+    <title>Forgia</title>
+    <style>
+      :root { --t: 1.8s; --camada: 0.15s; }
+      html, body { margin: 0; height: 100%; overflow: hidden; user-select: none; cursor: default; }
+      body {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+        box-sizing: border-box; border: 1px solid rgba(0, 0, 0, 0.1);
+        background: #e9ecef; color: #1f2328; font: 13px system-ui, 'Segoe UI', sans-serif;
+      }
+      svg { width: 168px; height: 168px; }
+      h1 { margin: 6px 0 0; font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
+      p { margin: 0; color: #6a727b; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #16181b; color: #e6e8eb; border-color: rgba(255, 255, 255, 0.08); }
+        p { color: #8b939c; }
+      }
+
+      /* estado parado (= movimento reduzido): a logo pronta; as animações partem dele */
+      .feito, .faixa { transform-box: fill-box; }
+      .feito { transform-origin: 50% 100%; }
+      .faixa { transform-origin: 0 50%; }
+      .linhas, .bico, .faisca, .brilho { opacity: 0; }
+
+      @media (prefers-reduced-motion: no-preference) {
+        /* camadas prontas: sobem de 64 em 64 (8 camadas em 2/3 do ciclo) */
+        .feito { animation: feito var(--t) infinite; }
+        /* camada sendo impressa: na altura da camada atual, cresce da esquerda junto com o bico */
+        .faixa { animation: camada-y var(--t) infinite, varre-faixa var(--camada) linear infinite; }
+        .bico-y { animation: bico-y var(--t) infinite; }
+        .bico-x { animation: varre-bico var(--camada) linear infinite; }
+        .bico { animation: bico var(--t) infinite; }
+        .linhas { animation: linhas var(--t) infinite; }
+        .relevo { animation: relevo var(--t) infinite; }
+        .brilho { animation: brilho var(--t) infinite; }
+        .faisca { animation: faisca var(--t) infinite; }
+        .peca { animation: peca var(--t) infinite; }
+      }
+
+      @keyframes feito {
+        0% { scale: 1 0; animation-timing-function: steps(8, jump-end); }
+        66.667%, 100% { scale: 1 1; }
+      }
+      @keyframes camada-y {
+        0% { translate: 0 0; animation-timing-function: steps(8, jump-end); }
+        66.667%, 100% { translate: 0 -512px; }
+      }
+      @keyframes varre-faixa { from { scale: 0 1; } to { scale: 1 1; } }
+      @keyframes varre-bico { from { translate: 256px 0; } to { translate: 704px 0; } }
+      @keyframes bico-y {
+        0% { translate: 0 0; animation-timing-function: steps(8, jump-end); }
+        66.667% { translate: 0 -512px; animation-timing-function: ease-in; }
+        78%, 100% { translate: 0 -760px; }
+      }
+      @keyframes bico { 0% { opacity: 0; } 4%, 66.667% { opacity: 1; } 76%, 100% { opacity: 0; } }
+      @keyframes linhas { 0%, 66.667% { opacity: 1; } 80%, 100% { opacity: 0; } }
+      @keyframes relevo {
+        0%, 66.667% { opacity: 0; translate: -64px 64px; animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
+        80%, 100% { opacity: 1; translate: 0 0; }
+      }
+      @keyframes brilho { 0%, 64% { opacity: 0; } 72% { opacity: 0.85; } 92%, 100% { opacity: 0; } }
+      @keyframes faisca {
+        0%, 68% { opacity: 0; translate: 150px 0; scale: 0.6 1; }
+        70% { opacity: 1; scale: 1.4 1; }
+        86%, 100% { opacity: 0; translate: 430px 0; scale: 0.4 1; }
+      }
+      @keyframes peca { 0%, 92% { opacity: 1; } 100% { opacity: 0; } }
+    </style>
+  </head>
+  <body>
+    <svg viewBox="0 0 1024 1024" role="img" aria-label="Forgia">
+      <defs>
+        <linearGradient id="grafite" x1="192" y1="64" x2="832" y2="1024" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#363b40" />
+          <stop offset=".48" stop-color="#2b2f33" />
+          <stop offset="1" stop-color="#202428" />
+        </linearGradient>
+        <linearGradient id="forja" x1="256" y1="288" x2="600" y2="800" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#ff9b37" />
+          <stop offset=".48" stop-color="#f58220" />
+          <stop offset="1" stop-color="#e76a17" />
+        </linearGradient>
+        <radialGradient id="calor" cx="512" cy="530" r="420" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#ffb347" stop-opacity=".75" />
+          <stop offset=".45" stop-color="#f58220" stop-opacity=".25" />
+          <stop offset="1" stop-color="#f58220" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="ponta" cx="0" cy="0" r="40" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#ffd27a" />
+          <stop offset="1" stop-color="#f58220" stop-opacity="0" />
+        </radialGradient>
+        <clipPath id="ladrilho"><rect width="1024" height="1024" rx="224" /></clipPath>
+        <!-- face do F (a mesma de public/branding/forgia-forge-v1.svg) -->
+        <clipPath id="faceF"><path d="M256 288H704V416H416V496H640V624H416V800H256Z" /></clipPath>
+        <!-- o que já saiu do bico: as camadas prontas + a camada em curso -->
+        <clipPath id="impresso">
+          <rect class="feito" x="0" y="288" width="1024" height="512" />
+          <rect class="faixa" x="256" y="736" width="448" height="64" />
+        </clipPath>
+      </defs>
+
+      <g clip-path="url(#ladrilho)">
+      <rect width="1024" height="1024" rx="224" fill="url(#grafite)" />
+      <rect class="brilho" width="1024" height="1024" rx="224" fill="url(#calor)" />
+      <!-- mesa da impressora -->
+      <rect x="200" y="808" width="624" height="12" rx="6" fill="#40464c" />
+
+      <g class="peca">
+        <g class="relevo">
+          <path d="M288 320H736V448H448V528H672V656H448V832H288Z" fill="#171b1e" fill-opacity=".34" />
+          <path d="M256 288L320 224H768L704 288Z" fill="#ffc16b" />
+          <path d="M704 288L768 224V352L704 416Z" fill="#b95119" />
+          <path d="M416 416L480 352V432L416 496Z" fill="#b95119" />
+          <path d="M416 496L480 432H704L640 496Z" fill="#ffc16b" />
+          <path d="M640 496L704 432V560L640 624Z" fill="#b95119" />
+          <path d="M416 624L480 560V736L416 800Z" fill="#b95119" />
+        </g>
+        <g clip-path="url(#impresso)">
+          <path d="M256 288H704V416H416V496H640V624H416V800H256Z" fill="url(#forja)" />
+          <!-- marcas das camadas: somem quando a peça é forjada -->
+          <g class="linhas" clip-path="url(#faceF)" stroke="#8a3c0c" stroke-opacity=".45" stroke-width="5">
+            <path d="M200 352H760M200 416H760M200 480H760M200 544H760M200 608H760M200 672H760M200 736H760" />
+          </g>
+        </g>
+      </g>
+
+      <!-- faíscas da forja, do meio do F para fora -->
+      <g fill="#ffd27a">
+        <g transform="translate(480 544) rotate(-20)"><rect class="faisca" x="0" y="-7" width="56" height="14" rx="7" /></g>
+        <g transform="translate(480 544) rotate(-65)"><rect class="faisca" x="0" y="-6" width="44" height="12" rx="6" /></g>
+        <g transform="translate(480 544) rotate(-110)"><rect class="faisca" x="0" y="-7" width="52" height="14" rx="7" /></g>
+        <g transform="translate(480 544) rotate(-155)"><rect class="faisca" x="0" y="-6" width="40" height="12" rx="6" /></g>
+        <g transform="translate(480 544) rotate(25)"><rect class="faisca" x="0" y="-6" width="48" height="12" rx="6" /></g>
+        <g transform="translate(480 544) rotate(160)"><rect class="faisca" x="0" y="-6" width="44" height="12" rx="6" /></g>
+        <g transform="translate(480 544) rotate(-40)"><rect class="faisca" x="0" y="-5" width="36" height="10" rx="5" /></g>
+        <g transform="translate(480 544) rotate(-135)"><rect class="faisca" x="0" y="-5" width="36" height="10" rx="5" /></g>
+      </g>
+
+      <!-- bico da impressora: a ponta (0,0) fica no topo da camada em curso -->
+      <g transform="translate(0 736)">
+        <g class="bico-y">
+          <g class="bico-x">
+            <g class="bico">
+              <circle r="40" fill="url(#ponta)" />
+              <rect x="-50" y="-170" width="100" height="78" rx="10" fill="#c9ced4" />
+              <path d="M-36 -150H36M-36 -132H36M-36 -114H36" stroke="#9aa1a8" stroke-width="6" />
+              <rect x="-38" y="-92" width="76" height="46" rx="5" fill="#7d858d" />
+              <path d="M-24 -46H24L9 -10H-9Z" fill="#e3a43a" />
+              <rect x="-9" y="-10" width="18" height="10" rx="2" fill="#f58220" />
+            </g>
+          </g>
+        </g>
+      </g>
+      </g>
+    </svg>
+    <h1>Forgia</h1>
+    <p>Aquecendo a forja…</p>
+  </body>
+</html>

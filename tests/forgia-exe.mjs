@@ -26,7 +26,7 @@ export function tempProfile(prefix = 'forgia-fase-c-') {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
-class Cdp {
+export class Cdp {
   constructor(url) {
     this.url = url;
     this.id = 0;
