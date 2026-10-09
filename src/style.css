@@ -938,7 +938,7 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px 
   text-decoration: none;
   border-radius: 4px;
 }
-.credit img { display: block; width: 16px; height: 15px; }
+.credit img { display: block; width: 16px; height: 16px; }
 .credit:hover { color: var(--ink); text-decoration: underline; }
 .sb-sep { flex: none; width: 1px; height: 14px; background: var(--line); }
 
@@ -1311,6 +1311,20 @@ kbd {
 .measure-snap { fill: none; stroke: var(--ruler-snap); stroke-width: 2; }
 .measure-snap.vertice, .measure-snap.aresta { fill: var(--ruler-snap); fill-opacity: 0.25; }
 .measure-kind {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--overlay-bg);
+  color: var(--overlay-ink);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none !important;
+}
+/* Cinzel (src/cinzel.js): formato e diâmetro junto do cursor */
+#viewport.chiseling .main-canvas { cursor: crosshair; }
+.cinzel-rotulo {
   position: absolute;
   left: 0;
   top: 0;

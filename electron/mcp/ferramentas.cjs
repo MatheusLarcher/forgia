@@ -80,8 +80,8 @@ const TOOLS = [
   },
   {
     name: 'forgia_desagrupar',
-    description: 'Desfaz grupos: as partes voltam a ser objetos soltos, com os mesmos ids.',
-    inputSchema: obj({ ids: ids('ids dos grupos') }, ['ids']),
+    description: 'Desfaz grupos: as partes voltam a ser objetos soltos, com os mesmos ids. Peça importada (malha): separa as partes soltas (desconectadas) em objetos novos no mesmo lugar, "Nome 1..N" (em criados); de uma parte só, fica igual com aviso.',
+    inputSchema: obj({ ids: ids('ids dos grupos ou peças importadas'), ref: str('apelido da lista de partes no lote') }, ['ids']),
   },
   {
     name: 'forgia_alinhar',
@@ -110,7 +110,7 @@ const TOOLS = [
   },
   {
     name: 'forgia_lote',
-    description: 'Vários comandos como UM passo de desfazer; se um falha, nada fica. Itens {"cmd":"criar", ...args}; "ref" em criar/agrupar/duplicar/importar e "$ref" nos ids seguintes. Comandos: criar, alterar, excluir, agrupar, desagrupar, alinhar, espelhar, soltar_na_mesa, selecionar, duplicar, importar, criar_encaixe.',
+    description: 'Vários comandos como UM passo de desfazer; se um falha, nada fica. Itens {"cmd":"criar", ...args}; "ref" em criar/agrupar/desagrupar/duplicar/importar e "$ref" nos ids seguintes. Comandos: criar, alterar, excluir, agrupar, desagrupar, alinhar, espelhar, soltar_na_mesa, selecionar, duplicar, importar, criar_encaixe.',
     inputSchema: obj({ comandos: { type: 'array', items: { type: 'object' }, description: 'ex.: [{"cmd":"criar","ref":"base","tipo":"caixa","medidas":[80,60,5]},{"cmd":"criar","ref":"f","tipo":"cilindro","medidas":[8,8,5],"furo":true},{"cmd":"agrupar","ids":["$base","$f"]}]' } }, ['comandos']),
   },
   {

@@ -27,7 +27,7 @@ const AREA_PRESETS = [
 // passos do "Ajustar grade", em mm (0 = desligado)
 const GRID_STEPS = [0, 0.1, 0.25, 0.5, 1, 2, 5, 10];
 // teclas das ferramentas, sem modificador; P (plano de trabalho) liga e desliga em toggleWorkplane
-const TOOL_KEYS = { b: 'draw', c: 'cruise', r: 'measure', n: 'mark' };
+const TOOL_KEYS = { b: 'draw', c: 'cruise', r: 'measure', n: 'mark', e: 'cinzel' };
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -180,10 +180,13 @@ export class UI {
     const btn = $('#btn-arquivo');
     const label = $('#file-name');
     const arq = this.arquivo;
+    const salvar = $('#btn-salvar');
     if (!arq) {
       btn.hidden = true;
+      salvar.hidden = true;
       return;
     }
+    salvar.addEventListener('click', () => arq.save());
     arq.addEventListener('estado', (e) => {
       const { file, dirty } = e.detail;
       label.textContent = file ? file.nome + (dirty ? ' •' : '') : dirty ? '• ' + t.arquivo.semArquivo : '';
@@ -272,6 +275,7 @@ export class UI {
       cruise: () => ed.setTool('cruise'),
       measure: () => ed.setTool('measure'),
       mark: () => ed.setTool('mark'),
+      cinzel: () => ed.setTool('cinzel'),
       workplane: () => this.toggleWorkplane(),
     };
     for (const b of $$('[data-cmd]')) b.addEventListener('click', () => cmds[b.dataset.cmd]());
@@ -300,7 +304,7 @@ export class UI {
       redo: ed.historyIndex < ed.history.length - 1,
       showAll: ed.objects.some((o) => o.hidden),
       group: n > 1,
-      ungroup: ed.selected.some((o) => o.type === 'group'),
+      ungroup: ed.selected.some((o) => o.type === 'group' || o.type === 'mesh'),
       align: n > 1,
       mirror: n > 0,
       encaixe: n === 1 && !ed.selected[0].hole,
@@ -308,6 +312,8 @@ export class UI {
       cruise: ed.selected.some((o) => !o.locked),
       measure: true,
       mark: ed.objects.length > 0,
+      // Cinzel: precisa de uma peça sólida visível e livre (ligado, sempre dá para desligar)
+      cinzel: ed.objects.some((o) => !o.hole && !o.hidden && !o.locked) || !!(ed.tool && ed.tool.name === 'cinzel'),
       workplane: ed.objects.length > 0 || !!ed.wplane,
     };
     const tool = ed.tool ? ed.tool.name : null;

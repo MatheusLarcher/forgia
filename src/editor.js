@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { SHAPES, shapeGeometry, defaultParams, defaultSize, textWidthFor, setMesh } from './shapes.js';
+import { SHAPES, shapeGeometry, defaultParams, defaultSize, textWidthFor, setMesh, getMesh, registerMesh } from './shapes.js';
+import { dividirMalha } from './separar.js';
 import { solidMaterial, holeMaterial, outlineSelected, outlineHover } from './materials.js';
 import { groupResult, aliasGroupResult, objectMatrix, geometrySize } from './csg.js';
 import { Handles, Protractor } from './handles.js';
@@ -16,6 +17,7 @@ import { MeasureTool } from './measure.js';
 import { MarkTool } from './marcar.js';
 import { Surface } from './surface.js';
 import { WorkplaneTool } from './plano.js';
+import { CinzelTool } from './cinzel.js';
 import { TableRuler } from './regua.js';
 import { ViewShortcuts } from './gabarito.js';
 
@@ -53,7 +55,7 @@ export class Editor extends EventTarget {
     theme.watch((colors) => this.applyTheme(colors));
     this.initOverlay();
     this.surface = new Surface(this);
-    this.tools = { draw: new DrawTool(this), cruise: new CruiseTool(this), measure: new MeasureTool(this), mark: new MarkTool(this), workplane: new WorkplaneTool(this) };
+    this.tools = { draw: new DrawTool(this), cruise: new CruiseTool(this), measure: new MeasureTool(this), mark: new MarkTool(this), workplane: new WorkplaneTool(this), cinzel: new CinzelTool(this) };
     this.wplane = null; // plano de trabalho ativo (src/plano.js): temporário, fora do projeto
     this.initEvents();
     // começa vazio; o projeto chega pelo src/arquivo.js (cópia de segurança, .forgia ou, no
@@ -1003,12 +1005,47 @@ export class Editor extends EventTarget {
     return g;
   }
 
-  // Devolve os ids das formas soltas (as mesmas do grupo)
-  ungroup(objs = this.selected, { select = true } = {}) {
+  // Devolve os ids das formas soltas (as mesmas do grupo). Importado ('mesh') se divide nas partes
+  // desconectadas (src/separar.js), cada uma num objeto novo no mesmo lugar; o de uma parte só ou
+  // sem a malha na memória (modelo grande que não ficou salvo) fica como está (com select, avisa).
+  // `semMalha` (opcional) recebe os importados sem malha.
+  ungroup(objs = this.selected, { select = true, semMalha = [] } = {}) {
+    objs = [...new Set(objs)];
     const groups = objs.filter((o) => o.type === 'group');
-    if (!groups.length) return [];
+    const divs = [];
+    const inteiras = [];
+    for (const o of objs) {
+      if (o.type !== 'mesh') continue;
+      const data = getMesh(o.params.ref);
+      if (!data) {
+        semMalha.push(o);
+        continue;
+      }
+      const partes = dividirMalha(data, o);
+      if (partes) divs.push({ o, partes });
+      else inteiras.push(o);
+    }
+    if (select && semMalha.length) this.emit('aviso', t.avisos.importadoSemMalha(semMalha.length > 1 ? null : semMalha[0].name));
+    else if (select && inteiras.length) this.emit('aviso', t.avisos.importadoUmaParte(inteiras.length > 1 ? null : inteiras[0].name));
+    if (!groups.length && !divs.length) return [];
+    let naoSalvou = false;
     const newIds = [];
     this.change(() => {
+      for (const { o, partes } of divs) {
+        const out = partes.map((p, i) => {
+          const { ref, saved } = registerMesh(p.positions);
+          if (!saved) naoSalvou = true;
+          const c = clone(o);
+          c.id = uid();
+          c.name = `${o.name} ${i + 1}`;
+          c.params = { ...c.params, ref };
+          c.size = p.size.map(r3);
+          c.pos = p.pos.map(r3);
+          return c;
+        });
+        this.objects.splice(this.objects.indexOf(o), 1, ...out);
+        newIds.push(...out.map((c) => c.id));
+      }
       for (const g of groups) {
         const gm = objectMatrix(g);
         const out = g.children.map((ch) => {
@@ -1035,6 +1072,7 @@ export class Editor extends EventTarget {
     if (select) {
       this.select(newIds);
       this.emit('selection');
+      if (naoSalvou) this.emit('aviso', t.avisos.modeloGrande);
     }
     return newIds;
   }

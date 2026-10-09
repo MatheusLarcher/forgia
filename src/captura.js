@@ -136,6 +136,7 @@ export function capture(ed, { vista = 'iso', ids = null, largura = 800, altura =
   // tira da imagem o que é só da interface
   const hide = [ed.handles.root, ed.protractor.root, ed.surface.fill, ed.surface.edges, ed.ruler.root];
   if (ed.tools && ed.tools.mark) hide.push(ed.tools.mark.outline); // realce da parte sob o cursor
+  if (ed.tools && ed.tools.cinzel) hide.push(ed.tools.cinzel.tip, ed.tools.cinzel.ghosts); // ponteira e prévia do Cinzel
   for (const m of ed.meshes.values()) if (m.userData.outline) hide.push(m.userData.outline);
   const was = hide.map((o) => o.visible);
   hide.forEach((o) => (o.visible = false));

@@ -14,6 +14,16 @@
         if (tema !== 'claro' && tema !== 'escuro') tema = matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';
         document.documentElement.setAttribute('data-tema', tema);
       }
+      // app desktop: se o JS do editor nem rodar, a janela do editor aparece assim mesmo, sem esperar
+      // o limite de electron/main.cjs (o aviso normal vem de src/carregando.js; o main ignora o
+      // repetido). Cobre o script que não carregou (erro no <script>) e o erro ao ligar os módulos
+      // (no window, antes de qualquer módulo rodar, então src/carregando.js não o ouve).
+      {
+        const liberar = () => window.forgiaAbertura && window.forgiaAbertura.carregado();
+        addEventListener('error', (e) => (e.target === window || e.target instanceof HTMLScriptElement) && liberar(), true);
+        // os módulos rodam antes do DOMContentLoaded: sem o marco do src/main.js, o JS do editor não rodou
+        addEventListener('DOMContentLoaded', () => performance.getEntriesByName('forgia:modulos').length || liberar());
+      }
     </script>
     <style>
       /* loading da abertura (src/carregando.js tira): aqui e não em style.css, que só chega com o JS.
@@ -57,6 +67,7 @@
         <span class="file-name" id="file-name"></span>
         <div class="spacer"></div>
         <button class="text-btn" id="btn-arquivo" data-t="barra.arquivo" data-dica="arquivo" aria-haspopup="menu" aria-expanded="false"></button>
+        <button class="text-btn" id="btn-salvar" data-t="barra.salvar" title="Ctrl+S"></button>
         <button class="text-btn" id="btn-import" data-t="barra.importar"></button>
         <button class="text-btn" id="btn-export" data-t="barra.exportar"></button>
         <button class="text-btn" id="btn-help" data-t="barra.atalhos"></button>
@@ -85,6 +96,7 @@
           <span class="tb-sep"></span>
           <button class="icon-btn" data-cmd="draw" data-t-aria="ferramentas.draw" data-dica="draw"></button>
           <button class="icon-btn" data-cmd="cruise" data-t-aria="ferramentas.cruise" data-dica="cruise"></button>
+          <button class="icon-btn" data-cmd="cinzel" data-t-aria="ferramentas.cinzel" data-dica="cinzel"></button>
           <button class="icon-btn" data-cmd="measure" data-t-aria="ferramentas.measure" data-dica="measure"></button>
           <button class="icon-btn" data-cmd="workplane" data-t-aria="ferramentas.workplane" data-dica="workplane"></button>
         </div>
@@ -161,7 +173,7 @@
         <button class="sb-pedir" id="sb-pedir" type="button" data-dica="pedir" hidden aria-haspopup="dialog" aria-expanded="false"><span class="sb-pedir-ponto"></span><span class="sb-pedir-rotulo" data-t="agentcode.rotulo"></span></button>
         <span class="sb-sep"></span>
         <a class="credit" id="sb-credito" href="https://larchertech.com/" target="_blank" rel="noopener noreferrer" data-t-aria="status.creditoAria" data-dica="credito">
-          <img src="./branding/larchertech-lb.png" width="16" height="15" alt="" />
+          <img src="./branding/larchertech-lb.png" width="16" height="16" alt="" />
           <span data-t="status.credito"></span>
         </a>
       </footer>

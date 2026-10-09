@@ -16,6 +16,7 @@ export default {
   barra: {
     novo: 'Novo projeto',
     arquivo: 'Arquivo',
+    salvar: 'Salvar',
     importar: 'Importar',
     exportar: 'Exportar',
     atalhos: 'Atalhos',
@@ -55,6 +56,7 @@ export default {
     cruise: 'Cruzeiro (C)',
     measure: 'Medir (R)',
     mark: 'Marcar parte (N)',
+    cinzel: 'Cinzel (E)',
     encaixe: 'Criar encaixe',
     workplane: 'Plano de trabalho (P)',
   },
@@ -366,6 +368,8 @@ export default {
     marcarChat: 'Escreva o pedido e aperte Enter para copiá-lo com a imagem — Esc fecha',
     marcarChatEnviar: 'Escreva o pedido e aperte Enter para enviá-lo à IA — Esc fecha',
     plano: 'Clique numa face para ela virar o plano de trabalho, ou na mesa para voltar a ela — Esc cancela',
+    // Cinzel: formato e diâmetro atuais
+    cinzel: (formato, d) => `Cinzel (${formato}, ø ${d} mm): clique ou arraste na peça para apagar. Roda ou [ ] muda o tamanho; 1 esfera, 2 cubo, 3 passante — Esc sai`,
     // régua Medir, por etapa: nenhum ponto, só o inicial, os dois
     medir: {
       inicio: 'Clique no ponto inicial: ele gruda em vértice, meio de aresta, centro de furo, face e grade — Esc sai',
@@ -469,6 +473,7 @@ export default {
         ['R', 'Medir: distância e X/Y/Z entre dois pontos'],
         ['N', 'Marcar parte: alfinete num ponto e pedido só daquela parte para a IA'],
         ['P', 'Plano de trabalho: uma face vira o chão (P de novo volta à mesa)'],
+        ['E', 'Cinzel: apagar parte da peça (roda ou [ ] muda o tamanho; 1/2/3 esfera, cubo, passante)'],
         ['F', 'Ajustar à tela'],
         ['Ctrl+L / Ctrl+H', 'Bloquear / ocultar'],
         ['Delete', 'Excluir'],
@@ -509,6 +514,12 @@ export default {
     desfez: 'IA: desfez o último passo',
     refez: 'IA: refez o passo desfeito',
     desfazer: 'Desfazer',
+  },
+
+  // Cinzel (src/cinzel.js): formatos da ponteira e rótulo junto do cursor
+  cinzel: {
+    formatos: { esfera: 'esfera', cubo: 'cubo', passante: 'passante' },
+    rotulo: (formato, d) => `${formato} ø ${d} mm`,
   },
 
   // Marcar parte (src/marcar.js): mini-chat do alfinete e o pedido copiado para o agente
@@ -701,9 +712,21 @@ export default {
     naoLeu: (msg) => `Não foi possível ler o arquivo: ${msg}`,
     semTriangulos: 'O arquivo não tem triângulos',
     modeloGrande: 'Modelo grande: ele não ficará salvo depois que o Forgia for fechado.',
+    // Desagrupar num importado sem partes soltas (nome = null quando são vários)
+    importadoUmaParte: (nome) =>
+      nome ? `"${nome}" é uma peça só, sem partes soltas: não há o que separar.` : 'As peças importadas selecionadas não têm partes soltas: não há o que separar.',
+    // Desagrupar num importado cuja malha não está na memória (modelo grande que não ficou salvo)
+    importadoSemMalha: (nome) =>
+      nome
+        ? `A malha da peça "${nome}" não está carregada: importe o arquivo de novo para separar as partes.`
+        : 'A malha de peças importadas selecionadas não está carregada: importe o arquivo de novo para separar as partes.',
     cruzeiroSemSelecao: 'Selecione uma peça para usar o Cruzeiro.',
     medirBloqueada: 'A peça do ponto final está bloqueada: desbloqueie para movê-la pela régua.',
     medirMesmaPeca: 'Os dois pontos estão na mesma peça: mudar a distância não moveria um em relação ao outro.',
+    cinzelTudo: 'O Cinzel apagaria a peça inteira: diminua o tamanho (roda do mouse ou [ ]).',
+    cinzelFalhou: 'Não deu para apagar esse traço (a conta do recorte falhou). Tente de novo com outro tamanho ou formato.',
+    cinzelLimite: 'Traço comprido: o Cinzel apaga até aqui. Solte e continue com outro traço.',
+    cinzelMalha: 'Com o Cinzel a peça vira malha: as medidas e parâmetros da forma não dão mais para editar. Ctrl+Z volta como era.',
     // desenho que não vira peça (chave = motivo de prepareOutline em src/outline.js)
     desenho: {
       poucos: 'O desenho precisa de pelo menos 3 pontos para virar peça.',
@@ -738,7 +761,7 @@ export default {
     redo: { titulo: 'Refazer', atalho: 'Ctrl+Y', texto: 'Refaz o que foi desfeito.' },
     showAll: { titulo: 'Mostrar tudo', atalho: 'Ctrl+Shift+H', texto: 'Mostra de novo as formas ocultas.' },
     group: { titulo: 'Agrupar', atalho: 'Ctrl+G', texto: 'Junta as formas selecionadas numa peça só. Os furos do grupo recortam os sólidos.', video: 'group' },
-    ungroup: { titulo: 'Desagrupar', atalho: 'Ctrl+Shift+G', texto: 'Separa o grupo nas formas originais.' },
+    ungroup: { titulo: 'Desagrupar', atalho: 'Ctrl+Shift+G', texto: 'Separa o grupo nas formas originais. Numa peça importada, separa as partes soltas da malha em peças próprias.' },
     align: { titulo: 'Alinhar', atalho: 'L', texto: 'Mostra pontos para alinhar as formas selecionadas pelo início, pelo centro ou pelo fim de cada eixo.', video: 'align' },
     mirror: { titulo: 'Espelhar', atalho: 'M', texto: 'Mostra setas para espelhar a seleção em cada eixo.', video: 'mirror' },
     draw: { titulo: 'Desenhar', atalho: 'B', texto: 'Desenhe um contorno na mesa, vista de cima: arraste para traçar à mão livre ou clique para pôr pontos na grade. Enter ou o 1º ponto fecha, e o desenho vira uma peça de 2 mm que você ergue pela alça de cima.', video: 'draw' },
@@ -769,6 +792,7 @@ export default {
     recolher: { titulo: 'Recolher', texto: 'Recolhe o painel e deixa só o nome da forma.' },
     expandir: { titulo: 'Expandir', texto: 'Abre o painel com material e parâmetros.' },
     mark: { titulo: 'Marcar parte', atalho: 'N', texto: 'Clique num ponto da peça para pôr um alfinete numerado. Escreva o que mudar ali e aperte Enter: o pedido, só daquela parte (mesmo dentro de um grupo), é copiado com a imagem para você colar no seu agente de IA.', video: 'mark' },
+    cinzel: { titulo: 'Cinzel', atalho: 'E', texto: 'Apaga parte da peça: clique para tirar o volume da ponteira ou arraste para apagar pelo caminho, como uma borracha. Roda do mouse ou [ ] mudam o tamanho; 1, 2 e 3 trocam entre esfera, cubo e furo passante. Cada traço é recortado na hora e a peça vira malha (perde os parâmetros da forma); Ctrl+Z desfaz o traço.' },
     limparMarcas: { titulo: 'Limpar marcações', texto: 'Tira todos os alfinetes da vista. As marcações não entram no projeto nem no desfazer.' },
     conectarIA: { titulo: 'Conectar IA', texto: 'Liga um agente de IA ao Forgia. Com o Agent Code integrado, você pede aqui mesmo, em "Pedir à IA". Para Claude, Codex, Cursor e outros, gera o texto para colar no agente: ele instala a ponte do Forgia e passa a criar e alterar peças aqui.' },
     ia_conectada: { titulo: 'IA conectada', texto: 'Um agente de IA usou o Forgia há pouco. Tudo o que ele faz vira um passo de desfazer, e o aviso no canto mostra o que mudou.' },

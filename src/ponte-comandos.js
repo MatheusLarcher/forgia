@@ -732,14 +732,27 @@ function agrupar(ed, ctx, args) {
   return g;
 }
 
+// Grupo: as partes voltam soltas, com os mesmos ids (alteradas). Importado: cada parte desconectada
+// da malha vira um objeto novo (criados); o de uma parte só fica como está, com aviso.
 function desagrupar(ed, ctx, args) {
-  checkKeys(args, ['ids'], 'desagrupar');
+  checkKeys(args, ['ids', 'ref'], 'desagrupar');
   const objs = topLevel(ed, ctx, args.ids, 'desagrupar');
-  const bad = objs.find((o) => o.type !== 'group');
-  if (bad) fail(`desagrupar: ${bad.id} não é grupo.`);
-  const ids = ed.ungroup(objs, { select: false });
-  for (const o of objs) ctx.deleted.push(o.id);
-  for (const id of ids) ctx.altered.add(id);
+  const bad = objs.find((o) => o.type !== 'group' && o.type !== 'mesh');
+  if (bad) fail(`desagrupar: ${bad.id} não é grupo nem peça importada.`);
+  const childIds = new Set(objs.filter((o) => o.type === 'group').flatMap((g) => g.children.map((c) => c.id)));
+  const semMalha = [];
+  const ids = ed.ungroup(objs, { select: false, semMalha });
+  for (const o of objs) {
+    if (semMalha.includes(o)) ctx.avisos.push(`desagrupar: a malha da peça ${o.id} não está carregada (modelo grande que não ficou salvo); importe o arquivo de novo para separar. Ficou como estava.`);
+    else if (ed.objects.includes(o)) ctx.avisos.push(`desagrupar: ${o.id} é uma peça importada sem partes soltas; ficou como estava.`);
+    else ctx.deleted.push(o.id);
+  }
+  for (const id of ids) {
+    if (childIds.has(id)) ctx.altered.add(id);
+    else ctx.created.push(id);
+  }
+  if (args.ref != null) ctx.refs[String(args.ref).replace(/^\$/, '')] = ids;
+  return ids;
 }
 
 function alinhar(ed, ctx, args) {

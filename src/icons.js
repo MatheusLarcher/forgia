@@ -11,7 +11,7 @@
 // encaixe→puzzle, workplane→grid-3x3, rename→pencil, folder→folder, importFile→file-input,
 // exportFile→file-output, keyboard→keyboard, saveAll→save-all, history→history, plug→plug, settings→settings,
 // send→send, eraser→eraser, copySmall→copy, deleteSmall→trash-2.
-// Ícones próprios do Forgia (mesmo traço, licença MIT do projeto): cubeOrtho, soltar.
+// Ícones próprios do Forgia (mesmo traço, licença MIT do projeto): cubeOrtho, soltar, cinzel.
 
 // moldura: grid 24, traço 1,75, 20 px por padrão (o CSS de cada lugar pode mudar o tamanho)
 const icon = (body, size = 20) =>
@@ -41,6 +41,8 @@ export const ICONS = {
   cubeOrtho: icon('<rect x="3" y="7" width="14" height="14" rx="1"/><path d="M3.5 6.5 7 3h13a1 1 0 0 1 1 1v13l-3.5 3.5"/><path d="M17 7l4-4"/>'),
   // próprio do Forgia: uma peça descendo (seta) até a linha da mesa
   soltar: icon('<rect x="7.5" y="2.5" width="9" height="6.5" rx="1.5"/><path d="M12 11.5v5.5"/><path d="m9.25 14.5 2.75 2.75 2.75-2.75"/><path d="M3.5 21h17"/>'),
+  // próprio do Forgia: cinzel (cabo e lâmina) sobre um bloco com um entalhe, e as lascas
+  cinzel: icon('<rect x="9.5" y="2" width="5" height="6" rx="1"/><path d="M10.5 8v4l1.5 2 1.5-2V8"/><path d="M3 21v-5h6l1.5 2h3l1.5-2h6v5z"/><path d="m5.5 12.5-1.5-1.5"/><path d="m18.5 12.5 1.5-1.5"/>'),
   newFile: icon('<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 15h6"/><path d="M12 18v-6"/>'),
   search: icon('<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>', 16),
   chevron: icon('<path d="m6 9 6 6 6-6"/>', 16),

@@ -32,13 +32,95 @@ function normalizeTo(geo, [w, h, d]) {
   return geo;
 }
 
-// Remove atributos extras e recalcula normais com vinco (arestas vivas, curvas suaves)
-function finalize(geo, crease = 30) {
+// Remove atributos extras e recalcula normais com vinco (arestas vivas, curvas suaves).
+// rapido: mesma conta do toCreasedNormals sem chaves de texto (malhas grandes: importadas e Cinzel)
+function finalize(geo, crease = 30, rapido = false) {
   for (const k of Object.keys(geo.attributes)) if (k !== 'position') geo.deleteAttribute(k);
-  const g = toCreasedNormals(geo, crease * DEG);
+  const g = (rapido ? creasedNormals : toCreasedNormals)(geo, crease * DEG);
   g.clearGroups();
   g.computeBoundingBox();
   g.computeBoundingSphere();
+  return g;
+}
+
+// toCreasedNormals do three (BufferGeometryUtils) com o mesmo resultado: vértices juntados pela
+// mesma grade de 0,01 (~~(v × 100)), normal de cada canto = média das normais das faces do mesmo
+// ponto que fazem menos que o ângulo de vinco com a dele, na mesma ordem de soma. Troca as chaves
+// de texto num objeto por uma tabela de inteiros: ~8× mais rápido em 100 mil triângulos.
+export function creasedNormals(geometry, creaseAngle) {
+  const creaseDot = Math.cos(creaseAngle);
+  const hm = (1 + 1e-10) * 1e2;
+  const g = geometry.index ? geometry.toNonIndexed() : geometry;
+  const pa = g.attributes.position;
+  const nv = pa.count - (pa.count % 3);
+  const nt = nv / 3;
+  // normal de cada face: (c − b) × (a − b), normalizada
+  const fn = new Float64Array(nt * 3);
+  for (let t = 0; t < nt; t++) {
+    const i = t * 3;
+    const ax = pa.getX(i), ay = pa.getY(i), az = pa.getZ(i);
+    const bx = pa.getX(i + 1), by = pa.getY(i + 1), bz = pa.getZ(i + 1);
+    const cx = pa.getX(i + 2), cy = pa.getY(i + 2), cz = pa.getZ(i + 2);
+    const ux = cx - bx, uy = cy - by, uz = cz - bz;
+    const vx = ax - bx, vy = ay - by, vz = az - bz;
+    const x = uy * vz - uz * vy;
+    const y = uz * vx - ux * vz;
+    const z = ux * vy - uy * vx;
+    const il = 1 / (Math.sqrt(x * x + y * y + z * z) || 1); // como Vector3.normalize
+    fn[t * 3] = x * il;
+    fn[t * 3 + 1] = y * il;
+    fn[t * 3 + 2] = z * il;
+  }
+  // ponto (célula da grade) de cada canto: tabela aberta com as 3 coordenadas inteiras
+  let cap = 16;
+  while (cap < nv * 2) cap <<= 1;
+  const mask = cap - 1;
+  const kx = new Int32Array(cap);
+  const ky = new Int32Array(cap);
+  const kz = new Int32Array(cap);
+  const slot = new Int32Array(cap).fill(-1);
+  const ponto = new Int32Array(nv);
+  let np = 0;
+  for (let i = 0; i < nv; i++) {
+    const x = ~~(pa.getX(i) * hm);
+    const y = ~~(pa.getY(i) * hm);
+    const z = ~~(pa.getZ(i) * hm);
+    let h = (Math.imul(x, 73856093) ^ Math.imul(y, 19349663) ^ Math.imul(z, 83492791)) & mask;
+    while (slot[h] >= 0 && !(kx[h] === x && ky[h] === y && kz[h] === z)) h = (h + 1) & mask;
+    if (slot[h] < 0) {
+      slot[h] = np++;
+      kx[h] = x;
+      ky[h] = y;
+      kz[h] = z;
+    }
+    ponto[i] = slot[h];
+  }
+  // faces de cada ponto, na ordem dos cantos (a mesma em que o three empilha)
+  const ini = new Int32Array(np + 1);
+  for (let i = 0; i < nv; i++) ini[ponto[i] + 1]++;
+  for (let p = 0; p < np; p++) ini[p + 1] += ini[p];
+  const fill = ini.slice(0, np);
+  const faces = new Int32Array(nv);
+  for (let i = 0; i < nv; i++) faces[fill[ponto[i]]++] = (i / 3) | 0;
+  const out = new Float32Array(pa.count * 3);
+  for (let i = 0; i < nv; i++) {
+    const t = ((i / 3) | 0) * 3;
+    const fx = fn[t], fy = fn[t + 1], fz = fn[t + 2];
+    let sx = 0, sy = 0, sz = 0;
+    for (let k = ini[ponto[i]], e = ini[ponto[i] + 1]; k < e; k++) {
+      const o = faces[k] * 3;
+      if (fx * fn[o] + fy * fn[o + 1] + fz * fn[o + 2] > creaseDot) {
+        sx += fn[o];
+        sy += fn[o + 1];
+        sz += fn[o + 2];
+      }
+    }
+    const il = 1 / (Math.sqrt(sx * sx + sy * sy + sz * sz) || 1);
+    out[i * 3] = sx * il;
+    out[i * 3 + 1] = sy * il;
+    out[i * 3 + 2] = sz * il;
+  }
+  g.setAttribute('normal', new THREE.BufferAttribute(out, 3));
   return g;
 }
 
@@ -310,6 +392,17 @@ export const meshRefs = () => [...meshStore.keys()];
 export function setMeshPersister(fn) {
   meshPersister = fn;
 }
+// esquece uma malha que ninguém usa mais (posições e geometrias prontas dela); src/cinzel.js
+export function releaseMesh(ref) {
+  meshStore.delete(ref);
+  const tag = `"ref":${JSON.stringify(ref)}`;
+  for (const [key, g] of [...geoCache]) {
+    if (!key.startsWith('mesh|') || !key.includes(tag)) continue;
+    geoCache.delete(key);
+    g.dispose();
+  }
+}
+
 // esquece as malhas que o projeto novo não usa
 export function keepMeshes(refs) {
   const keep = new Set(refs);
@@ -352,7 +445,7 @@ SHAPES.mesh = {
     if (!data) return finalize(new THREE.BoxGeometry(...size));
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(data, 3));
-    return finalize(normalizeTo(g, size), 30);
+    return finalize(normalizeTo(g, size), 30, true);
   },
 };
 

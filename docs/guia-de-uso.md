@@ -7,7 +7,7 @@ Este guia mostra o fluxo completo: da primeira forma na mesa até o arquivo pron
 | Área | Para que serve |
 |---|---|
 | **Barra superior** | Novo projeto, nome do projeto (e, ao lado, o arquivo `.forgia` com "•" se houver alteração não salva), **Arquivo** (abrir, salvar, recentes), **Importar**, **Exportar**, **Atalhos** e o botão **sol/lua** do tema |
-| **Barra de ferramentas** | Copiar, colar, duplicar, excluir, desfazer/refazer, mostrar tudo, agrupar, desagrupar, alinhar, espelhar, **Criar encaixe** e as ferramentas **Desenhar**, **Cruzeiro**, **Medir** e **Plano de trabalho** |
+| **Barra de ferramentas** | Copiar, colar, duplicar, excluir, desfazer/refazer, mostrar tudo, agrupar, desagrupar, alinhar, espelhar, **Criar encaixe** e as ferramentas **Desenhar**, **Cruzeiro**, **Cinzel**, **Medir** e **Plano de trabalho** |
 | **Mesa (plano de trabalho)** | Onde o projeto é montado. Tem o tamanho da mesa da sua impressora, com uma **régua** na borda da frente e na da esquerda (veja abaixo) |
 | **Cubo de navegação** (canto superior esquerdo) | Clique numa face, aresta ou vértice para girar a vista até ela |
 | **Painel lateral** (direita) | Duas abas: **Biblioteca** (formas prontas para arrastar) e **Objetos** (a lista de tudo o que está no projeto) |
@@ -181,6 +181,31 @@ A peça só sobe em outra quando você usa o Cruzeiro: o arraste normal continua
 
 Uma **forma nova arrastada da biblioteca** também segue qualquer face sob o cursor, alinhada a
 ela, com o mesmo realce verde.
+
+## Cinzel: apagar parte da peça
+
+O botão **Cinzel** (na barra de ferramentas, depois do Cruzeiro) ou a tecla `E` ligam o cinzel.
+Uma **ponteira** translúcida segue a superfície da peça sob o mouse.
+
+- **Clique** apaga o volume da ponteira; **arraste** apaga ao longo do caminho, como uma borracha
+  (durante o arraste os pedaços aparecem e o recorte é feito ao soltar). Cada traço é **um** passo
+  de desfazer.
+- **Roda do mouse** sobre a vista ou `[` e `]` mudam o diâmetro (0,5 a 200 mm); `Ctrl` + roda
+  continua dando zoom; sobre o inspetor e o cubo de vistas a roda age como sempre. Durante o
+  arraste, a roda e as teclas de tamanho/formato ficam paradas. `1` esfera, `2` cubo, `3` **furo
+  passante** (cilindro na direção da face, atravessa a peça; arrastado, vira um rasgo reto na
+  direção do começo do traço, com a largura do ø). A dica embaixo mostra o formato e o ø.
+- Cada traço é **recortado na peça** ao soltar: a peça vira uma **malha** (como um modelo
+  importado), com o mesmo nome, cor e lugar. Uma forma ou um grupo perde os parâmetros (medidas da
+  forma, partes do grupo); o Forgia avisa na primeira vez, e `Ctrl+Z` volta como era. Sai no
+  `.STL` e no `.3MF`.
+- Só vale em peças sólidas visíveis e não bloqueadas; uma peça bloqueada na frente protege a de
+  trás. Um traço apaga no máximo 30 pedaços; passou disso, o Forgia avisa: solte e continue com
+  outro traço. O tempo de um traço depende do tamanho da peça, não de quantos traços vieram antes.
+- As malhas dos traços desfeitos e substituídos saem da memória; se as guardadas para desfazer
+  passarem de 256 MB, os passos de desfazer mais antigos são descartados. O `.forgia` só leva as
+  malhas em uso.
+- `Esc`, `E` ou o botão de novo saem.
 
 ## Medir: a régua
 
@@ -402,6 +427,7 @@ pedidos da rede nem de páginas abertas no navegador.
 | L / M | Alinhar / espelhar |
 | B | Desenhar na mesa (`Enter` fecha, `Esc` cancela) |
 | C | Cruzeiro: deslizar a peça pela superfície das outras (`Shift` afunda) |
+| E | Cinzel: apagar parte da peça (roda ou `[` `]` mudam o tamanho; `1`/`2`/`3` esfera, cubo, passante) |
 | R | Medir: distância e X/Y/Z entre dois pontos (clique no valor para mover a peça) |
 | N | Marcar parte: alfinete num ponto e pedido só daquela parte para a IA (`Enter` copia) |
 | P | Plano de trabalho: clique numa face para ela virar o chão (`P` de novo volta à mesa) |
@@ -422,6 +448,9 @@ e aproximar (roda do mouse). Ele some quando você aproxima ou liga uma ferramen
 
 **Importar**: botão *Importar* ou arraste o arquivo para a tela.
 Formatos: `.STL`, `.OBJ` e `.3MF` — incluindo projetos salvos pelo Bambu Studio e OrcaSlicer.
+A peça importada entra como uma malha só. **Desagrupar** (`Ctrl+Shift+G`) nela separa as partes
+soltas (as que não se tocam) em peças próprias, no mesmo lugar, chamadas "Nome 1", "Nome 2"…;
+um `Ctrl+Z` junta de novo. Se a malha não tiver partes soltas, aparece um aviso e nada muda.
 
 **Exportar**: botão *Exportar*, escolhendo *Tudo no design* ou *Formas selecionadas*.
 

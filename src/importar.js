@@ -42,11 +42,25 @@ export function parseModel(name, buffer) {
   }
   if (geo.index) geo = geo.toNonIndexed();
   if (ext === 'stl' || ext === '3mf') geo.rotateX(-Math.PI / 2); // Z para cima -> Y para cima
-  if (!geo.attributes.position.count) throw new ImportError('vazio');
-  geo.computeBoundingBox();
-  const s = geo.boundingBox.getSize(new THREE.Vector3());
+  const positions = triangulosFinitos(geo.attributes.position.array);
+  if (!positions.length) throw new ImportError('vazio');
+  const s = new THREE.Box3().setFromArray(positions).getSize(new THREE.Vector3());
   return {
-    positions: new Float32Array(geo.attributes.position.array),
+    positions,
     size: [s.x || 1, s.y || 1, s.z || 1].map((v) => Math.round(v * 100) / 100),
   };
+}
+
+// Cópia só com os triângulos de coordenadas finitas: um vértice NaN/Infinity (arquivo corrompido)
+// estragaria a caixa, as medidas e a separação em partes.
+function triangulosFinitos(arr) {
+  const out = new Float32Array(Math.floor(arr.length / 9) * 9);
+  let n = 0;
+  for (let i = 0; i + 9 <= arr.length; i += 9) {
+    let ok = true;
+    for (let k = 0; k < 9 && ok; k++) ok = Number.isFinite(arr[i + k]);
+    if (!ok) continue;
+    for (let k = 0; k < 9; k++) out[n++] = arr[i + k];
+  }
+  return n === out.length ? out : out.slice(0, n);
 }

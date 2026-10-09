@@ -71,6 +71,7 @@ Em alterar, medidas/rotacao/params mantêm o centro X/Y e a base. esticar {lado:
 ## Furos e grupos
 Furo (furo:true) só recorta dentro de um grupo com o sólido: agrupe no mesmo lote. Faça o furo passar 1 mm além de cada face do sólido (ex.: placa de 5 mm → furo com altura 7 e base_z −1): face coincidente deixa película.
 As partes mantêm o id dentro do grupo: forgia_alterar e forgia_excluir funcionam nelas (o grupo se ajusta sozinho).
+Peça importada (STL/OBJ/3MF) é uma malha só: forgia_desagrupar nela separa as partes soltas (desconectadas) em objetos novos no mesmo lugar ("Nome 1..N", em criados), para mover ou excluir uma delas.
 
 ## Exemplo: suporte de celular com base de 80 mm e furo de 8 mm no centro (um lote)
 {"comandos":[
@@ -206,7 +207,7 @@ NÃO justificam código livre (resolva com comandos):
 - curva ou contorno: tipo desenho com pontos (calcule os pontos você mesmo); peça orgânica: combine formas e desenho, ou forgia_importar de um STL que o usuário já tenha (não gere arquivo por programa).
 Justifica: dezenas de peças com posições que dependem de uma fórmula que duplicar não faz (espiral, espaçamento variável).
 Como funciona: JavaScript num Worker isolado (sem disco, rede nem Node), limite de 10 s. A fachada forgia.* enfileira os mesmos comandos do lote e tudo vira UM passo de desfazer; erro ou projeto inválido não aplicam nada.
-- forgia.criar({...}) devolve "$ref"; forgia.alterar(id, {...}); forgia.excluir(ids); forgia.agrupar(ids, {nome}) devolve "$ref"; forgia.duplicar(ids, {...}); forgia.alinhar(ids, eixo, onde); forgia.espelhar(ids, eixo); forgia.soltar_na_mesa(ids); forgia.selecionar(ids)
+- forgia.criar({...}) devolve "$ref"; forgia.alterar(id, {...}); forgia.excluir(ids); forgia.agrupar(ids, {nome}) devolve "$ref"; forgia.desagrupar(ids) devolve "$ref" das partes; forgia.duplicar(ids, {...}); forgia.alinhar(ids, eixo, onde); forgia.espelhar(ids, eixo); forgia.soltar_na_mesa(ids); forgia.selecionar(ids)
 - forgia.objetos() = projeto do início do código (não vê o que o próprio código criou); forgia.formas(); forgia.util.rad/graus/circulo(raio, lados, [cx,cy])/arredondar; THREE = classes de matemática e curvas (Vector3, Shape, CatmullRomCurve3…); console.log volta em "saida"; return volta em "retorno".
 Exemplo (espiral): const ids = []; for (let i = 0; i < 24; i++) { const a = i * 0.5, r = 5 + i * 1.5; ids.push(forgia.criar({tipo:'cilindro', medidas:[3,3,4], centro:[r*Math.cos(a), r*Math.sin(a), null]})); } forgia.agrupar(ids, {nome:'espiral'});`,
 

@@ -64,8 +64,11 @@ self.onmessage = async (e) => {
       push('agrupar', { ...args, ids: list(ids), ref });
       return '$' + ref;
     },
-    desagrupar(ids) {
-      push('desagrupar', { ids: list(ids) });
+    // grupo: as partes (mesmos ids); importado: as partes soltas da malha, como objetos novos
+    desagrupar(ids, args) {
+      const ref = refOf(args, 'u');
+      push('desagrupar', { ids: list(ids), ref });
+      return '$' + ref;
     },
     alinhar(ids, eixo, onde, referencia) {
       push('alinhar', { ids: list(ids), eixo, onde, ...(referencia ? { referencia } : {}) });
