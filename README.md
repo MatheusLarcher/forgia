@@ -389,6 +389,6 @@ O `gerar_setup.bat` gera o `release\Forgia-Setup.exe` e sobe a versão sozinho a
 ---
 
 <p align="center">
-  <a href="https://larchertech.com/"><img src="public/branding/larchertech-lb.png" width="28" height="26" alt="LarcherTech"></a><br>
+  <a href="https://larchertech.com/"><img src="public/branding/larchertech-lb.png" width="28" height="28" alt="LarcherTech"></a><br>
   <sub>Feito no Rio de Janeiro por um carioca · © <a href="https://larchertech.com/">LarcherTech</a> · <a href="LICENSE">MIT</a></sub>
 </p>
