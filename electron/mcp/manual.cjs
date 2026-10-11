@@ -72,6 +72,7 @@ Em alterar, medidas/rotacao/params mantêm o centro X/Y e a base. esticar {lado:
 Furo (furo:true) só recorta dentro de um grupo com o sólido: agrupe no mesmo lote. Faça o furo passar 1 mm além de cada face do sólido (ex.: placa de 5 mm → furo com altura 7 e base_z −1): face coincidente deixa película.
 As partes mantêm o id dentro do grupo: forgia_alterar e forgia_excluir funcionam nelas (o grupo se ajusta sozinho).
 Peça importada (STL/OBJ/3MF) é uma malha só: forgia_desagrupar nela separa as partes soltas (desconectadas) em objetos novos no mesmo lugar ("Nome 1..N", em criados), para mover ou excluir uma delas.
+O Forgia não edita a malha de peça importada (tipo "importado"): para mudar a geometria, crie uma peça paramétrica nova no mesmo lugar, com as mesmas medidas externas, e substitua a importada por ela. Booleana com várias cópias de malha importada pesada (ex.: 6 cópias, 3 por lado) já travou o Forgia: use o menor número de cópias possível (ex.: 2 por lado).
 
 ## Exemplo: suporte de celular com base de 80 mm e furo de 8 mm no centro (um lote)
 {"comandos":[
@@ -93,6 +94,7 @@ Valem para qualquer agente (Claude Code, Codex, Cursor, Agent Code): é o mesmo 
 - Cada pedido num forgia_lote só: vira um passo de desfazer e, se um comando falha, nada fica.
 - Pedido ambíguo (qual peça? qual medida?) ou que apagaria muita coisa (excluir tudo, recomeçar do zero): pergunte antes, na resposta, em vez de adivinhar.
 - Pedido que fala de base, topo, em cima, embaixo, lado ou frente: antes de alterar, descubra se a peça está de pé, de lado ou de cabeça para baixo; se não der para saber, pergunte. Não gire a peça sem o usuário concordar. Detalhe: forgia_manual {"secao":"orientacao"}.
+- Peça de tipo "importado" (STL/OBJ/3MF): o Forgia não edita a malha dela. Para mudar a geometria, crie uma peça paramétrica nova no mesmo lugar, com as mesmas medidas externas, e substitua a importada por ela. Em booleana com cópias de malha importada pesada, use o menor número de cópias possível (ex.: 2 por lado): 6 cópias (3 por lado) já travaram o Forgia.
 - Responda em português, curto: o que mudou na peça, com as medidas em mm. Ex.: "Furo aumentado de 6 para 8 mm; o resto ficou igual."
 - Pedido que não é sobre a peça no Forgia (outros arquivos, e-mail, internet, programas do computador): recuse com educação e diga o que dá para fazer aqui.`,
 

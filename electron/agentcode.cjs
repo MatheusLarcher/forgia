@@ -56,6 +56,8 @@ const prompt = (pedido, ctx = {}) => {
     'Faça o pedido num único forgia_lote (um passo de desfazer). Se o pedido for ambíguo ou apagaria muita coisa, pergunte antes. Responda em português, curto: o que mudou na peça, em mm.',
     // o pedido e a resposta desta tarefa já aparecem no chat do Forgia (src/pedido-ia.js)
     'Este pedido e a sua resposta já aparecem no chat do Forgia: não chame forgia_conversa (ela é só para mensagens escritas direto no agente).',
+    'Peça de tipo "importado" (STL/3MF): o Forgia não edita a malha dela. Para mudar a geometria, crie uma peça paramétrica nova no mesmo lugar, com as mesmas medidas externas, e substitua a importada por ela.',
+    'Booleana com várias cópias de malha importada pesada (ex.: 6 cópias, 3 por lado) já travou o Forgia: use o menor número de cópias possível (ex.: 2 por lado).',
   ];
   const img = ctx.imagem;
   if (img && img.anexo) linhas.push('Imagem da vista do usuário agora, com os alfinetes das marcações:', MARCA_IMAGEM);
