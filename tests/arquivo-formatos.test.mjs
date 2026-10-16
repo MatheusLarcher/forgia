@@ -58,34 +58,62 @@ test('3MF: um objeto por peça, cores na ordem do projeto, vértices compartilha
   const partes = [
     { nome: 'Caixa vermelha', tris: cubo(-30, 0, 0), cor: 0 },
     { nome: 'Caixa <azul> & cia', tris: cubo(0, 0, 0), cor: 1 },
-    { nome: 'Grupo', tris: cubo(30, 10, 5), cores: new Uint16Array(12).map((_, i) => (i < 6 ? 2 : 0)) },
+    { nome: 'Grupo', tris: cubo(30, 10, 5), cores: new Uint16Array(12).map((_, i) => (i < 4 ? 2 : 0)) },
   ];
-  const { arquivos, resumo } = model3MF({ titulo: 'teste', partes, cores: ['#e3302d', '#1b8bd2', '#3fb34f'], mesa: { w: 256, l: 256 } });
+  const { arquivos, resumo, objetos } = model3MF({ titulo: 'teste', partes, cores: ['#e3302d', '#1b8bd2', '#3fb34f'], mesa: { w: 256, l: 256 } });
   const model = arquivos.find((a) => a.nome === '3D/3dmodel.model').dados;
   assert.match(model, /^<\?xml version="1\.0" encoding="UTF-8"\?>/);
   assert.match(model, /unit="millimeter"/);
   assert.match(model, /xmlns="http:\/\/schemas\.microsoft\.com\/3dmanufacturing\/core\/2015\/02"/);
-  const bases = [...model.matchAll(/<base name="[^"]*" displaycolor="(#[0-9A-F]{6})"\/>/g)].map((m) => m[1]);
+  // cores no m:colorgroup (o único que o Bambu/Orca lê), com o prefixo m: exato
+  assert.match(model, /xmlns:m="http:\/\/schemas\.microsoft\.com\/3dmanufacturing\/material\/2015\/02"/);
+  assert.match(model, /<m:colorgroup id="1">/);
+  const bases = [...model.matchAll(/<m:color color="(#[0-9A-F]{6})"\/>/g)].map((m) => m[1]);
   assert.deepEqual(bases, ['#E3302D', '#1B8BD2', '#3FB34F'], 'ordem estável das cores');
   const objs = [...model.matchAll(/<object id="(\d+)" type="model" name="([^"]*)" pid="1" pindex="(\d+)">/g)];
   assert.equal(objs.length, 3);
   assert.equal(objs[1][2], 'Caixa &lt;azul&gt; &amp; cia', 'nome escapado');
-  assert.deepEqual(objs.map((o) => +o[3]), [0, 1, 2]);
+  assert.deepEqual(objs.map((o) => +o[3]), [0, 1, 0], 'grupo: cor principal = a mais frequente');
+  assert.equal(objetos, 3, 'peças separadas = objetos separados');
   assert.equal(resumo[0].vertices, 8, 'cubo com 8 vértices compartilhados (malha fechada)');
   assert.equal(resumo[0].triangulos, 12);
-  // grupo multicolorido: cor por triângulo
-  assert.equal((model.match(/p1="2"/g) || []).length, 6);
-  assert.equal((model.match(/p1="0"/g) || []).length, 6);
-  // item: centro X/Y da peça + meia mesa, base em Z
+  // grupo multicolorido: cor por triângulo (p1) e, para o Bambu, a pintura do que não é a cor principal
+  assert.equal((model.match(/p1="2"/g) || []).length, 4);
+  assert.equal((model.match(/p1="0"/g) || []).length, 8);
+  assert.equal((model.match(/paint_color="0C"/g) || []).length, 4, 'filamento 3 pintado');
+  // item: centro X/Y do objeto + meia mesa, base em Z
   const items = [...model.matchAll(/<item objectid="(\d+)" transform="1 0 0 0 1 0 0 0 1 ([-\d.]+) ([-\d.]+) ([-\d.]+)"\/>/g)].map((m) => m.slice(2).map(Number));
   assert.deepEqual(items, [[98, 128, 0], [128, 128, 0], [158, 138, 5]]);
-  // vértices do primeiro objeto ficam em volta da origem da peça (base em z = 0)
+  // vértices do primeiro objeto ficam em volta da origem dele (base em z = 0)
   const first = model.slice(model.indexOf('<object id="2"'), model.indexOf('</object>'));
   const zs = [...first.matchAll(/z="([-\d.]+)"/g)].map((m) => +m[1]);
   assert.equal(Math.min(...zs), 0);
   assert.equal(Math.max(...zs), 10);
+  // filamento por parte para o Bambu/Orca (1 = primeira cor)
+  const cfg = arquivos.find((a) => a.nome === 'Metadata/model_settings.config').dados;
+  assert.deepEqual([...cfg.matchAll(/<part id="\d+"[^>]*>.*?key="extruder" value="(\d+)"/g)].map((m) => +m[1]), [1, 2, 1]);
   assert.ok(arquivos.find((a) => a.nome === '_rels/.rels').dados.includes('Target="/3D/3dmodel.model"'));
   assert.ok(arquivos.find((a) => a.nome === '[Content_Types].xml').dados.includes('application/vnd.ms-package.3dmanufacturing-3dmodel+xml'));
+});
+
+test('3MF: peça encostada ou no ar dentro de outra fica no mesmo objeto, na posição da tela', () => {
+  const partes = [
+    { nome: 'Tampa', tris: cubo(0, 0, 0, 20), cor: 0 },
+    { nome: 'Letra', tris: cubo(0, 0, 20, 4), cor: 1 }, // apoiada no topo da tampa
+    { nome: 'Solta', tris: cubo(60, 0, 0), cor: 0 },
+  ];
+  const { arquivos, objetos } = model3MF({ titulo: 't', partes, cores: ['#e3302d', '#1b8bd2'], mesa: { w: 200, l: 200 } });
+  const model = arquivos.find((a) => a.nome === '3D/3dmodel.model').dados;
+  assert.equal(objetos, 2, 'tampa + letra num objeto; a solta em outro');
+  const tampa = [...model.matchAll(/<object id="(\d+)" type="model" name="Tampa"><components>(.*?)<\/components>/g)];
+  assert.equal(tampa.length, 1);
+  assert.equal((tampa[0][2].match(/<component /g) || []).length, 2);
+  // a letra guarda a altura dela (z 20–24) em relação à base do objeto
+  const letra = model.slice(model.indexOf('name="Letra"'));
+  const zs = [...letra.slice(0, letra.indexOf('</object>')).matchAll(/z="([-\d.]+)"/g)].map((m) => +m[1]);
+  assert.deepEqual([Math.min(...zs), Math.max(...zs)], [20, 24]);
+  const cfg = arquivos.find((a) => a.nome === 'Metadata/model_settings.config').dados;
+  assert.deepEqual([...cfg.matchAll(/key="extruder" value="(\d+)"/g)].map((m) => +m[1]), [1, 1, 2, 1, 1]);
 });
 
 test('.forgia: ida e volta com malha, miniatura e versão do formato', async () => {

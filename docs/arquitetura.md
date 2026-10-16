@@ -39,7 +39,7 @@ forgia/
 │   ├── arquivo.js      # projeto em arquivo: .forgia, "•", Recentes, cópia de segurança, recuperação, migração
 │   ├── projeto.js      # formato .forgia (ZIP: projeto.json com versão + malhas + miniatura)
 │   ├── zip.js          # ZIP escrito à mão (CRC32 + CompressionStream 'deflate-raw') e leitura (fflate do three)
-│   ├── exportar3mf.js  # .3MF com uma peça por objeto e cor por basematerials (multicor/AMS)
+│   ├── exportar3mf.js  # .3MF com peças em partes, cor por colorgroup e filamento por parte (multicor/AMS)
 │   ├── lista.js        # lista de objetos (aba Objetos): árvore, olho, cadeado, renomear
 │   ├── encaixe.js      # Criar encaixe: bloco aberto em cima + cópia como furo com folga por forma
 │   ├── plano.js        # Plano de trabalho (tecla P): quadro da face, grade no plano, escolha da face
@@ -815,18 +815,36 @@ página: src/arquivo.js ── window.forgiaProjeto (preload) ── IPC ──�
 
 ## Exportar 3MF (`src/exportar3mf.js`)
 
-Decisão `dec-exportar-3mf`, fonte <https://wiki.bambulab.com/en/bambu-studio/Standard-3MF-File-Color-Parsing>.
-3MF core (`http://schemas.microsoft.com/3dmanufacturing/core/2015/02`), `unit="millimeter"`:
+Decisão `dec-exportar-3mf`. Fonte do que o Bambu/Orca lê: o leitor dele,
+`src/libslic3r/Format/bbs_3mf.cpp` e `src/slic3r/GUI/Plater.cpp` do BambuStudio. 3MF core
+(`http://schemas.microsoft.com/3dmanufacturing/core/2015/02`), `unit="millimeter"`:
 
-- um `<object type="model">` por peça do topo, com o nome da peça e a malha da cena (grupos já
-  resolvidos pela booleana); furos soltos e ocultos não saem;
-- `<basematerials>`: cada cor distinta vira um `<base displaycolor="#RRGGBB">`, **na ordem em que
-  aparece no projeto** (o Bambu liga grupo de cor → slot do AMS pela ordem); peça de uma cor leva
-  `pid`/`pindex` no objeto, grupo multicolorido leva `pid`/`p1` por triângulo;
+- um `<object type="model">` de malha por peça do topo, com o nome da peça e a malha da cena
+  (grupos já resolvidos pela booleana); furos soltos e ocultos não saem;
+- **objetos do fatiador**: peças cujas caixas se tocam ou se sobrepõem (0,01 mm) viram um só
+  `<object>` com `<components>` (uma parte por peça); peça isolada vira um objeto de uma parte.
+  O fatiador apoia cada objeto na mesa e o rearranja: com um objeto por peça, uma peça "no ar"
+  (letra em relevo a 2,6 mm, inserto) caía na mesa e saía do lugar. Dentro de um objeto as partes
+  mantêm a posição. O objeto leva o nome da maior peça;
+- cores em `<m:colorgroup>` (extensão Materials, prefixo `m:` **exato**, que é a tag que o Bambu
+  compara): cada cor distinta vira um `<m:color>`, **na ordem em que aparece no projeto**; peça de
+  uma cor leva `pid`/`pindex` no objeto, grupo multicolorido leva `pid`/`p1` por triângulo. O
+  Bambu/Orca **não lê** `<basematerials>` (o formato anterior: tudo saía no filamento 1); com
+  colorgroup ele liga 1ª cor → filamento 1 e abre o diálogo de cores → filamentos;
+- `Metadata/model_settings.config` (formato do Bambu/Orca): `extruder` de cada parte (e do objeto)
+  = posição da cor dela + 1; no grupo multicolorido o filamento da parte é a cor mais frequente e
+  os outros triângulos levam `paint_color` (pintura multicor: `4` = filamento 1, `8` = 2, depois
+  `0C`, `1C`…). Sem `project_settings.config`, o Bambu carrega como "só geometria" e cria os
+  filamentos que faltarem;
 - vértices compartilhados (iguais até 0,0001 mm; triângulo degenerado sai), Z para cima (sistema do
-  usuário), no centro da peça com a base em z = 0; a posição vai no `<item transform>`, com a origem
-  no canto da mesa (X + largura/2, Y + comprimento/2), como a mesa dos fatiadores;
-- ZIP com `[Content_Types].xml`, `_rels/.rels` e `3D/3dmodel.model` (o mesmo `src/zip.js`).
+  usuário), em volta da origem do objeto (centro X/Y das peças dele, base em z = 0); a posição vai
+  no `<item transform>`, com a origem no canto da mesa (X + largura/2, Y + comprimento/2), como a
+  mesa dos fatiadores;
+- ZIP com `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model` e
+  `Metadata/model_settings.config` (o mesmo `src/zip.js`).
+- Conferir no Bambu sem abrir a interface: `bambu-studio.exe --export-3mf saida.3mf entrada.3mf`
+  regrava como projeto; `Metadata/model_settings.config` da saída mostra objetos, partes,
+  `extruder` e `source_offset_z` de cada parte.
 
 Botão *Exportar > .3MF (cores e peças separadas)*, para *Tudo* ou *Selecionadas*. Ida e volta: o
 leitor `src/threemf.js` reimporta com as mesmas medidas (`tests/projeto-exe.test.mjs`).

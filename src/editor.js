@@ -1952,14 +1952,20 @@ export class Editor extends EventTarget {
   }
 
   // cena para exportação: só sólidos visíveis, com transformações aplicadas
-  exportScene(onlySelected = false) {
+  // list: objetos do topo a exportar (padrão: seleção ou tudo)
+  exportScene(onlySelected = false, list = null) {
     const group = new THREE.Group();
-    const list = onlySelected && this.selection.length ? this.selected : this.objects;
+    list = list || (onlySelected && this.selection.length ? this.selected : this.objects);
     for (const o of list) {
       if (o.hidden || o.hole) continue;
       const src = this.meshes.get(o.id);
+      if (!src) continue;
+      src.updateMatrixWorld(true);
       const mats = Array.isArray(src.material) ? src.material : [src.material];
-      const m = new THREE.Mesh(src.geometry, mats.length === 1 ? mats[0] : mats);
+      // espelhada (escala negativa): os exportadores (STL/OBJ) não invertem a ordem dos vértices e
+      // a peça saía do avesso (normais para dentro); inverte numa cópia, como a booleana (csg.js)
+      const geo = src.matrixWorld.determinant() < 0 ? reversedWinding(src.geometry) : src.geometry;
+      const m = new THREE.Mesh(geo, mats.length === 1 ? mats[0] : mats);
       m.applyMatrix4(src.matrixWorld);
       group.add(m);
     }
@@ -1968,6 +1974,26 @@ export class Editor extends EventTarget {
     group.updateMatrixWorld(true);
     return group;
   }
+}
+
+// cópia não indexada com cada triângulo na ordem inversa (troca o 2º e o 3º vértice), grupos mantidos
+function reversedWinding(geometry) {
+  const geo = geometry.index ? geometry.toNonIndexed() : geometry.clone();
+  for (const name of Object.keys(geo.attributes)) {
+    const a = geo.attributes[name];
+    const n = a.itemSize;
+    const arr = a.array;
+    for (let t = 0; t + 2 < a.count; t += 3) {
+      for (let k = 0; k < n; k++) {
+        const i1 = (t + 1) * n + k;
+        const i2 = (t + 2) * n + k;
+        const tmp = arr[i1];
+        arr[i1] = arr[i2];
+        arr[i2] = tmp;
+      }
+    }
+  }
+  return geo;
 }
 
 export function fmt(v) {

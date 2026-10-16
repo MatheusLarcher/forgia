@@ -977,20 +977,9 @@ export function stl(ed, args) {
   checkKeys(args, ['caminho', 'ids'], 'exportar_stl');
   const ctx = newCtx();
   const list = args.ids == null ? ed.objects : topLevel(ed, ctx, args.ids, 'exportar_stl');
-  const group = new THREE.Group();
-  let tris = 0;
-  for (const o of list) {
-    if (o.hidden || o.hole) continue;
-    const src = ed.meshes.get(o.id);
-    if (!src) continue;
-    const m = new THREE.Mesh(src.geometry);
-    m.applyMatrix4(src.matrixWorld);
-    group.add(m);
-    tris += src.geometry.attributes.position.count / 3;
-  }
+  const group = ed.exportScene(false, list); // o mesmo do Exportar (Z para cima, espelhada corrigida)
   if (!group.children.length) fail('Nada para exportar: só sólidos visíveis saem no STL (furo solto não).');
-  group.rotation.x = Math.PI / 2; // Y para cima -> Z para cima, como no Exportar
-  group.updateMatrixWorld(true);
+  const tris = group.children.reduce((s, m) => s + (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3, 0);
   const dv = new STLExporter().parse(group, { binary: true });
   return { ok: true, objetos: group.children.length, triangulos: Math.round(tris), stl: dv.buffer };
 }
